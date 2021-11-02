@@ -424,7 +424,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
                     error_message(error_location, "Error", "`endif` can only close `if` block!")
 
                     # Exit at the parsing.
-                    exit()
+                    exit(1)
 
                 # Increment operator index.
                 context.operator_index += 1
@@ -446,7 +446,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
         error_message(error_location, "Error", "Unclosed block!")
 
         # Exit at the parsing.
-        exit()
+        exit(1)
 
 
 # Interpretator.
@@ -677,7 +677,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -694,7 +694,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -711,7 +711,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -728,7 +728,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -745,7 +745,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -762,7 +762,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
@@ -779,7 +779,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Pop and left.
                 memory_linter_stack.pop()
@@ -792,7 +792,7 @@ def linter_type_check(source: Source, path: str):
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
                     no_arguments_error_message(current_operator)
-                    exit()
+                    exit(1)
 
                 # Pop and left.
                 memory_linter_stack.pop()
@@ -808,7 +808,7 @@ def linter_type_check(source: Source, path: str):
             # Check stack size.
             if len(memory_linter_stack) < 1:
                 no_arguments_error_message(current_operator)
-                exit()
+                exit(1)
 
             # Get operand.
             operand_a = memory_linter_stack.pop()
@@ -844,9 +844,12 @@ def linter_type_check(source: Source, path: str):
     if len(memory_linter_stack) != 0:
         # If there is any in the stack.
 
-        # Error message.
-        error_message((path, current_operator_index, -1), "Warning", "Stack is not empty at the type checking stage!")
+        # Get current operator from the source.
+        location = source.operators[current_operator_index - 1].token.location
 
+        # Error message.
+        error_message(location, "Error", "Stack is not empty at the type checking stage!")
+        exit(1)
 
 # Graph.
 
