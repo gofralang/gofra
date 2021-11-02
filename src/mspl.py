@@ -248,7 +248,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
             # If we got a word.
 
             # Type check.
-            assert isinstance(current_token.value, int), "Type error, lexer level error?"
+            assert isinstance(current_token.value, str), "Type error, lexer level error?"
 
             if current_token.value in INTRINSIC_NAMES_TO_TYPE:
                 # If this is intrinsic.
