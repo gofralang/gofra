@@ -25,15 +25,29 @@ class DataType(IntEnum):
 
 class Keyword(Enum):
     """ Enumeration for keyword types. """
+
+    # Conditions.
     IF = auto()
     ENDIF = auto()
 
 
 class Intrinsic(Enum):
     """ Enumeration for intrinsic types. """
+
+    # Int.
     PLUS = auto()
     MINUS = auto()
     MULTIPLY = auto()
+
+    # Boolean.
+    EQUAL = auto()
+    NOT_EQUAL = auto()
+
+    # Stack.
+    COPY = auto()
+
+    # Utils.
+    SHOW = auto()
 
 
 class TokenType(Enum):
@@ -47,6 +61,8 @@ class OperatorType(Enum):
     """ Enumeration for operaror types. """
     PUSH_INTEGER = auto()
     INTRINSIC = auto()
+
+    # Conditions.
     IF = auto()
     ENDIF = auto()
 
@@ -68,16 +84,22 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
+assert len(Intrinsic) == 7, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
     "*": Intrinsic.MULTIPLY,
+    "==": Intrinsic.EQUAL,
+    "!=": Intrinsic.NOT_EQUAL,
+    "show": Intrinsic.SHOW,
+    "copy": Intrinsic.COPY
 }
 INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
     value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
 }
 
 # Keyword names / types.
+assert len(Keyword) == 2, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "endif": Keyword.ENDIF,
@@ -411,7 +433,7 @@ def interpretator_run(source: Source):
     assert len(OperatorType) == 4, "Too much operator types!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 3, "Too much intrinsics types!"
+    assert len(Intrinsic) == 7, "Too much intrinsics types!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -470,6 +492,53 @@ def interpretator_run(source: Source):
 
                 # Increase operator index.
                 current_operator_index += 1
+            elif current_operator.operand == Intrinsic.EQUAL:
+                # Intristic equal operator.
+
+                # Get both operands.
+                operand_a = memory_execution_stack.pop()
+                operand_b = memory_execution_stack.pop()
+
+                # Push equal to the stack.
+                memory_execution_stack.append(int(operand_a == operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.NOT_EQUAL:
+                # Intristic not equal operator.
+
+                # Get both operands.
+                operand_a = memory_execution_stack.pop()
+                operand_b = memory_execution_stack.pop()
+
+                # Push not equal to the stack.
+                memory_execution_stack.append(int(operand_a != operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.COPY:
+                # Intristic copy operator.
+
+                # Get operand.
+                operand_a = memory_execution_stack.pop()
+
+                # Push copy to the stack.
+                memory_execution_stack.append(operand_a)
+                memory_execution_stack.append(operand_a)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.SHOW:
+                # Intristic show operator.
+
+                # Get operand.
+                operand_a = memory_execution_stack.pop()
+
+                # Show operand.
+                print(operand_a)
+
+                # Increase operator index.
+                current_operator_index += 1
             else:
                 # If unknown instrinsic type.
                 assert False, "Unknown instrinsic! (How?)"
@@ -507,8 +576,6 @@ def interpretator_run(source: Source):
             # If unknown operator type.
             assert False, "Unknown operator type! (How?)"
 
-    print(memory_execution_stack) # TODO REM
-
 
 # Graph.
 
@@ -526,9 +593,6 @@ def graph_generate(source: Source, path: str):
 
     # Check that there is no new operator type.
     assert len(OperatorType) == 4, "Too much operator types!"
-
-    # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 3, "Too much intrinsics types!"
 
     # Write header.
     file.write("digraph Source{\n")
@@ -594,12 +658,141 @@ def graph_generate(source: Source, path: str):
     file.close()
 
 
+# Python.
+
+def python_generate(source: Source, path: str):
+    """ Generates graph from the source. """
+
+    # Open file.
+    file = open(path + ".py", "w")
+
+    # Get source operators count.
+    operators_count = len(source.operators)
+
+    # Current operator index from the source.
+    current_operator_index = 0
+
+    # Indentation level.
+    current_indent_level = 0
+
+    # Check that there is no new operator type.
+    assert len(OperatorType) == 4, "Too much operator types!"
+
+    # Write header.
+    file.write("# This file is auto-generated by MSPL python subcommand! \n")
+    file.write("\n")
+    file.write("# Allocate stack (As is MSPL is Stack-Oriented Language): \n")
+    file.write("stack = list()\n")
+    file.write("\n")
+    file.write("# Work with stack functions: \n")
+    file.write("def push(v):\n\tstack.append(v)\n")
+    file.write("def pop():\n\treturn stack.pop()\n")
+    file.write("\n\n")
+    file.write(f"# Source ({basename(path)}): \n")
+
+    while current_operator_index < operators_count:
+        # While we not run out of the source operators list.
+
+        # Get current operator from the source.
+        current_operator = source.operators[current_operator_index]
+
+        # Get comment data.
+        location = "Line %d, Row %d" % current_operator.token.location[1:3]
+        comment = f"Text: {current_operator.token.text} [{location}]"
+
+        # Grab our operator
+        if current_operator.type == OperatorType.PUSH_INTEGER:
+            # Push integer operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, int), "Type error, parser level error?"
+
+            # Write data.
+            file.write("\t" * current_indent_level + f"push({current_operator.operand})  # {comment}\n\n")
+        elif current_operator.type == OperatorType.INTRINSIC:
+            # Intrinsic operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, Intrinsic), f"Type error, parser level error?"
+
+            if current_operator.operand == Intrinsic.PLUS:
+                # Intristic plus operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"push(pop() + pop())  # {comment}\n\n")
+            elif current_operator.operand == Intrinsic.MINUS:
+                # Intristic minus operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"push(pop() - pop())  # {comment}\n\n")
+            elif current_operator.operand == Intrinsic.MULTIPLY:
+                # Intristic multiply operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"push(pop() * pop())  # {comment}\n\n")
+            elif current_operator.operand == Intrinsic.EQUAL:
+                # Intristic equal operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"push(int(pop() == pop()))  # {comment}\n\n")
+            elif current_operator.operand == Intrinsic.NOT_EQUAL:
+                # Intristic not equal operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"push(int(pop() != pop()))  # {comment}\n\n")
+            elif current_operator.operand == Intrinsic.COPY:
+                # Intristic copy operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"buffer = pop()  # {comment}\n")
+                file.write("\t" * current_indent_level + f"push(buffer)  # {comment}\n")
+                file.write("\t" * current_indent_level + f"push(buffer)  # {comment}\n\n")
+            elif current_operator.operand == Intrinsic.SHOW:
+                # Intristic show operator.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"print(pop())  # {comment}\n")
+            else:
+                # If unknown instrinsic type.
+
+                # Write node data.
+                file.write("\t" * current_indent_level + f"# Sorry, but this intrinsic is not implemented yet! {comment}\n\n")
+        elif current_operator.type == OperatorType.IF:
+            # If operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+
+            # Write node data.
+            file.write("\t" * current_indent_level + f"if pop() != 0:  # {comment}\n")
+
+            # Increase indent level.
+            current_indent_level += 1
+        elif current_operator.type == OperatorType.ENDIF:
+            # Endif operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Decrease indent level.
+            current_indent_level -= 1
+        else:
+            # If unknown operator type.
+            assert False, f"Unknown operator type! (How?)"
+
+        # Increment current index.
+        current_operator_index += 1
+
+    # Close file.
+    file.close()
+
+
 if __name__ == "__main__":
     # Entry point.
 
     # CLI Options.
-    cli_source_path = f"{getcwd()}\\" + "examples\\if_example.mspl"
-    cli_subcommand = "graph"
+    cli_source_path = f"{getcwd()}\\" + "examples\\stack_example.mspl"
+    cli_subcommand = "interpretate"
 
     if cli_subcommand == "interpretate":
         # If this is interpretate subcommand.
@@ -655,8 +848,36 @@ if __name__ == "__main__":
 
         # Message.
         print(f"[Info] .dot file \"{basename(cli_source_path)}.dot\" generated!")
+    elif cli_subcommand == "python":
+        # If this is python subcommand.
+
+        # Message.
+        print(f"[Info] Generating .py file for source file \"{basename(cli_source_path)}\"")
+
+        # Read source lines.
+        with open(cli_source_path, "r", encoding="UTF-8") as source_file:
+            source_lines = source_file.readlines()
+
+        # Parser context.
+        parser_context = ParserContext()
+
+        # Tokenize.
+        lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
+
+        # Parse.
+        parser_parse(lexer_tokens, parser_context)
+
+        # Create source from context.
+        parser_context_source = Source(parser_context.operators)
+
+        # Generate python file.
+        python_generate(parser_context_source, cli_source_path)
+
+        # Message.
+        print(f"[Info] .py file \"{basename(cli_source_path)}.py\" generated!")
     else:
         # If unknown subcommand.
 
         # Message.
         print("[Error] Sorry, you entered unknown subcommand!")
+

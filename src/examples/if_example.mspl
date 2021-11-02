@@ -4,14 +4,21 @@
 0 if
     // If 0 (false)
 
-    // Push 1024.
-    1024
+    // Show 1024.
+    1024 show
 endif
 
 1 if
     // If 1 (true).
 
 
-    // Push 2048
-    2048
+    // Show 2048
+    2048 show
 endif
+
+1 if 1 if
+    // If 1 and 1 (true and true).
+
+    // Show 2048
+    4096 show
+endif endif

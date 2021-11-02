@@ -13,5 +13,9 @@ digraph Source{
    Operator_5 -> Operator_6;
    Operator_6 [label="'*'"];
    Operator_6 -> Operator_7;
-   Operator_7 [label="EndOfOperators"];
+   Operator_7 [label="'copy'"];
+   Operator_7 -> Operator_8;
+   Operator_8 [label="'show'"];
+   Operator_8 -> Operator_9;
+   Operator_9 [label="EndOfOperators"];
 }
