@@ -68,6 +68,10 @@ INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
     value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
 }
 
+# Keyword names / types.
+KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
+
+}
 
 @dataclass
 class Token:
@@ -119,6 +123,7 @@ class ParserContext:
 
 def lexer_find_collumn(line: str, start: int, predicate_function: Callable[[str], bool]) -> int:
     """ Finds column in the line from start that not triggers filter. """
+
     # Get end position.
     end = len(line)
 
@@ -136,7 +141,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
     """ Tokenizes lines into list of the Tokens. """
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 2, "[lexer_tokenize()] Переполнение операторов!"
+    assert len(OperatorType) == 2, "Too much operator types!"
 
     # Current line index.
     current_line_index = 0
@@ -176,11 +181,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 except ValueError:
                     # If there is invalid value for integer.
 
-                    NAMES = (
-
-                    )
-
-                    if current_token_text in NAMES:
+                    if current_token_text in KEYWORD_NAMES_TO_TYPE:
                         # If this is keyword.
 
                         # Return keyword token.
@@ -188,7 +189,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                             type=TokenType.KEYWORD,
                             text=current_token_text,
                             location=current_location,
-                            value=NAMES[current_token_text]
+                            value=KEYWORD_NAMES_TO_TYPE[current_token_text]
                         )
                     else:
                         # Not keyword.
@@ -232,7 +233,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 2, "[parser_parse()] Переполнение операторов!"
+    assert len(OperatorType) == 2, "Too much operator types!"
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
@@ -247,8 +248,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
             # If we got a word.
 
             # Type check.
-            assert isinstance(current_token.value, str), \
-                "[parser_parse()] Неожиданный тип значения токена при парсинге (Ошибка лексера?)!"
+            assert isinstance(current_token.value, int), "Type error, lexer level error?"
 
             if current_token.value in INTRINSIC_NAMES_TO_TYPE:
                 # If this is intrinsic.
@@ -266,8 +266,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
             # If we got a integer.
 
             # Type check.
-            assert isinstance(current_token.value, int), \
-                "[parser_parse()] Неожиданный тип значения токена при парсинге (Ошибка лексера?)!"
+            assert isinstance(current_token.value, int), "Type error, lexer level error?"
 
             # Create operator.
             operator = Operator(
@@ -281,10 +280,11 @@ def parser_parse(tokens: List[Token], context: ParserContext):
         elif current_token.type == TokenType.KEYWORD:
             # If we got a keyword.
 
+            # TODO
             pass
         else:
             # If unknown operator type.
-            assert False, f"[parser_parse()] Получен неизвестный оператор при парсинге! [НЕДОСЯГАЕМЫЙ БЛОК]"
+            assert False, "Unknown operator type! (How?)"
 
 
 # Interpretator.
