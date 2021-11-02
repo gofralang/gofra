@@ -6,6 +6,7 @@
 #### `free` - Pop one element from the stack (Just drop it, free stack from it).
 #### `+` - Pop two elements from the stack and push their sum.
 #### `-` - Pop two elements from the stack and push their difference.
+#### `/` - Pop two elements from the stack and push their div, int (%).
 #### `*` - Pop two elements from the stack and push their multiply.
 #### `==` - Pop two elements from the stack and push 1 if they is equal or 0 if not.
 #### `!=` - Pop two elements from the stack and push 1 if they is not equal or 0 if yes.

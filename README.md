@@ -6,6 +6,7 @@
 - #### Interpretate code (Run).
 - #### Generate graph for the code (.dot).
 - #### Compile (Generate) python code (MSPL -> Python).
+- #### Lint (Type check) very simple and slow.
 
 ## Simple example:
 #### `35 // Push 35 in the stack.`

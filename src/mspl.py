@@ -38,6 +38,7 @@ class Intrinsic(Enum):
     PLUS = auto()
     MINUS = auto()
     MULTIPLY = auto()
+    DIVIDE = auto()
 
     # Boolean.
     EQUAL = auto()
@@ -85,11 +86,12 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 8, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 9, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
     "*": Intrinsic.MULTIPLY,
+    "/": Intrinsic.DIVIDE,
     "==": Intrinsic.EQUAL,
     "!=": Intrinsic.NOT_EQUAL,
     "show": Intrinsic.SHOW,
@@ -467,7 +469,7 @@ def interpretator_run(source: Source):
     assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 8, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -499,6 +501,18 @@ def interpretator_run(source: Source):
 
                 # Push sum to the stack.
                 memory_execution_stack.append(operand_a + operand_b)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.DIVIDE:
+                # Intristic divide operator.
+
+                # Get both operands.
+                operand_a = memory_execution_stack.pop()
+                operand_b = memory_execution_stack.pop()
+
+                # Push divide to the stack.
+                memory_execution_stack.append(operand_a % operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -648,7 +662,7 @@ def linter_type_check(source: Source, path: str):
     assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 8, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -685,6 +699,23 @@ def linter_type_check(source: Source, path: str):
 
                 # Push sum to the stack.
                 memory_linter_stack.append(operand_a + operand_b)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.DIVIDE:
+                # Intristic divide operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    no_arguments_error_message(current_operator)
+                    exit(1)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push divide to the stack.
+                memory_linter_stack.append(operand_a / operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
