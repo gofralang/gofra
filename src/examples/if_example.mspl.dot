@@ -1,0 +1,21 @@
+digraph Source{
+   Operator_0 [label=PUSH_0];
+   Operator_0 -> Operator_1;
+   Operator_1 [shape=record label=if];
+   Operator_1 -> Operator_2 [label=true];
+   Operator_1 -> Operator_3 [label=false];
+   Operator_2 [label=PUSH_1024];
+   Operator_2 -> Operator_3;
+   Operator_3 [shape=record label=endif];
+   Operator_3 -> Operator_4;
+   Operator_4 [label=PUSH_1];
+   Operator_4 -> Operator_5;
+   Operator_5 [shape=record label=if];
+   Operator_5 -> Operator_6 [label=true];
+   Operator_5 -> Operator_7 [label=false];
+   Operator_6 [label=PUSH_2048];
+   Operator_6 -> Operator_7;
+   Operator_7 [shape=record label=endif];
+   Operator_7 -> Operator_8;
+   Operator_8 [label="EndOfOperators"];
+}

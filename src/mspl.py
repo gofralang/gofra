@@ -4,6 +4,9 @@
 # Dataclass.
 from dataclasses import dataclass, field
 
+# System error.
+from sys import stderr
+
 # Current working directory and basename.
 from os import getcwd
 from os.path import basename
@@ -22,7 +25,8 @@ class DataType(IntEnum):
 
 class Keyword(Enum):
     """ Enumeration for keyword types. """
-    pass
+    IF = auto()
+    ENDIF = auto()
 
 
 class Intrinsic(Enum):
@@ -43,6 +47,8 @@ class OperatorType(Enum):
     """ Enumeration for operaror types. """
     PUSH_INTEGER = auto()
     INTRINSIC = auto()
+    IF = auto()
+    ENDIF = auto()
 
 
 # Types.
@@ -55,6 +61,9 @@ LOCATION = Tuple[str, int, int]
 
 # Value.
 VALUE = Union[int, str, Keyword]
+
+# Adress to the another operator.
+OPERATOR_ADDRESS = int
 
 # Other.
 
@@ -70,8 +79,10 @@ INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
 
 # Keyword names / types.
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
-
+    "if": Keyword.IF,
+    "endif": Keyword.ENDIF,
 }
+
 
 @dataclass
 class Token:
@@ -115,8 +126,26 @@ class Source:
 class ParserContext:
     """ Parser context dataclass implementation. """
 
-    # Context
+    # Context.
     operators: List[Operator] = field(default_factory=list)
+
+    # Memory stack.
+    memory_stack: List[OPERATOR_ADDRESS] = field(default_factory=list)
+
+    # Current parsing operator index.
+    operator_index: OPERATOR_ADDRESS = 0
+
+
+# Other.
+
+def error_message(location: LOCATION, level: str, text: str):
+    """ Shows error message. """
+
+    # Container with data.
+    container = (level, *location, text)
+
+    # Message.
+    print("[%s] (%s) on %d:%d - %s" % container, file=stderr)
 
 
 # Lexer.
@@ -140,8 +169,8 @@ def lexer_find_collumn(line: str, start: int, predicate_function: Callable[[str]
 def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None, None]:
     """ Tokenizes lines into list of the Tokens. """
 
-    # Check that there is no new operator type.
-    assert len(OperatorType) == 2, "Too much operator types!"
+    # Get the basename.
+    file_parent = basename(file_parent)
 
     # Current line index.
     current_line_index = 0
@@ -233,7 +262,10 @@ def parser_parse(tokens: List[Token], context: ParserContext):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 2, "Too much operator types!"
+    assert len(OperatorType) == 4, "Too much operator types!"
+
+    # Check that there is no new keyword type.
+    assert len(Keyword) == 2, "Too much keyword types!"
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
@@ -262,6 +294,9 @@ def parser_parse(tokens: List[Token], context: ParserContext):
 
                 # Add operator to the context.
                 context.operators.append(operator)
+
+                # Increment operator index.
+                context.operator_index += 1
         elif current_token.type == TokenType.INTEGER:
             # If we got a integer.
 
@@ -277,14 +312,85 @@ def parser_parse(tokens: List[Token], context: ParserContext):
 
             # Add operator to the context.
             context.operators.append(operator)
+
+            # Increment operator index.
+            context.operator_index += 1
         elif current_token.type == TokenType.KEYWORD:
             # If we got a keyword.
 
-            # TODO
-            pass
+            if current_token.value == Keyword.IF:
+                # This is IF keyword.
+
+                # Create operator.
+                operator = Operator(
+                    type=OperatorType.IF,
+                    token=current_token
+                )
+
+                # Push operator to the context.
+                context.operators.append(operator)
+
+                # Push current operator index to the context memory stack.
+                context.memory_stack.append(context.operator_index)
+
+                # Increment operator index.
+                context.operator_index += 1
+            elif current_token.value == Keyword.ENDIF:
+                # If this is endif keyword.
+
+                # Get block operator index from the stack.
+                block_operator_index = context.memory_stack.pop()
+
+                if context.operators[block_operator_index].type == OperatorType.IF:
+                    # If this is IF block.
+
+                    # Create operator.
+                    operator = Operator(
+                        type=OperatorType.ENDIF,
+                        token=current_token
+                    )
+
+                    # Push operator to the context.
+                    context.operators.append(operator)
+
+                    # Say that start IF block refers to this ENDIF block.
+                    context.operators[block_operator_index].operand = context.operator_index
+
+                    # Say that this ENDIF block refers to next operator index.
+                    context.operators[context.operator_index].operand = context.operator_index + 1
+                else:
+                    # If invalid we call endif not after the if.
+
+                    # Get error location.
+                    error_location = context.operators[context.memory_stack.pop()].token.location
+
+                    # Error message.
+                    error_message(error_location, "Error", "'endif' can only close 'if' block!")
+
+                    # Exit at the parsing.
+                    exit()
+
+                # Increment operator index.
+                context.operator_index += 1
+
+            else:
+                # If unknown keyword type.
+                assert False, "Unknown keyword type! (How?)"
         else:
             # If unknown operator type.
             assert False, "Unknown operator type! (How?)"
+
+    if len(context.memory_stack) > 0:
+        # If there is any in the stack.
+
+        # Get error location.
+        error_location = context.operators[context.memory_stack.pop()].token.location
+
+        # Error message.
+        error_message(error_location, "Error", "Unclosed block!")
+
+        # Exit at the parsing.
+        exit()
 
 
 # Interpretator.
@@ -302,7 +408,7 @@ def interpretator_run(source: Source):
     current_operator_index = 0
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 2, "Too much operator types!"
+    assert len(OperatorType) == 4, "Too much operator types!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 3, "Too much intrinsics types!"
@@ -367,9 +473,41 @@ def interpretator_run(source: Source):
             else:
                 # If unknown instrinsic type.
                 assert False, "Unknown instrinsic! (How?)"
+        elif current_operator.type == OperatorType.IF:
+            # IF operator.
+
+            # Get operand.
+            operand_a = memory_execution_stack.pop()
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            if operand_a == 0:
+                # If this is false.
+
+                # Jump to the operator operand.
+                # As this is IF, so we should jump to the ENDIF.
+                current_operator_index = current_operator.operand
+            else:
+                # If this is true.
+
+                # Increment operator index.
+                # This is makes jump into the if branch.
+                current_operator_index += 1
+        elif current_operator.type == OperatorType.ENDIF:
+            # ENDIF operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Jump to the operator operand.
+            # As this is ENDIF operator, we should have index + 1, index!
+            current_operator_index = current_operator.operand
         else:
             # If unknown operator type.
             assert False, "Unknown operator type! (How?)"
+
+    print(memory_execution_stack) # TODO REM
 
 
 # Graph.
@@ -387,7 +525,7 @@ def graph_generate(source: Source, path: str):
     current_operator_index = 0
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 2, "Too much operator types!"
+    assert len(OperatorType) == 4, "Too much operator types!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 3, "Too much intrinsics types!"
@@ -406,7 +544,7 @@ def graph_generate(source: Source, path: str):
             # Push integer operator.
 
             # Type check.
-            assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
+            assert isinstance(current_operator.operand, int), "Type error, parser level error?"
 
             # Write node data.
             file.write(f"   Operator_{current_operator_index} [label=PUSH_{current_operator.operand}];\n")
@@ -415,11 +553,30 @@ def graph_generate(source: Source, path: str):
             # Intrinsic operator.
 
             # Type check.
-            assert isinstance(current_operator.operand, Intrinsic), f"Type error, lexer level error?"
+            assert isinstance(current_operator.operand, Intrinsic), f"Type error, parser level error?"
 
             # Write node data.
             file.write(f"   Operator_{current_operator_index} [label={repr(repr(INTRINSIC_TYPES_TO_NAME[current_operator.operand]))}];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
+        elif current_operator.type == OperatorType.IF:
+            # If operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+
+            # Write node data.
+            file.write(f"   Operator_{current_operator_index} [shape=record label=if];\n")
+            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1} [label=true];\n")
+            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator.operand} [label=false];\n")
+        elif current_operator.type == OperatorType.ENDIF:
+            # Endif operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Write node data.
+            file.write(f"   Operator_{current_operator_index} [shape=record label=endif];\n")
+            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator.operand};\n")
         else:
             # If unknown operator type.
             assert False, f"Unknown operator type! (How?)"
@@ -441,8 +598,8 @@ if __name__ == "__main__":
     # Entry point.
 
     # CLI Options.
-    cli_source_path = f"{getcwd()}\\" + "examples\\example.mspl"
-    cli_subcommand = "interpretate"
+    cli_source_path = f"{getcwd()}\\" + "examples\\if_example.mspl"
+    cli_subcommand = "graph"
 
     if cli_subcommand == "interpretate":
         # If this is interpretate subcommand.
@@ -498,7 +655,6 @@ if __name__ == "__main__":
 
         # Message.
         print(f"[Info] .dot file \"{basename(cli_source_path)}.dot\" generated!")
-
     else:
         # If unknown subcommand.
 

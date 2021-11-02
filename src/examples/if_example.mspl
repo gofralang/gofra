@@ -1,0 +1,17 @@
+// Most Simple|Stupid Programming Language
+// Example.
+
+0 if
+    // If 0 (false)
+
+    // Push 1024.
+    1024
+endif
+
+1 if
+    // If 1 (true).
+
+
+    // Push 2048
+    2048
+endif
