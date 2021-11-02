@@ -25,4 +25,7 @@ push(pop() + pop())  # Text: + [Line 8, Row 5]
 
 push(pop() * pop())  # Text: * [Line 13, Row 1]
 
-print(pop())  # Text: show [Line 16, Row 6]
+print(pop())  # Text: show [Line 16, Row 1]
+push(32)  # Text: 32 [Line 18, Row 1]
+
+pop()  # Text: free [Line 18, Row 4]

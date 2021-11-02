@@ -14,7 +14,7 @@
 #### `show // Pop value from the stack and show it on the screen.`
 
 ## Some list of comands:
-#### `show`, `copy`, `if`, `endif`,
+#### `show`, `copy`, `if`, `endif`, `free`
 #### `+`, `-`, `*`, `==`, `!=`
 
 ## For the documentation, read `DOCUMENTATION.MD`

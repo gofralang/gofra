@@ -3,6 +3,7 @@
 # Commands:
 #### `show` - Pop one element from the stack and show it.
 #### `copy` - Pop one element from the stack and push it 2 times (copy).
+#### `free` - Pop one element from the stack (Just drop it, free stack from it).
 #### `+` - Pop two elements from the stack and push their sum.
 #### `-` - Pop two elements from the stack and push their difference.
 #### `*` - Pop two elements from the stack and push their multiply.
