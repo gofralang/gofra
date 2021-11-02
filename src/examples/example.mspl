@@ -1,0 +1,13 @@
+// Most Simple|Stupid Programming Language
+// Example.
+
+// Put two 2's in memory and then add.
+2 2 +
+
+// Put two 4's in memory and then add
+4 4 +
+
+// Now in memory there are two results of these expressions.
+
+// Multiply
+*
