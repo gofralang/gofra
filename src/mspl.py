@@ -172,6 +172,32 @@ def error_message(location: LOCATION, level: str, text: str):
     print("[%s] (%s) on %d:%d - %s" % container, file=stderr)
 
 
+def no_arguments_error_message(operator: Operator):
+    """ Shows no arguments passed error message. """
+
+    if operator.type == OperatorType.INTRINSIC:
+        # Intrinsic Operator.
+
+        # Type check.
+        assert isinstance(operator.operand, Intrinsic), "Type error, parser level error?"
+
+        # Error
+        error_message(operator.token.location, "Error",
+                      f"`{INTRINSIC_TYPES_TO_NAME[operator.operand]}` "
+                      f"intrinsic should have more arguments at the stack, but it was not founded!")
+
+    elif operator.type == OperatorType.IF:
+        # IF Operator.
+
+        # Error
+        error_message(operator.token.location, "Error",
+                      "`IF` operator should have 1 argument at the stack, but it was not found!")
+    else:
+        # Unknown operator.
+        assert False, "Tried to call no_arguments_error_message() " \
+                      "for operator that does not need arguments! (Type checker error?)"
+
+
 # Lexer.
 
 def lexer_find_collumn(line: str, start: int, predicate_function: Callable[[str], bool]) -> int:
@@ -395,7 +421,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
                     error_location = context.operators[context.memory_stack.pop()].token.location
 
                     # Error message.
-                    error_message(error_location, "Error", "'endif' can only close 'if' block!")
+                    error_message(error_location, "Error", "`endif` can only close `if` block!")
 
                     # Exit at the parsing.
                     exit()
@@ -595,8 +621,231 @@ def interpretator_run(source: Source):
     if len(memory_execution_stack) != 0:
         # If there is any in the stack.
 
+        # Should be not called? (as we call type checker type_checker_static_type_check).
+
         # Error message.
         error_message(("__runner__", 1, 1), "Warning", "Stack is not empty after running the interpretation!")
+
+
+# Linter.
+
+def linter_type_check(source: Source, path: str):
+    """ Linter static type check. """
+
+    # Get the basename path.
+    path = basename(path)
+
+    # Create empty stack.
+    memory_linter_stack: List[OPERAND] = []
+
+    # Get source operators count.
+    operators_count = len(source.operators)
+
+    # Current operator index from the source.
+    current_operator_index = 0
+
+    # Check that there is no new operator type.
+    assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
+
+    # Check that there is no new instrinsic type.
+    assert len(Intrinsic) == 8, "Please update implementation after adding new Intrinsic!"
+
+    while current_operator_index < operators_count:
+        # While we not run out of the source operators list.
+
+        # Get current operator from the source.
+        current_operator = source.operators[current_operator_index]
+
+        # Grab our operator
+        if current_operator.type == OperatorType.PUSH_INTEGER:
+            # Push integer operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
+
+            # Push operand to the stack.
+            memory_linter_stack.append(current_operator.operand)
+
+            # Increase operator index.
+            current_operator_index += 1
+        elif current_operator.type == OperatorType.INTRINSIC:
+            # Intrinsic operator.
+
+            if current_operator.operand == Intrinsic.PLUS:
+                # Intristic plus operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push sum to the stack.
+                memory_linter_stack.append(operand_a + operand_b)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MINUS:
+                # Intristic minus operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push difference to the stack.
+                memory_linter_stack.append(operand_b - operand_a)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MULTIPLY:
+                # Intristic multiply operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push muliply to the stack.
+                memory_linter_stack.append(operand_a * operand_b)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.EQUAL:
+                # Intristic equal operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push equal to the stack.
+                memory_linter_stack.append(int(operand_a == operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.NOT_EQUAL:
+                # Intristic not equal operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push not equal to the stack.
+                memory_linter_stack.append(int(operand_a != operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.COPY:
+                # Intristic copy operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Get operand.
+                operand_a = memory_linter_stack.pop()
+
+                # Push copy to the stack.
+                memory_linter_stack.append(operand_a)
+                memory_linter_stack.append(operand_a)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.FREE:
+                # Intristic free operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Pop and left.
+                memory_linter_stack.pop()
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.SHOW:
+                # Intristic show operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    no_arguments_error_message(current_operator)
+                    exit()
+
+                # Pop and left.
+                memory_linter_stack.pop()
+
+                # Increase operator index.
+                current_operator_index += 1
+            else:
+                # If unknown instrinsic type.
+                assert False, "Unknown instrinsic! (How?)"
+        elif current_operator.type == OperatorType.IF:
+            # IF operator.
+
+            # Check stack size.
+            if len(memory_linter_stack) < 1:
+                no_arguments_error_message(current_operator)
+                exit()
+
+            # Get operand.
+            operand_a = memory_linter_stack.pop()
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            if operand_a == 0:
+                # If this is false.
+
+                # Jump to the operator operand.
+                # As this is IF, so we should jump to the ENDIF.
+                current_operator_index = current_operator.operand
+            else:
+                # If this is true.
+
+                # Increment operator index.
+                # This is makes jump into the if branch.
+                current_operator_index += 1
+        elif current_operator.type == OperatorType.ENDIF:
+            # ENDIF operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Jump to the operator operand.
+            # As this is ENDIF operator, we should have index + 1, index!
+            current_operator_index = current_operator.operand
+        else:
+            # If unknown operator type.
+            assert False, "Unknown operator type! (How?)"
+
+    if len(memory_linter_stack) != 0:
+        # If there is any in the stack.
+
+        # Error message.
+        error_message((path, current_operator_index, -1), "Warning", "Stack is not empty at the type checking stage!")
 
 
 # Graph.
@@ -821,6 +1070,7 @@ if __name__ == "__main__":
     # CLI Options.
     cli_source_path = f"{getcwd()}\\" + "examples\\if_example.mspl"
     cli_subcommand = "interpretate"
+    cli_supress_linter = False
 
     if cli_subcommand == "interpretate":
         # If this is interpretate subcommand.
@@ -843,6 +1093,10 @@ if __name__ == "__main__":
 
         # Create source from context.
         parser_context_source = Source(parser_context.operators)
+
+        # Type check.
+        if not cli_supress_linter:
+            linter_type_check(parser_context_source, cli_source_path)
 
         # Run interpretation.
         interpretator_run(parser_context_source)
@@ -871,6 +1125,10 @@ if __name__ == "__main__":
         # Create source from context.
         parser_context_source = Source(parser_context.operators)
 
+        # Type check.
+        if not cli_supress_linter:
+            linter_type_check(parser_context_source, cli_source_path)
+
         # Generate graph file.
         graph_generate(parser_context_source, cli_source_path)
 
@@ -897,6 +1155,10 @@ if __name__ == "__main__":
 
         # Create source from context.
         parser_context_source = Source(parser_context.operators)
+
+        # Type check.
+        if not cli_supress_linter:
+            linter_type_check(parser_context_source, cli_source_path)
 
         # Generate python file.
         python_generate(parser_context_source, cli_source_path)
