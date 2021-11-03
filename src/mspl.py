@@ -72,18 +72,30 @@ class Intrinsic(Enum):
     """ Enumeration for intrinsic types. """
 
     # Int.
+    # +
     PLUS = auto()
+    # -
     MINUS = auto()
+    # *
     MULTIPLY = auto()
+    # /
     DIVIDE = auto()
 
     # Boolean.
+    # ==, !=
     EQUAL = auto()
     NOT_EQUAL = auto()
+    # <, >
+    LESS_THAN = auto()
+    GREATER_THAN = auto()
+    # <=, >=
+    LESS_EQUAL_THAN = auto()
+    GREATER_EQUAL_THAN = auto()
 
     # Stack.
     COPY = auto()
     FREE = auto()
+    SWAP = auto()
 
     # Utils.
     SHOW = auto()
@@ -124,7 +136,7 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 9, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 14, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
@@ -132,6 +144,12 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "/": Intrinsic.DIVIDE,
     "==": Intrinsic.EQUAL,
     "!=": Intrinsic.NOT_EQUAL,
+    "<": Intrinsic.LESS_THAN,
+    ">": Intrinsic.GREATER_THAN,
+    ">=": Intrinsic.LESS_EQUAL_THAN,
+    "<=": Intrinsic.GREATER_EQUAL_THAN,
+
+    "swap": Intrinsic.SWAP,
     "show": Intrinsic.SHOW,
     "copy": Intrinsic.COPY,
     "free": Intrinsic.FREE
@@ -596,7 +614,7 @@ def interpretator_run(source: Source):
     assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 14, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -690,6 +708,67 @@ def interpretator_run(source: Source):
 
                     # Push not equal to the stack.
                     memory_execution_stack.push(int(operand_a != operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.LESS_THAN:
+                    # Intristic less than operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push less than to the stack.
+                    memory_execution_stack.push(int(operand_a < operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.GREATER_THAN:
+                    # Intristic greater than operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push greater than to the stack.
+                    memory_execution_stack.push(int(operand_a > operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
+                    # Intristic less equal than operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push less equal than to the stack.
+                    memory_execution_stack.push(int(operand_a <= operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
+                    # Intristic greater equal than operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push greater equal than to the stack.
+                    memory_execution_stack.push(int(operand_a >= operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.SWAP:
+                    # Intristic swap operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push swapped to the stack.
+                    memory_execution_stack.push(operand_a)
+                    memory_execution_stack.push(operand_b)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -806,7 +885,7 @@ def linter_type_check(source: Source):
     assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 14, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -922,6 +1001,87 @@ def linter_type_check(source: Source):
 
                 # Push not equal to the stack.
                 memory_linter_stack.push(int(operand_a != operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.LESS_THAN:
+                # Intristic less than operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push less than to the stack.
+                memory_linter_stack.push(int(operand_a < operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.GREATER_THAN:
+                # Intristic greater than operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push greater than to the stack.
+                memory_linter_stack.push(int(operand_a > operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
+                # Intristic less equal than operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push less equal than to the stack.
+                memory_linter_stack.push(int(operand_a <= operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
+                # Intristic greater equal than operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push greater equal than to the stack.
+                memory_linter_stack.push(int(operand_a >= operand_b))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.SWAP:
+                # Intristic swap operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push swapped to the stack.
+                memory_linter_stack.push(operand_a)
+                memory_linter_stack.push(operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1176,7 +1336,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
     # Check that there is no changes in operator type or intrinsic.
     assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
-    assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 14, "Please update implementation after adding new Intrinsic!"
 
     # Write header.
     if not directive_skip_comments:
@@ -1250,6 +1410,34 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
                 # Write node data.
                 file.write(current_indent + f"push(int(pop() != pop())){comment}\n")
+            elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
+                # Intristic greater equal than operator.
+
+                # Write node data.
+                file.write(current_indent + f"push(int(pop() >= pop())){comment}\n")
+            elif current_operator.operand == Intrinsic.GREATER_THAN:
+                # Intristic greater than operator.
+
+                # Write node data.
+                file.write(current_indent + f"push(int(pop() > pop())){comment}\n")
+            elif current_operator.operand == Intrinsic.LESS_THAN:
+                # Intristic less than operator.
+
+                # Write node data.
+                file.write(current_indent + f"push(int(pop() < pop())){comment}\n")
+            elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
+                # Intristic less equal than operator.
+
+                # Write node data.
+                file.write(current_indent + f"push(int(pop() <= pop())){comment}\n")
+            elif current_operator.operand == Intrinsic.SWAP:
+                # Intristic swap operator.
+
+                # Write node data.
+                file.write(current_indent + f"buffer_a = pop(){comment}\n")
+                file.write(current_indent + f"buffer_b = pop(){comment}\n")
+                file.write(current_indent + f"push(buffer_a){comment}\n")
+                file.write(current_indent + f"push(buffer_b){comment}\n")
             elif current_operator.operand == Intrinsic.COPY:
                 # Intristic copy operator.
 
@@ -1272,8 +1460,8 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
                 # Write node data.
                 cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
-                                           f"Intrinsic {INTRINSIC_TYPES_TO_NAME[current_operator.operand]} is not implemented for"
-                                           f"python generation!", True)
+                                           f"Intrinsic {INTRINSIC_TYPES_TO_NAME[current_operator.operand]} "
+                                           f"is not implemented for python generation!", True)
         elif current_operator.type == OperatorType.IF:
             # If operator.
 
