@@ -275,51 +275,47 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 # Get current token text.
                 current_token_text = current_line[current_collumn_index: current_collumn_end_index]
 
-                while True:
-                    try:
-                        # Try convert token integer.
-                        current_token_integer = int(current_token_text)
-                    except ValueError:
-                        # If there is invalid value for integer.
+                try:
+                    # Try convert token integer.
+                    current_token_integer = int(current_token_text)
+                except ValueError:
+                    # If there is invalid value for integer.
 
-                        if current_token_text in KEYWORD_NAMES_TO_TYPE:
-                            # If this is keyword.
+                    if current_token_text in KEYWORD_NAMES_TO_TYPE:
+                        # If this is keyword.
 
-                            # Return keyword token.
-                            yield Token(
-                                type=TokenType.KEYWORD,
-                                text=current_token_text,
-                                location=current_location,
-                                value=KEYWORD_NAMES_TO_TYPE[current_token_text]
-                            )
-                        else:
-                            # Not keyword.
-
-                            # If this is comment - break.
-                            # TODO: Try to fix something like 0//0 (comment not at the start) will lex not as should.
-                            if current_token_text.startswith("//"):
-                                break
-
-                            # Return word token.
-                            yield Token(
-                                type=TokenType.WORD,
-                                text=current_token_text,
-                                location=current_location,
-                                value=current_token_text
-                            )
-                    else:
-                        # If all ok.
-
-                        # Return token.
+                        # Return keyword token.
                         yield Token(
-                            type=TokenType.INTEGER,
+                            type=TokenType.KEYWORD,
                             text=current_token_text,
                             location=current_location,
-                            value=current_token_integer
+                            value=KEYWORD_NAMES_TO_TYPE[current_token_text]
                         )
+                    else:
+                        # Not keyword.
 
-                    # Jump out the loop.
-                    break
+                        # If this is comment - break.
+                        # TODO: Try to fix something like 0//0 (comment not at the start) will lex not as should.
+                        if current_token_text.startswith("//"):
+                            break
+
+                        # Return word token.
+                        yield Token(
+                            type=TokenType.WORD,
+                            text=current_token_text,
+                            location=current_location,
+                            value=current_token_text
+                        )
+                else:
+                    # If all ok.
+
+                    # Return token.
+                    yield Token(
+                        type=TokenType.INTEGER,
+                        text=current_token_text,
+                        location=current_location,
+                        value=current_token_integer
+                    )
 
                 # Find first non space char.
                 current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
@@ -331,7 +327,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
 
 # Parser.
 
-def parser_parse(tokens: List[Token], context: ParserContext):
+def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no changes in operator type.
@@ -345,6 +341,14 @@ def parser_parse(tokens: List[Token], context: ParserContext):
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
+
+    if len(reversed_tokens) == 0:
+        # If there is no tokens.
+
+        # Error.
+        error_message(Stage.PARSER, (basename(path), 1, 1), "Error",
+                      "There is no tokens found, are you given empty file?")
+        exit(1)
 
     while len(reversed_tokens) > 0:
         # While there is any token.
@@ -954,7 +958,8 @@ def graph_generate(source: Source, path: str):
             assert isinstance(current_operator.operand, Intrinsic), f"Type error, parser level error?"
 
             # Write node data.
-            file.write(f"   Operator_{current_operator_index} [label={repr(repr(INTRINSIC_TYPES_TO_NAME[current_operator.operand]))}];\n")
+            label = repr(repr(INTRINSIC_TYPES_TO_NAME[current_operator.operand]))
+            file.write(f"   Operator_{current_operator_index} [label={label}];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
         elif current_operator.type == OperatorType.IF:
             # If operator.
@@ -1139,7 +1144,7 @@ if __name__ == "__main__":
     # Entry point.
 
     # CLI Options.
-    cli_source_path = f"{getcwd()}\\" + "sandbox\\sandbox.mspl"
+    cli_source_path = f"{getcwd()}\\" + "examples\\if_example.mspl"
     cli_subcommand = "interpretate"
     cli_supress_linter = False
 
@@ -1160,7 +1165,7 @@ if __name__ == "__main__":
         lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
 
         # Parse.
-        parser_parse(lexer_tokens, parser_context)
+        parser_parse(lexer_tokens, parser_context, cli_source_path)
 
         # Create source from context.
         parser_context_source = Source(parser_context.operators)
@@ -1191,7 +1196,7 @@ if __name__ == "__main__":
         lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
 
         # Parse.
-        parser_parse(lexer_tokens, parser_context)
+        parser_parse(lexer_tokens, parser_context, cli_source_path)
 
         # Create source from context.
         parser_context_source = Source(parser_context.operators)
@@ -1222,7 +1227,7 @@ if __name__ == "__main__":
         lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
 
         # Parse.
-        parser_parse(lexer_tokens, parser_context)
+        parser_parse(lexer_tokens, parser_context, cli_source_path)
 
         # Create source from context.
         parser_context_source = Source(parser_context.operators)
