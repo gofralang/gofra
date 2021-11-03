@@ -5,10 +5,9 @@
 from dataclasses import dataclass, field
 
 # System error.
-from sys import stderr
+from sys import stderr, stdout
 
 # Current working directory and basename.
-from os import getcwd
 from os.path import basename
 
 # Enum for types.
@@ -16,6 +15,9 @@ from enum import IntEnum, Enum, auto
 
 # Typing for type hints.
 from typing import Optional, Union, Tuple, List, Dict, Callable, Generator
+
+# CLI.
+from sys import argv
 
 
 class Stack:
@@ -139,7 +141,7 @@ INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
 # Stage names.
 assert len(Stage) == 4, "Please update STAGE_TYPES_TO_NAME after adding new Stage!"
 STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
-    Stage.LEXER:  "Lexing",
+    Stage.LEXER: "Lexing",
     Stage.PARSER: "Parsing",
     Stage.LINTER: "Linter",
     Stage.RUNNER: "Running"
@@ -210,42 +212,6 @@ class ParserContext:
 
     # Directives.
     directive_linter_skip: bool = False
-
-
-# Other.
-
-def error_message(stage: Stage, location: LOCATION, level: str, text: str):
-    """ Shows error message. """
-
-    # Message.
-    print(f"[{level} at `{STAGE_TYPES_TO_NAME[stage]}` stage] ({location[0]}) on {location[1]}:{location[2]} - {text}",
-          file=stderr)
-
-
-def no_arguments_error_message(operator: Operator):
-    """ Shows no arguments passed error message. """
-
-    if operator.type == OperatorType.INTRINSIC:
-        # Intrinsic Operator.
-
-        # Type check.
-        assert isinstance(operator.operand, Intrinsic), "Type error, parser level error?"
-
-        # Error
-        error_message(Stage.LINTER, operator.token.location, "Error",
-                      f"`{INTRINSIC_TYPES_TO_NAME[operator.operand]}` "
-                      f"intrinsic should have more arguments at the stack, but it was not founded!")
-
-    elif operator.type == OperatorType.IF:
-        # IF Operator.
-
-        # Error
-        error_message(Stage.LINTER, operator.token.location, "Error",
-                      "`IF` operator should have 1 argument at the stack, but it was not found!")
-    else:
-        # Unknown operator.
-        assert False, "Tried to call no_arguments_error_message() " \
-                      "for operator that does not need arguments! (Type checker error?)"
 
 
 # Lexer.
@@ -378,9 +344,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
         # If there is no tokens.
 
         # Error.
-        error_message(Stage.PARSER, (basename(path), 1, 1), "Error",
-                      "There is no tokens found, are you given empty file?")
-        exit(1)
+        cli_error_message_verbosed(Stage.PARSER, (basename(path), 1, 1), "Error",
+                                   "There is no tokens found, are you given empty file?", True)
 
     while len(reversed_tokens) > 0:
         # While there is any token.
@@ -425,9 +390,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                             # If already enabled.
 
                             # Message.
-                            error_message(Stage.PARSER, current_token.location, "Error",
-                                          f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!")
-                            exit(1)
+                            cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                       f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
 
                         # Skip linter.
                         context.directive_linter_skip = True
@@ -435,14 +399,13 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                         # If this is unknown direcitve.
 
                         # Message.
-                        error_message(Stage.PARSER, current_token.location, "Error",
-                                      f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`")
-                        exit(1)
+                        cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                   f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
                 else:
                     # Message.
-                    error_message(Stage.PARSER, current_token.location, "Error",
-                                  f"Unknown WORD `{current_token.text}`, are you misspelled something?")
-                    exit(1)
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                               f"Unknown WORD `{current_token.text}`, are you misspelled something?",
+                                               True)
         elif current_token.type == TokenType.INTEGER:
             # If we got a integer.
 
@@ -511,10 +474,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     error_location = context.operators[context.memory_stack.pop()].token.location
 
                     # Error message.
-                    error_message(Stage.PARSER, error_location, "Error", "`endif` can only close `if` block!")
-
-                    # Exit at the parsing.
-                    exit(1)
+                    cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
+                                               "`endif` can only close `if` block!", True)
 
                 # Increment operator index.
                 context.operator_index += 1
@@ -533,17 +494,14 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
         error_location = context.operators[context.memory_stack.pop()].token.location
 
         # Error message.
-        error_message(Stage.PARSER, error_location, "Error", "Unclosed block!")
-
-        # Exit at the parsing.
-        exit(1)
+        cli_error_message_verbosed(Stage.PARSER, error_location, "Error", "Unclosed block!", True)
 
     if context.directive_linter_skip:
         # If skip linter.
 
         # Error message.
-        error_message(Stage.PARSER, (basename(path), 1, 1), "Warning",
-                      "LINTER SKIP DIRECTIVE! THIS IS UNSAFE!")
+        cli_error_message_verbosed(Stage.PARSER, (basename(path), 1, 1), "Warning",
+                                   "LINTER SKIP DIRECTIVE! THIS IS UNSAFE!")
 
 
 # Interpretator.
@@ -732,12 +690,10 @@ def interpretator_run(source: Source):
             # Stack* error.
 
             # Error message.
-            error_message(Stage.RUNNER, current_operator.token.location, "Error",
-                          f"IndexError! This should be stack error (pop() when stack is empty?). "
-                          f"Do you used {EXTRA_DIRECTIVE}LINTER_SKIP directive? (From: "
-                          f"{current_operator.token.text})")
-
-            exit(1)
+            cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                       f"IndexError! This should be stack error (pop() when stack is empty?). "
+                                       f"Do you used {EXTRA_DIRECTIVE}LINTER_SKIP directive? (From: "
+                                       f"{current_operator.token.text})", True)
 
     if len(memory_execution_stack) > 0:
         # If there is any in the stack.
@@ -745,8 +701,8 @@ def interpretator_run(source: Source):
         # Should be not called? (as we call type checker type_checker_static_type_check).
 
         # Error message.
-        error_message(Stage.RUNNER, ("__runner__", 1, 1), "Warning",
-                      "Stack is not empty after running the interpretation!")
+        cli_error_message_verbosed(Stage.RUNNER, ("__runner__", 1, 1), "Warning",
+                                   "Stack is not empty after running the interpretation!")
 
 
 # Linter.
@@ -795,8 +751,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -812,8 +767,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -829,8 +783,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -846,8 +799,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -863,8 +815,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -880,8 +831,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
@@ -897,8 +847,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
@@ -914,8 +863,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Pop and left.
                 memory_linter_stack.pop()
@@ -927,8 +875,7 @@ def linter_type_check(source: Source):
 
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
-                    no_arguments_error_message(current_operator)
-                    exit(1)
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Pop and left.
                 memory_linter_stack.pop()
@@ -943,8 +890,7 @@ def linter_type_check(source: Source):
 
             # Check stack size.
             if len(memory_linter_stack) < 1:
-                no_arguments_error_message(current_operator)
-                exit(1)
+                cli_no_arguments_error_message(current_operator, True)
 
             # Get operand.
             operand_a = memory_linter_stack.pop()
@@ -984,12 +930,44 @@ def linter_type_check(source: Source):
         location = source.operators[current_operator_index - 1].token.location
 
         # Error message.
-        error_message(Stage.LINTER, location, "Error",
-                      f"Stack is not empty at the type checking stage! "
-                      f"(There is {len(memory_linter_stack)} elements when should be 0)")
+        cli_error_message_verbosed(Stage.LINTER, location, "Error",
+                                   f"Stack is not empty at the type checking stage! "
+                                   f"(There is {len(memory_linter_stack)} elements when should be 0)", True)
 
-        # Exit at the linter stage.
-        exit(1)
+
+# Source.
+
+
+def load_source_from_file(file_path: str) -> \
+        tuple[Union[Source, type(FileNotFoundError)], Union[ParserContext, type(FileNotFoundError)]]:
+    """ Load file, then return ready source and context for it. (Tokenized, Parsed, Linted). """
+
+    # Read source lines.
+    try:
+        with open(file_path, "r", encoding="UTF-8") as source_file:
+            source_lines = source_file.readlines()
+    except FileNotFoundError:
+        # Return.
+        return FileNotFoundError, FileNotFoundError
+
+    # Parser context.
+    parser_context = ParserContext()
+
+    # Tokenize.
+    lexer_tokens = list(lexer_tokenize(source_lines, file_path))
+
+    # Parse.
+    parser_parse(lexer_tokens, parser_context, file_path)
+
+    # Create source from context.
+    parser_context_source = Source(parser_context.operators)
+
+    # Type check.
+    if not parser_context.directive_linter_skip:
+        linter_type_check(parser_context_source)
+
+    # Return source and parser context.
+    return parser_context_source, parser_context
 
 
 # Graph.
@@ -1217,103 +1195,182 @@ def python_generate(source: Source, path: str):
     file.close()
 
 
-if __name__ == "__main__":
-    # Entry point.
+# CLI.
 
-    # CLI Options.
-    cli_source_path = f"{getcwd()}\\" + "examples\\stack_example.mspl"
-    cli_subcommand = "interpretate"
 
-    if cli_subcommand == "interpretate":
-        # If this is interpretate subcommand.
+def cli_error_message_verbosed(stage: Stage, location: LOCATION, level: str, text: str, force_exit: bool = False):
+    """ Shows verbosed error message to the CLI. """
 
-        # Message.
-        print(f"[Info] Running source file \"{basename(cli_source_path)}\"")
+    # Message.
+    print(f"[{level} at `{STAGE_TYPES_TO_NAME[stage]}` stage] ({location[0]}) on {location[1]}:{location[2]} - {text}",
+          file=stderr)
 
-        # Read source lines.
-        with open(cli_source_path, "r", encoding="UTF-8") as source_file:
-            source_lines = source_file.readlines()
+    # If we should force exit.
+    if force_exit:
+        exit(1)
 
-        # Parser context.
-        parser_context = ParserContext()
 
-        # Tokenize.
-        lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
+def cli_error_message(level: str, text: str, force_exit: bool = False):
+    """ Shows error message to the CLI. """
 
-        # Parse.
-        parser_parse(lexer_tokens, parser_context, cli_source_path)
+    # Message.
+    print(f"[{level}] {text}", file=stderr)
 
-        # Create source from context.
-        parser_context_source = Source(parser_context.operators)
+    # If we should force exit.
+    if force_exit:
+        exit(1)
+
+
+def cli_no_arguments_error_message(operator: Operator, force_exit: bool = False):
+    """ Shows no arguments passed error message to the CLI. """
+
+    if operator.type == OperatorType.INTRINSIC:
+        # Intrinsic Operator.
 
         # Type check.
-        if not parser_context.directive_linter_skip:
-            linter_type_check(parser_context_source)
+        assert isinstance(operator.operand, Intrinsic), "Type error, parser level error?"
+
+        # Error
+        cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
+                                   f"`{INTRINSIC_TYPES_TO_NAME[operator.operand]}` "
+                                   f"intrinsic should have more arguments at the stack, but it was not founded!")
+
+    elif operator.type == OperatorType.IF:
+        # IF Operator.
+
+        # Error
+        cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
+                                   "`IF` operator should have 1 argument at the stack, but it was not found!")
+    else:
+        # Unknown operator.
+        assert False, "Tried to call no_arguments_error_message() " \
+                      "for operator that does not need arguments! (Type checker error?)"
+
+    # If we should force exit.
+    if force_exit:
+        exit(1)
+
+
+def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
+    """ Validates CLI argv (argument vector) """
+
+    # Check that ther is any in the ARGV.
+    assert len(argument_vector) > 0, "There is no source(mspl.py) file path in the ARGV"
+
+    # Get argument vector without source(mspl.py) path.
+    argument_runner_filename = argument_vector[0]
+    argument_vector = argument_vector[1:]
+
+    # Validate ARGV.
+    if len(argument_vector) == 0:
+        # If there is no arguments.
+
+        # Message.
+        cli_usage_message(argument_runner_filename)
+        cli_error_message("Error", "Please pass file path to work with (.mspl extension)", True)
+    elif len(argument_vector) == 1:
+        # Just one argument.
+
+        if argument_vector[0] != "help":
+            # If this is not help.
+
+            # Message.
+            cli_usage_message(argument_runner_filename)
+            cli_error_message("Error", "Please pass subcommand after the file path!", True)
+
+        # Show usage.
+        cli_usage_message(argument_runner_filename)
+
+        # Exit.
+        exit(0)
+
+        # Return path as source file and help (argv[0]).
+        return ["", argument_vector[0]]
+    elif len(argument_vector) == 2:
+        # Expected ARGV length.
+        pass
+    else:
+        # Message.
+        cli_usage_message(argument_runner_filename)
+        cli_error_message("Error", "Unexpected arguments!", True)
+
+    # Return final ARGV.
+    return argument_vector
+
+
+def cli_welcome_message():
+    """ Shows CLI welcome message. """
+
+    # Show.
+    print(f"[MSPL CLI] Welcome there!", file=stdout)
+
+
+def cli_usage_message(runner_filename: str = None):
+    """ Shows CLI usage message. """
+
+    # Set runner as __file__ if is not given.
+    if runner_filename is None:
+        runner_filename = __file__
+
+    # Show.
+    print(f"Usage: {basename(runner_filename)} [source] [subcommand]\nSubcommands:\n"
+          f"\thelp; Show this message.\n"
+          f"\trun; Intrerpretates source in Python.\n"
+          f"\tpython; Generates python file from the source in output file [source*.mspl].py\n"
+          f"\tgraph; Generates graphviz file from the source in output file [source*.mspl].dot", file=stdout)
+
+
+def cli_entry_point():
+    """ Entry point for the CLI. """
+
+    # Welcome message.
+    cli_welcome_message()
+
+    # CLI Options.
+    cli_source_path, cli_subcommand = cli_validate_argument_vector(argv)
+
+    if cli_subcommand == "run":
+        # If this is interpretate subcommand.
+
+        # Get source.
+        cli_source, _ = load_source_from_file(cli_source_path)
+
+        # File exists check.
+        if cli_source is FileNotFoundError:
+            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
 
         # Run interpretation.
-        interpretator_run(parser_context_source)
+        interpretator_run(cli_source)
 
         # Message.
         print(f"[Info] File \"{basename(cli_source_path)}\" was run!")
     elif cli_subcommand == "graph":
         # If this is graph subcommand.
 
-        # Message.
-        print(f"[Info] Generating .dot file for source file \"{basename(cli_source_path)}\"")
+        # Get source.
+        cli_source, _ = load_source_from_file(cli_source_path)
 
-        # Read source lines.
-        with open(cli_source_path, "r", encoding="UTF-8") as source_file:
-            source_lines = source_file.readlines()
-
-        # Parser context.
-        parser_context = ParserContext()
-
-        # Tokenize.
-        lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
-
-        # Parse.
-        parser_parse(lexer_tokens, parser_context, cli_source_path)
-
-        # Create source from context.
-        parser_context_source = Source(parser_context.operators)
-
-        # Type check.
-        if not parser_context.directive_linter_skip:
-            linter_type_check(parser_context_source)
+        # File exists check.
+        if cli_source is FileNotFoundError:
+            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
 
         # Generate graph file.
-        graph_generate(parser_context_source, cli_source_path)
+        graph_generate(cli_source, cli_source_path)
 
         # Message.
         print(f"[Info] .dot file \"{basename(cli_source_path)}.dot\" generated!")
     elif cli_subcommand == "python":
         # If this is python subcommand.
 
-        # Message.
-        print(f"[Info] Generating .py file for source file \"{basename(cli_source_path)}\"")
+        # Get source.
+        cli_source, _ = load_source_from_file(cli_source_path)
 
-        # Read source lines.
-        with open(cli_source_path, "r", encoding="UTF-8") as source_file:
-            source_lines = source_file.readlines()
-
-        # Parser context.
-        parser_context = ParserContext()
-
-        # Tokenize.
-        lexer_tokens = list(lexer_tokenize(source_lines, cli_source_path))
-
-        # Parse.
-        parser_parse(lexer_tokens, parser_context, cli_source_path)
-
-        # Create source from context.
-        parser_context_source = Source(parser_context.operators)
-
-        # Type check.
-        if not parser_context.directive_linter_skip:
-            linter_type_check(parser_context_source)
+        # File exists check.
+        if cli_source is FileNotFoundError:
+            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
 
         # Generate python file.
-        python_generate(parser_context_source, cli_source_path)
+        python_generate(cli_source, cli_source_path)
 
         # Message.
         print(f"[Info] .py file \"{basename(cli_source_path)}.py\" generated!")
@@ -1321,4 +1378,12 @@ if __name__ == "__main__":
         # If unknown subcommand.
 
         # Message.
-        print("[Error] Sorry, you entered unknown subcommand!")
+        cli_usage_message(__file__)
+        cli_error_message("Error", "Unknown subcommand `{cli_subcommand}`!")
+
+
+if __name__ == "__main__":
+    # Entry point.
+
+    # CLI entry point.
+    cli_entry_point()
