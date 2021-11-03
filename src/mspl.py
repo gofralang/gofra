@@ -18,6 +18,31 @@ from enum import IntEnum, Enum, auto
 from typing import Optional, Union, Tuple, List, Dict, Callable, Generator
 
 
+class Stack:
+    """ Stack implementation for the language (More optional then useful). """
+
+    # Empty list as stack.
+    __stack = list()
+
+    def push(self, value):
+        """ Push any value on the stack. """
+
+        # Push.
+        self.__stack.append(value)
+
+    def pop(self):
+        """ Pop any value from the stack. """
+
+        # Pop.
+        return self.__stack.pop()
+
+    def __len__(self):
+        """ Magic __len__(). """
+
+        # Check length.
+        return len(self.__stack)
+
+
 class Stage(Enum):
     """ Enumeration for stage types. """
     LEXER = auto(),
@@ -527,7 +552,7 @@ def interpretator_run(source: Source):
     """ Interpretates the source. """
 
     # Create empty stack.
-    memory_execution_stack: List[OPERAND] = []
+    memory_execution_stack: Stack = Stack()
 
     # Get source operators count.
     operators_count = len(source.operators)
@@ -557,7 +582,7 @@ def interpretator_run(source: Source):
                 assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
 
                 # Push operand to the stack.
-                memory_execution_stack.append(current_operator.operand)
+                memory_execution_stack.push(current_operator.operand)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -572,7 +597,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push sum to the stack.
-                    memory_execution_stack.append(operand_a + operand_b)
+                    memory_execution_stack.push(operand_a + operand_b)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -584,7 +609,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push divide to the stack.
-                    memory_execution_stack.append(operand_a % operand_b)
+                    memory_execution_stack.push(operand_a % operand_b)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -596,7 +621,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push difference to the stack.
-                    memory_execution_stack.append(operand_b - operand_a)
+                    memory_execution_stack.push(operand_b - operand_a)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -608,7 +633,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push muliply to the stack.
-                    memory_execution_stack.append(operand_a * operand_b)
+                    memory_execution_stack.push(operand_a * operand_b)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -620,7 +645,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push equal to the stack.
-                    memory_execution_stack.append(int(operand_a == operand_b))
+                    memory_execution_stack.push(int(operand_a == operand_b))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -632,7 +657,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push not equal to the stack.
-                    memory_execution_stack.append(int(operand_a != operand_b))
+                    memory_execution_stack.push(int(operand_a != operand_b))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -643,8 +668,8 @@ def interpretator_run(source: Source):
                     operand_a = memory_execution_stack.pop()
 
                     # Push copy to the stack.
-                    memory_execution_stack.append(operand_a)
-                    memory_execution_stack.append(operand_a)
+                    memory_execution_stack.push(operand_a)
+                    memory_execution_stack.push(operand_a)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -714,7 +739,7 @@ def interpretator_run(source: Source):
 
             exit(1)
 
-    if len(memory_execution_stack) != 0:
+    if len(memory_execution_stack) > 0:
         # If there is any in the stack.
 
         # Should be not called? (as we call type checker type_checker_static_type_check).
@@ -730,7 +755,7 @@ def linter_type_check(source: Source):
     """ Linter static type check. """
 
     # Create empty stack.
-    memory_linter_stack: List[OPERAND] = []
+    memory_linter_stack = Stack()
 
     # Get source operators count.
     operators_count = len(source.operators)
@@ -758,7 +783,7 @@ def linter_type_check(source: Source):
             assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
 
             # Push operand to the stack.
-            memory_linter_stack.append(current_operator.operand)
+            memory_linter_stack.push(current_operator.operand)
 
             # Increase operator index.
             current_operator_index += 1
@@ -778,7 +803,7 @@ def linter_type_check(source: Source):
                 operand_b = memory_linter_stack.pop()
 
                 # Push sum to the stack.
-                memory_linter_stack.append(operand_a + operand_b)
+                memory_linter_stack.push(operand_a + operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -795,7 +820,7 @@ def linter_type_check(source: Source):
                 operand_b = memory_linter_stack.pop()
 
                 # Push divide to the stack.
-                memory_linter_stack.append(operand_a % operand_b)
+                memory_linter_stack.push(operand_a % operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -812,7 +837,7 @@ def linter_type_check(source: Source):
                 operand_b = memory_linter_stack.pop()
 
                 # Push difference to the stack.
-                memory_linter_stack.append(operand_b - operand_a)
+                memory_linter_stack.push(operand_b - operand_a)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -829,7 +854,7 @@ def linter_type_check(source: Source):
                 operand_b = memory_linter_stack.pop()
 
                 # Push muliply to the stack.
-                memory_linter_stack.append(operand_a * operand_b)
+                memory_linter_stack.push(operand_a * operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -846,7 +871,7 @@ def linter_type_check(source: Source):
                 operand_b = memory_linter_stack.pop()
 
                 # Push equal to the stack.
-                memory_linter_stack.append(int(operand_a == operand_b))
+                memory_linter_stack.push(int(operand_a == operand_b))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -863,7 +888,7 @@ def linter_type_check(source: Source):
                 operand_b = memory_linter_stack.pop()
 
                 # Push not equal to the stack.
-                memory_linter_stack.append(int(operand_a != operand_b))
+                memory_linter_stack.push(int(operand_a != operand_b))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -879,8 +904,8 @@ def linter_type_check(source: Source):
                 operand_a = memory_linter_stack.pop()
 
                 # Push copy to the stack.
-                memory_linter_stack.append(operand_a)
-                memory_linter_stack.append(operand_a)
+                memory_linter_stack.push(operand_a)
+                memory_linter_stack.push(operand_a)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1197,7 +1222,7 @@ if __name__ == "__main__":
 
     # CLI Options.
     cli_source_path = f"{getcwd()}\\" + "examples\\stack_example.mspl"
-    cli_subcommand = "python"
+    cli_subcommand = "interpretate"
 
     if cli_subcommand == "interpretate":
         # If this is interpretate subcommand.
