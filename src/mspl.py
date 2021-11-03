@@ -524,7 +524,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Say that this ENDIF block refers to next operator index.
                     context.operators[context.operator_index].operand = context.operator_index + 1
-                if block_operator.type == OperatorType.ELSE:
+                elif block_operator.type == OperatorType.ELSE:
                     # If this is ELSE block.
 
                     # Create operator.
@@ -542,14 +542,14 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # Say that we should jump to the next position.
                     context.operators[context.operator_index].operand = context.operator_index + 1
                 else:
-                    # If invalid we call endif not after the if.
+                    # If invalid we call endif not after the if or else.
 
                     # Get error location.
                     error_location = context.operators[context.memory_stack.pop()].token.location
 
                     # Error message.
                     cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
-                                               "`endif` can only close `if` block!", True)
+                                               "`endif` can only close `if` or `else` block!", True)
 
                 # Increment operator index.
                 context.operator_index += 1

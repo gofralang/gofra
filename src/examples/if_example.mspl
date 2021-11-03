@@ -1,23 +1,21 @@
 // Most Simple|Stupid Programming Language
-// Example.
+// If Example.
 
-0 if
-    // If 0 (false)
-
-    // Show 1024.
-    1024 show
+0 if // If false
+    1024 show // Show 1024.
+else // Otherwise if true
+    2048 show // Show 2048
 endif
 
-1 if
-    // If 1 (true).
+// Code above SHOULD show 2048.
 
-    // Show 2048
-    2048 show
+
+1 if // If true
+    0 if // If false
+        4096 show // Show 4096
+    else // Otherwise if true
+        512  show // Show 512.
+    endif
 endif
 
-1 if 1 if
-    // If 1 and 1 (true and true).
-
-    // Show 2048
-    4096 show
-endif endif
+// Code above SHOULD show 512.

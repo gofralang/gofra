@@ -10,8 +10,9 @@
 #### `*` - Pop two elements from the stack and push their multiply.
 #### `==` - Pop two elements from the stack and push 1 if they is equal or 0 if not.
 #### `!=` - Pop two elements from the stack and push 1 if they is not equal or 0 if yes.
-#### `if` - Pop one element from the stack, if there is 0, jumps to the endif block, otherwise jumps in the conditonal branch (Read more in block "Conditonal")(`0 if 1024 show endif`).
-#### `endif` - Closing element of the endif.
+#### `if` - Pop one element from the stack, if there is 0, jumps to the endif or else block, otherwise jumps in the conditonal branch (Read more in block "Conditonal")(`0 if 1024 show endif`).
+#### `else` - Other branch element of the if.
+#### `endif` - Closing element of the if.
 
 # Directives:
 #### Directive starts with `#`, like: `#DIRECTIVE_NAME`,
@@ -23,17 +24,22 @@
 #### (There is one bug with comments, you should write comments without any at the start of the line (Spaces allowed))
 
 # Conditional:
+#### Supported: `IF`, `ELSE`, `ENDIF`
 #### There is conditional in the language, to use it you may do something like:
 ```
-0 // Push zero as value to check.
+0 if // Jump to else if 0 or jump in if !0
 
-if // Call if so we jump to the next endif if there is 0 in stack.
+    // Do anything what you want in that block.
+    1024 1023 == if
+        1025 show
+    else
+        1023 show
+    endif 
+else
 
-// DO ANY WHAT YOU WANT IN THAT BLOCK.
-1024 show // Show 1024.
-
-endif // Endif.
+    512 show
+endif
 
 // This code will run anyway.
-2048 show // Show 2048
+2048 show
 ```
