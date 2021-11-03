@@ -16,7 +16,7 @@
 
 ## Some list of comands:
 #### `show`, `copy`, `if`, `endif`, `free`
-#### `+`, `-`, `*`, `==`, `!=`
+#### `+`, `-`, `*`, `==`, `!=`, `/`
 
 ## For the documentation, read `DOCUMENTATION.MD`
 ## Or `/src/examples/README.MD` for examples.

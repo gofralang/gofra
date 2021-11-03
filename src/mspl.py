@@ -18,6 +18,15 @@ from enum import IntEnum, Enum, auto
 from typing import Optional, Union, Tuple, List, Dict, Callable, Generator
 
 
+class Stage(Enum):
+    """ Enumeration for stage types. """
+    LEXER = auto(),
+    PARSER = auto(),
+    LINTER = auto()
+    RUNNER = auto()
+    # COMPILATOR
+
+
 class DataType(IntEnum):
     """ Enumeration for datatype types. """
     INTEGER = auto()
@@ -102,6 +111,15 @@ INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
     value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
 }
 
+# Stage names.
+assert len(Stage) == 4, "Please update STAGE_TYPES_TO_NAME after adding new Stage!"
+STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
+    Stage.LEXER:  "Lexing",
+    Stage.PARSER: "Parsing",
+    Stage.LINTER: "Linter",
+    Stage.RUNNER: "Running"
+}
+
 # Keyword names / types.
 assert len(Keyword) == 2, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
@@ -164,14 +182,12 @@ class ParserContext:
 
 # Other.
 
-def error_message(location: LOCATION, level: str, text: str):
+def error_message(stage: Stage, location: LOCATION, level: str, text: str):
     """ Shows error message. """
 
-    # Container with data.
-    container = (level, *location, text)
-
     # Message.
-    print("[%s] (%s) on %d:%d - %s" % container, file=stderr)
+    print(f"[{level} at `{STAGE_TYPES_TO_NAME[stage]}` stage] ({location[0]}) on {location[1]}:{location[2]} - {text}",
+          file=stderr)
 
 
 def no_arguments_error_message(operator: Operator):
@@ -184,7 +200,7 @@ def no_arguments_error_message(operator: Operator):
         assert isinstance(operator.operand, Intrinsic), "Type error, parser level error?"
 
         # Error
-        error_message(operator.token.location, "Error",
+        error_message(Stage.LINTER, operator.token.location, "Error",
                       f"`{INTRINSIC_TYPES_TO_NAME[operator.operand]}` "
                       f"intrinsic should have more arguments at the stack, but it was not founded!")
 
@@ -192,7 +208,7 @@ def no_arguments_error_message(operator: Operator):
         # IF Operator.
 
         # Error
-        error_message(operator.token.location, "Error",
+        error_message(Stage.LINTER, operator.token.location, "Error",
                       "`IF` operator should have 1 argument at the stack, but it was not found!")
     else:
         # Unknown operator.
@@ -259,53 +275,55 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 # Get current token text.
                 current_token_text = current_line[current_collumn_index: current_collumn_end_index]
 
-                try:
-                    # Try convert token integer.
-                    current_token_integer = int(current_token_text)
-                except ValueError:
-                    # If there is invalid value for integer.
+                while True:
+                    try:
+                        # Try convert token integer.
+                        current_token_integer = int(current_token_text)
+                    except ValueError:
+                        # If there is invalid value for integer.
 
-                    if current_token_text in KEYWORD_NAMES_TO_TYPE:
-                        # If this is keyword.
+                        if current_token_text in KEYWORD_NAMES_TO_TYPE:
+                            # If this is keyword.
 
-                        # Return keyword token.
-                        yield Token(
-                            type=TokenType.KEYWORD,
-                            text=current_token_text,
-                            location=current_location,
-                            value=KEYWORD_NAMES_TO_TYPE[current_token_text]
-                        )
+                            # Return keyword token.
+                            yield Token(
+                                type=TokenType.KEYWORD,
+                                text=current_token_text,
+                                location=current_location,
+                                value=KEYWORD_NAMES_TO_TYPE[current_token_text]
+                            )
+                        else:
+                            # Not keyword.
+
+                            # If this is comment - break.
+                            # TODO: Try to fix something like 0//0 (comment not at the start) will lex not as should.
+                            if current_token_text.startswith("//"):
+                                break
+
+                            # Return word token.
+                            yield Token(
+                                type=TokenType.WORD,
+                                text=current_token_text,
+                                location=current_location,
+                                value=current_token_text
+                            )
                     else:
-                        # Not keyword.
+                        # If all ok.
 
-                        # If this is comment - break.
-                        if current_token_text.startswith("//"):
-                            break
-
-                        # Return word token.
+                        # Return token.
                         yield Token(
-                            type=TokenType.WORD,
+                            type=TokenType.INTEGER,
                             text=current_token_text,
                             location=current_location,
-                            value=current_token_text
+                            value=current_token_integer
                         )
-                else:
-                    # If all ok.
 
-                    # Return token.
-                    yield Token(
-                        type=TokenType.INTEGER,
-                        text=current_token_text,
-                        location=current_location,
-                        value=current_token_integer
-                    )
+                    # Jump out the loop.
+                    break
 
                 # Find first non space char.
                 current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
-
-        # Index of the column end.
-        current_collumn_end_index = 0
 
         # Increment current line.
         current_line_index += 1
@@ -355,6 +373,14 @@ def parser_parse(tokens: List[Token], context: ParserContext):
 
                 # Increment operator index.
                 context.operator_index += 1
+            else:
+                # If not intrinsic.
+
+                # Message.
+                error_message(Stage.PARSER, current_token.location, "Error",
+                              f"Unknown WORD `{current_token.text}`, are you misspelled something?")
+                exit(1)
+
         elif current_token.type == TokenType.INTEGER:
             # If we got a integer.
 
@@ -423,7 +449,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
                     error_location = context.operators[context.memory_stack.pop()].token.location
 
                     # Error message.
-                    error_message(error_location, "Error", "`endif` can only close `if` block!")
+                    error_message(Stage.PARSER, error_location, "Error", "`endif` can only close `if` block!")
 
                     # Exit at the parsing.
                     exit(1)
@@ -445,7 +471,7 @@ def parser_parse(tokens: List[Token], context: ParserContext):
         error_location = context.operators[context.memory_stack.pop()].token.location
 
         # Error message.
-        error_message(error_location, "Error", "Unclosed block!")
+        error_message(Stage.PARSER, error_location, "Error", "Unclosed block!")
 
         # Exit at the parsing.
         exit(1)
@@ -638,16 +664,14 @@ def interpretator_run(source: Source):
         # Should be not called? (as we call type checker type_checker_static_type_check).
 
         # Error message.
-        error_message(("__runner__", 1, 1), "Warning", "Stack is not empty after running the interpretation!")
+        error_message(Stage.RUNNER, ("__runner__", 1, 1), "Warning",
+                      "Stack is not empty after running the interpretation!")
 
 
 # Linter.
 
-def linter_type_check(source: Source, path: str):
+def linter_type_check(source: Source):
     """ Linter static type check. """
-
-    # Get the basename path.
-    path = basename(path)
 
     # Create empty stack.
     memory_linter_stack: List[OPERAND] = []
@@ -715,7 +739,7 @@ def linter_type_check(source: Source, path: str):
                 operand_b = memory_linter_stack.pop()
 
                 # Push divide to the stack.
-                memory_linter_stack.append(operand_a / operand_b)
+                memory_linter_stack.append(operand_a % operand_b)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -875,12 +899,17 @@ def linter_type_check(source: Source, path: str):
     if len(memory_linter_stack) != 0:
         # If there is any in the stack.
 
-        # Get current operator from the source.
+        # Get last operator location.
         location = source.operators[current_operator_index - 1].token.location
 
         # Error message.
-        error_message(location, "Error", "Stack is not empty at the type checking stage!")
+        error_message(Stage.LINTER, location, "Error",
+                      f"Stack is not empty at the type checking stage! "
+                      f"(There is {len(memory_linter_stack)} elements when should be 0)")
+
+        # Exit at the linter stage.
         exit(1)
+
 
 # Graph.
 
@@ -979,6 +1008,7 @@ def python_generate(source: Source, path: str):
 
     # Indentation level.
     current_indent_level = 0
+    current_indent = ""
 
     # Check that there is no changes in operator type or intrinsic.
     assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
@@ -1014,7 +1044,7 @@ def python_generate(source: Source, path: str):
             assert isinstance(current_operator.operand, int), "Type error, parser level error?"
 
             # Write data.
-            file.write("\t" * current_indent_level + f"push({current_operator.operand})  # {comment}\n\n")
+            file.write(current_indent + f"push({current_operator.operand})  # {comment}\n\n")
         elif current_operator.type == OperatorType.INTRINSIC:
             # Intrinsic operator.
 
@@ -1025,54 +1055,54 @@ def python_generate(source: Source, path: str):
                 # Intristic plus operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"push(pop() + pop())  # {comment}\n\n")
+                file.write(current_indent + f"push(pop() + pop())  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.MINUS:
                 # Intristic minus operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"push(pop() - pop())  # {comment}\n\n")
+                file.write(current_indent + f"push(pop() - pop())  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.MULTIPLY:
                 # Intristic multiply operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"push(pop() * pop())  # {comment}\n\n")
+                file.write(current_indent + f"push(pop() * pop())  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.DIVIDE:
                 # Intristic divide operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"push(pop() % pop())  # {comment}\n\n")
+                file.write(current_indent + f"push(pop() % pop())  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.EQUAL:
                 # Intristic equal operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"push(int(pop() == pop()))  # {comment}\n\n")
+                file.write(current_indent + f"push(int(pop() == pop()))  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.NOT_EQUAL:
                 # Intristic not equal operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"push(int(pop() != pop()))  # {comment}\n\n")
+                file.write(current_indent + f"push(int(pop() != pop()))  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.COPY:
                 # Intristic copy operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"buffer = pop()  # {comment}\n")
-                file.write("\t" * current_indent_level + f"push(buffer)  # {comment}\n")
-                file.write("\t" * current_indent_level + f"push(buffer)  # {comment}\n\n")
+                file.write(current_indent + f"buffer = pop()  # {comment}\n")
+                file.write(current_indent + f"push(buffer)  # {comment}\n")
+                file.write(current_indent + f"push(buffer)  # {comment}\n\n")
             elif current_operator.operand == Intrinsic.SHOW:
                 # Intristic show operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"print(pop())  # {comment}\n")
+                file.write(current_indent + f"print(pop())  # {comment}\n")
             elif current_operator.operand == Intrinsic.FREE:
                 # Intristic free operator.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"pop()  # {comment}\n")
+                file.write(current_indent + f"pop()  # {comment}\n")
             else:
                 # If unknown instrinsic type.
 
                 # Write node data.
-                file.write("\t" * current_indent_level + f"# Sorry, but this intrinsic is not implemented yet! {comment}\n\n")
+                file.write(current_indent + f"# Sorry, but this intrinsic is not implemented yet! {comment}\n\n")
         elif current_operator.type == OperatorType.IF:
             # If operator.
 
@@ -1080,10 +1110,11 @@ def python_generate(source: Source, path: str):
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
 
             # Write node data.
-            file.write("\t" * current_indent_level + f"if pop() != 0:  # {comment}\n")
+            file.write(current_indent + f"if pop() != 0:  # {comment}\n")
 
             # Increase indent level.
             current_indent_level += 1
+            current_indent = current_indent
         elif current_operator.type == OperatorType.ENDIF:
             # Endif operator.
 
@@ -1092,6 +1123,7 @@ def python_generate(source: Source, path: str):
 
             # Decrease indent level.
             current_indent_level -= 1
+            current_indent = current_indent
         else:
             # If unknown operator type.
             assert False, f"Unknown operator type! (How?)"
@@ -1107,7 +1139,7 @@ if __name__ == "__main__":
     # Entry point.
 
     # CLI Options.
-    cli_source_path = f"{getcwd()}\\" + "examples\\if_example.mspl"
+    cli_source_path = f"{getcwd()}\\" + "sandbox\\sandbox.mspl"
     cli_subcommand = "interpretate"
     cli_supress_linter = False
 
@@ -1135,7 +1167,7 @@ if __name__ == "__main__":
 
         # Type check.
         if not cli_supress_linter:
-            linter_type_check(parser_context_source, cli_source_path)
+            linter_type_check(parser_context_source)
 
         # Run interpretation.
         interpretator_run(parser_context_source)
@@ -1166,7 +1198,7 @@ if __name__ == "__main__":
 
         # Type check.
         if not cli_supress_linter:
-            linter_type_check(parser_context_source, cli_source_path)
+            linter_type_check(parser_context_source)
 
         # Generate graph file.
         graph_generate(parser_context_source, cli_source_path)
@@ -1197,7 +1229,7 @@ if __name__ == "__main__":
 
         # Type check.
         if not cli_supress_linter:
-            linter_type_check(parser_context_source, cli_source_path)
+            linter_type_check(parser_context_source)
 
         # Generate python file.
         python_generate(parser_context_source, cli_source_path)
@@ -1209,4 +1241,3 @@ if __name__ == "__main__":
 
         # Message.
         print("[Error] Sorry, you entered unknown subcommand!")
-
