@@ -13,6 +13,15 @@
 #### `if` - Pop one element from the stack, if there is 0, jumps to the endif block, otherwise jumps in the conditonal branch (Read more in block "Conditonal")(`0 if 1024 show endif`).
 #### `endif` - Closing element of the endif.
 
+# Directives:
+#### Directives starts with `#`, like: `#DIRECTIVE_NAME`,
+#### List of the directives:
+#### `#LINTER_SKIP` - *Unsafe* mode, disable linter check.
+
+# Comments:
+#### Comments starts with `//`, like: `// Comment`.
+#### (There is one bug with comments, you should write comments without any at the start of the line (Spaces allowed))
+
 # Conditional:
 #### There is conditional in the language, to use it you may do something like:
 ```
