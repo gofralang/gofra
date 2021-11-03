@@ -64,6 +64,7 @@ class Keyword(Enum):
 
     # Conditions.
     IF = auto()
+    ELSE = auto()
     ENDIF = auto()
 
 
@@ -102,6 +103,7 @@ class OperatorType(Enum):
 
     # Conditions.
     IF = auto()
+    ELSE = auto()
     ENDIF = auto()
 
 
@@ -149,9 +151,10 @@ STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
 }
 
 # Keyword names / types.
-assert len(Keyword) == 2, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
+assert len(Keyword) == 3, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
+    "else": Keyword.ELSE,
     "endif": Keyword.ENDIF,
 }
 
@@ -331,10 +334,10 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
-    assert len(Keyword) == 2, "Please update implementation after adding new Keyword!"
+    assert len(Keyword) == 3, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
     assert len(TokenType) == 3, "Please update implementation after adding new TokenType!"
@@ -397,7 +400,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                         # Skip linter.
                         context.directive_linter_skip = True
-                    if directive == "PYTHON_COMMENTS_SKIP":
+                    elif directive == "PYTHON_COMMENTS_SKIP":
                         # If this python skip comments directive.
 
                         if context.directive_python_comments_skip:
@@ -458,13 +461,53 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                 # Increment operator index.
                 context.operator_index += 1
+            elif current_token.value == Keyword.ELSE:
+                # If this is else keyword.
+
+                if len(context.memory_stack) == 0:
+                    # If there is nothing on the memory stack.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
+                                               "`else` should used after the `if` block!", True)
+
+                # Get `IF` operator from the memory stack.
+                block_operator_index = context.memory_stack.pop()
+                block_operator = context.operators[block_operator_index]
+
+                if block_operator.type == OperatorType.IF:
+                    # If we use else after the IF.
+
+                    # Say that previous IF should jump at the our+1 operator index.
+                    context.operators[block_operator_index].operand = context.operator_index + 1
+
+                    # Push current operator index to the stack.
+                    context.memory_stack.append(context.operator_index)
+
+                    # Create operator.
+                    operator = Operator(
+                        type=OperatorType.ELSE,
+                        token=current_token
+                    )
+
+                    # Push operator to the context.
+                    context.operators.append(operator)
+
+                    # Increment operator index.
+                    context.operator_index += 1
+                else:
+                    # Error message.
+                    cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
+                                               "`else` can only used after `if` block!", True)
+
             elif current_token.value == Keyword.ENDIF:
                 # If this is endif keyword.
 
-                # Get block operator index from the stack.
+                # Get block operator from the stack.
                 block_operator_index = context.memory_stack.pop()
+                block_operator = context.operators[block_operator_index]
 
-                if context.operators[block_operator_index].type == OperatorType.IF:
+                if block_operator.type == OperatorType.IF:
                     # If this is IF block.
 
                     # Create operator.
@@ -480,6 +523,23 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     context.operators[block_operator_index].operand = context.operator_index
 
                     # Say that this ENDIF block refers to next operator index.
+                    context.operators[context.operator_index].operand = context.operator_index + 1
+                if block_operator.type == OperatorType.ELSE:
+                    # If this is ELSE block.
+
+                    # Create operator.
+                    operator = Operator(
+                        type=OperatorType.ENDIF,
+                        token=current_token
+                    )
+
+                    # Push operator to the context.
+                    context.operators.append(operator)
+
+                    # Say that owner block (If/Else) should jump to us.
+                    context.operators[block_operator_index].operand = context.operator_index
+
+                    # Say that we should jump to the next position.
                     context.operators[context.operator_index].operand = context.operator_index + 1
                 else:
                     # If invalid we call endif not after the if.
@@ -533,7 +593,7 @@ def interpretator_run(source: Source):
     current_operator_index = 0
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
@@ -688,6 +748,15 @@ def interpretator_run(source: Source):
                     # Increment operator index.
                     # This is makes jump into the if branch.
                     current_operator_index += 1
+            elif current_operator.type == OperatorType.ELSE:
+                # ELSE operator.
+
+                # Type check.
+                assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+                # Jump to the operator operand.
+                # As this is ELSE operator, we should have index + 1, index!
+                current_operator_index = current_operator.operand
             elif current_operator.type == OperatorType.ENDIF:
                 # ENDIF operator.
 
@@ -734,7 +803,7 @@ def linter_type_check(source: Source):
     current_operator_index = 0
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
@@ -924,6 +993,15 @@ def linter_type_check(source: Source):
                 # Increment operator index.
                 # This is makes jump into the if branch.
                 current_operator_index += 1
+        elif current_operator.type == OperatorType.ELSE:
+            # ELSE operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Jump to the operator operand.
+            # As this is ELSE operator, we should have index + 1, index!
+            current_operator_index = current_operator.operand
         elif current_operator.type == OperatorType.ENDIF:
             # ENDIF operator.
 
@@ -999,7 +1077,7 @@ def graph_generate(source: Source, path: str):
     current_operator_index = 0
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
 
     # Write header.
     file.write("digraph Source{\n")
@@ -1040,6 +1118,15 @@ def graph_generate(source: Source, path: str):
             file.write(f"   Operator_{current_operator_index} [shape=record label=if];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1} [label=true];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator.operand} [label=false];\n")
+        elif current_operator.type == OperatorType.ELSE:
+            # Else operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Write node data.
+            file.write(f"   Operator_{current_operator_index} [shape=record label=else];\n")
+            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator.operand};\n")
         elif current_operator.type == OperatorType.ENDIF:
             # Endif operator.
 
@@ -1088,7 +1175,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
     current_indent = ""
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 4, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
     assert len(Intrinsic) == 9, "Please update implementation after adding new Intrinsic!"
 
     # Write header.
@@ -1195,6 +1282,22 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Write node data.
             file.write(current_indent + f"if pop() != 0:{comment}\n")
+
+            # Increase indent level.
+            current_indent_level += 1
+            current_indent = "\t" * current_indent_level
+        elif current_operator.type == OperatorType.ELSE:
+            # Else operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Decrease indent level.
+            current_indent_level -= 1
+            current_indent = "\t" * current_indent_level
+
+            # Write node data.
+            file.write(current_indent + f"else:{comment}\n")
 
             # Increase indent level.
             current_indent_level += 1

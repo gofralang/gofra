@@ -14,12 +14,12 @@
 #### `endif` - Closing element of the endif.
 
 # Directives:
-#### Directives starts with `#`, like: `#DIRECTIVE_NAME`,
+#### Directive starts with `#`, like: `#DIRECTIVE_NAME`,
 #### List of the directives:
 #### `#LINTER_SKIP` - *Unsafe* mode, disable linter check.
 #### `#PYTHON_COMMENTS_SKIP` - Disable writing comments in the Python when generating it (Should don`t break anything), you may use this if you dont want system comments in your generated python scripts.
 # Comments:
-#### Comments starts with `//`, like: `// Comment`.
+#### Comment starts with `//`, like: `// Comment`.
 #### (There is one bug with comments, you should write comments without any at the start of the line (Spaces allowed))
 
 # Conditional:
