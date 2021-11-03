@@ -24,7 +24,19 @@ class Stack:
     """ Stack implementation for the language (More optional then useful). """
 
     # Empty list as stack.
-    __stack = list()
+    __stack = None
+
+    def __init__(self):
+        """ Magic __init__(). """
+
+        # Set stack.
+        self.__stack = list()
+
+    def __len__(self):
+        """ Magic __len__(). """
+
+        # Check length.
+        return len(self.__stack)
 
     def push(self, value):
         """ Push any value on the stack. """
@@ -37,12 +49,6 @@ class Stack:
 
         # Pop.
         return self.__stack.pop()
-
-    def __len__(self):
-        """ Magic __len__(). """
-
-        # Check length.
-        return len(self.__stack)
 
 
 class Stage(Enum):
@@ -64,6 +70,8 @@ class Keyword(Enum):
 
     # Conditions.
     IF = auto()
+    WHILE = auto()
+    THEN = auto()
     ELSE = auto()
     ENDIF = auto()
 
@@ -72,6 +80,10 @@ class Intrinsic(Enum):
     """ Enumeration for intrinsic types. """
 
     # Int.
+    # Increment (Undols to: 1 -) like x--.
+    INCREMENT = auto()
+    # Increment (Undols to: 1 +) like x++.
+    DECREMENT = auto()
     # +
     PLUS = auto()
     # -
@@ -113,8 +125,10 @@ class OperatorType(Enum):
     PUSH_INTEGER = auto()
     INTRINSIC = auto()
 
-    # Conditions.
+    # Conditions and loops.
     IF = auto()
+    WHILE = auto()
+    THEN = auto()
     ELSE = auto()
     ENDIF = auto()
 
@@ -136,8 +150,10 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 14, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 16, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
+    "dec": Intrinsic.DECREMENT,
+    "inc": Intrinsic.INCREMENT,
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
     "*": Intrinsic.MULTIPLY,
@@ -169,10 +185,12 @@ STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
 }
 
 # Keyword names / types.
-assert len(Keyword) == 3, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
+assert len(Keyword) == 5, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "else": Keyword.ELSE,
+    "while": Keyword.WHILE,
+    "then": Keyword.THEN,
     "endif": Keyword.ENDIF,
 }
 
@@ -352,10 +370,10 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
-    assert len(Keyword) == 3, "Please update implementation after adding new Keyword!"
+    assert len(Keyword) == 5, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
     assert len(TokenType) == 3, "Please update implementation after adding new TokenType!"
@@ -479,6 +497,61 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                 # Increment operator index.
                 context.operator_index += 1
+            elif current_token.value == Keyword.WHILE:
+                # This is WHILE keyword.
+
+                # Create operator.
+                operator = Operator(
+                    type=OperatorType.WHILE,
+                    token=current_token
+                )
+
+                # Push operator to the context.
+                context.operators.append(operator)
+
+                # Push current operator index to the context memory stack.
+                context.memory_stack.append(context.operator_index)
+
+                # Increment operator index.
+                context.operator_index += 1
+            elif current_token.value == Keyword.THEN:
+                # This is THEN keyword.
+
+                if len(context.memory_stack) == 0:
+                    # If there is nothing on the memory stack.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
+                                               "`then` should used after the `while` block!", True)
+
+                # Create operator.
+                operator = Operator(
+                    type=OperatorType.THEN,
+                    token=current_token
+                )
+
+                # Push operator to the context.
+                context.operators.append(operator)
+
+                # Get `WHILE` operator from the memory stack.
+                block_operator_index = context.memory_stack.pop()
+                block_operator = context.operators[block_operator_index]
+
+                if block_operator.type != OperatorType.WHILE:
+                    # If this is not while.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
+                                               "`then` should used after the `while` block!", True)
+
+                # Say that we crossreference WHILE block.
+                context.operators[context.operator_index].operand = block_operator_index
+
+                # Push current operator index to the context memory stack.
+                context.memory_stack.append(context.operator_index)
+
+                # Increment operator index.
+                context.operator_index += 1
             elif current_token.value == Keyword.ELSE:
                 # If this is else keyword.
 
@@ -514,10 +587,14 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # Increment operator index.
                     context.operator_index += 1
                 else:
+                    # If not IF.
+
+                    # Get error location.
+                    error_location = block_operator.token.location
+
                     # Error message.
                     cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
                                                "`else` can only used after `if` block!", True)
-
             elif current_token.value == Keyword.ENDIF:
                 # If this is endif keyword.
 
@@ -559,19 +636,39 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Say that we should jump to the next position.
                     context.operators[context.operator_index].operand = context.operator_index + 1
+                elif block_operator.type == OperatorType.THEN:
+                    # If this is THEN block.
+
+                    # Type check.
+                    assert block_operator.operand is not None, "THEN operator has unset operand! Parser level error?"
+                    assert isinstance(block_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+                    # Create operator.
+                    operator = Operator(
+                        type=OperatorType.ENDIF,
+                        token=current_token
+                    )
+
+                    # Push operator to the context.
+                    context.operators.append(operator)
+
+                    # Say that THEN crossreference to the WHILE block.
+                    context.operators[context.operator_index].operand = block_operator.operand
+
+                    # Say that WHILE should jump in the DO body.
+                    context.operators[block_operator.operand].operand = context.operator_index + 1
                 else:
                     # If invalid we call endif not after the if or else.
 
                     # Get error location.
-                    error_location = context.operators[context.memory_stack.pop()].token.location
+                    error_location = block_operator.token.location
 
                     # Error message.
                     cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
-                                               "`endif` can only close `if` or `else` block!", True)
+                                               "`endif` can only close `if`, `else` or `then` block!", True)
 
                 # Increment operator index.
                 context.operator_index += 1
-
             else:
                 # If unknown keyword type.
                 assert False, "Unknown keyword type! (How?)"
@@ -611,10 +708,10 @@ def interpretator_run(source: Source):
     current_operator_index = 0
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 14, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 16, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -719,7 +816,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push less than to the stack.
-                    memory_execution_stack.push(int(operand_a < operand_b))
+                    memory_execution_stack.push(int(operand_b < operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -731,7 +828,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push greater than to the stack.
-                    memory_execution_stack.push(int(operand_a > operand_b))
+                    memory_execution_stack.push(int(operand_b > operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -743,7 +840,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push less equal than to the stack.
-                    memory_execution_stack.push(int(operand_a <= operand_b))
+                    memory_execution_stack.push(int(operand_b <= operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -755,7 +852,7 @@ def interpretator_run(source: Source):
                     operand_b = memory_execution_stack.pop()
 
                     # Push greater equal than to the stack.
-                    memory_execution_stack.push(int(operand_a >= operand_b))
+                    memory_execution_stack.push(int(operand_b >= operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -781,6 +878,28 @@ def interpretator_run(source: Source):
                     # Push copy to the stack.
                     memory_execution_stack.push(operand_a)
                     memory_execution_stack.push(operand_a)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.DECREMENT:
+                    # Intristic decrement operator.
+
+                    # Get operand.
+                    operand_a = memory_execution_stack.pop()
+
+                    # Push decrement to the stack.
+                    memory_execution_stack.push(operand_a - 1)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.INCREMENT:
+                    # Intristic increment operator.
+
+                    # Get operand.
+                    operand_a = memory_execution_stack.pop()
+
+                    # Push increment to the stack.
+                    memory_execution_stack.push(operand_a + 1)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -836,6 +955,33 @@ def interpretator_run(source: Source):
                 # Jump to the operator operand.
                 # As this is ELSE operator, we should have index + 1, index!
                 current_operator_index = current_operator.operand
+            elif current_operator.type == OperatorType.THEN:
+                # THEN operator.
+
+                # Get operand.
+                operand_a = memory_execution_stack.pop()
+
+                # Type check.
+                assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+                if operand_a == 0:
+                    # If this is false.
+
+                    # Jump to the operator operand.
+                    # As this is THEN, so we should jump to the ENDIF.
+                    current_operator_index = source.operators[current_operator.operand].operand
+                else:
+                    # If this is true.
+
+                    # Increment operator index.
+                    # This is makes jump into the if body.
+                    current_operator_index += 1
+            elif current_operator.type == OperatorType.WHILE:
+                # WHILE operator.
+
+                # Increment operator index.
+                # This is makes jump into the if statement (expression).
+                current_operator_index += 1
             elif current_operator.type == OperatorType.ENDIF:
                 # ENDIF operator.
 
@@ -872,6 +1018,8 @@ def interpretator_run(source: Source):
 def linter_type_check(source: Source):
     """ Linter static type check. """
 
+    # TODO: Rework (remake).
+
     # Create empty stack.
     memory_linter_stack = Stack()
 
@@ -882,10 +1030,10 @@ def linter_type_check(source: Source):
     current_operator_index = 0
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 14, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 16, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -1101,6 +1249,36 @@ def linter_type_check(source: Source):
 
                 # Increase operator index.
                 current_operator_index += 1
+            elif current_operator.operand == Intrinsic.DECREMENT:
+                # Intristic decrement operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get operand.
+                operand_a = memory_linter_stack.pop()
+
+                # Push decrement to the stack.
+                memory_linter_stack.push(operand_a - 1)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.INCREMENT:
+                # Intristic increment operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get operand.
+                operand_a = memory_linter_stack.pop()
+
+                # Push increment to the stack.
+                memory_linter_stack.push(operand_a + 1)
+
+                # Increase operator index.
+                current_operator_index += 1
             elif current_operator.operand == Intrinsic.FREE:
                 # Intristic free operator.
 
@@ -1162,6 +1340,26 @@ def linter_type_check(source: Source):
             # Jump to the operator operand.
             # As this is ELSE operator, we should have index + 1, index!
             current_operator_index = current_operator.operand
+        elif current_operator.type == OperatorType.WHILE:
+            # WHILE operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Increase operator index.
+            current_operator_index += 1
+        elif current_operator.type == OperatorType.THEN:
+            # THEN operator.
+
+            # TODO: Add While / Then Lint.
+            # Free operand.
+            memory_linter_stack.pop()
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Jump to the ENDIF from WHILE.
+            current_operator_index = source.operators[current_operator.operand].operand
         elif current_operator.type == OperatorType.ENDIF:
             # ENDIF operator.
 
@@ -1237,10 +1435,14 @@ def graph_generate(source: Source, path: str):
     current_operator_index = 0
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Write header.
     file.write("digraph Source{\n")
+
+    # Mark Start.
+    file.write(f"   Start [label=\"Start\"];\n")
+    file.write(f"   Start -> Operator_0;\n")
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -1287,6 +1489,24 @@ def graph_generate(source: Source, path: str):
             # Write node data.
             file.write(f"   Operator_{current_operator_index} [shape=record label=else];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator.operand};\n")
+        elif current_operator.type == OperatorType.WHILE:
+            # While operator.
+
+            # Write node data
+            file.write(f"    Operator_{current_operator_index} [shape=record label=while];\n")
+            file.write(f"    Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
+        elif current_operator.type == OperatorType.THEN:
+            # Then operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Write node data
+            endif_operator_index = source.operators[current_operator.operand].operand - 1
+            file.write(f"    Operator_{current_operator_index} [shape=record label=then];\n")
+            file.write(f"    Operator_{current_operator_index} -> "
+                       f"Operator_{current_operator_index + 1} [label=true];\n")
+            file.write(f"    Operator_{current_operator_index} -> Operator_{endif_operator_index} [label=false];\n")
         elif current_operator.type == OperatorType.ENDIF:
             # Endif operator.
 
@@ -1295,7 +1515,7 @@ def graph_generate(source: Source, path: str):
 
             # Write node data.
             file.write(f"   Operator_{current_operator_index} [shape=record label=endif];\n")
-            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator.operand};\n")
+            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
         else:
             # If unknown operator type.
             assert False, f"Unknown operator type! (How?)"
@@ -1304,7 +1524,7 @@ def graph_generate(source: Source, path: str):
         current_operator_index += 1
 
     # Mark Last as the end.
-    file.write(f"   Operator_{current_operator_index} [label=\"EndOfOperators\"];\n")
+    file.write(f"   Operator_{len(source.operators)} [label=\"End\"];\n")
 
     # Write footer.
     file.write("}\n")
@@ -1318,6 +1538,39 @@ def graph_generate(source: Source, path: str):
 def python_generate(source: Source, context: ParserContext, path: str):
     """ Generates graph from the source. """
 
+    def write(text: str):
+        """ Writes command to file. """
+
+        if current_while_block:
+            # If we are in loop.
+
+            # Push onto the stack.
+            current_while_lines.append(text + comment + "\n")
+        else:
+            # Base write.
+            current_lines.append(current_indent + text + comment + "\n")
+
+    def __header():
+        """ Write header. """
+
+        # Write header.
+        if not directive_skip_comments:
+            current_lines.append("# This file is auto-generated by MSPL python subcommand! \n")
+            current_lines.append("\n")
+            current_lines.append("# Allocate stack (As is MSPL is Stack-Based Language): \n")
+        current_lines.append("stack = []")
+        if not directive_skip_comments:
+            current_lines.append("\n\n")
+            current_lines.append(f"# File ({basename(path)}): \n")
+            current_lines.append(f"# Expressions: \n")
+
+        # Update insert position.
+        nonlocal expressions_insert_position
+        expressions_insert_position = len(current_lines)
+
+        # Write source header.
+        if not directive_skip_comments:
+            current_lines.append("# Source:\n")
     # Open file.
     file = open(path + ".py", "w")
 
@@ -1330,28 +1583,26 @@ def python_generate(source: Source, context: ParserContext, path: str):
     # Current operator index from the source.
     current_operator_index = 0
 
+    # Lines.
+    current_lines = []
+
     # Indentation level.
     current_indent_level = 0
     current_indent = ""
 
+    expressions_insert_position = 0
+    # While.
+    current_while_block = True
+    current_while_comment = ""
+    current_while_defined_name = ""
+    current_while_lines = []
+
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 5, "Please update implementation after adding new OperatorType!"
-    assert len(Intrinsic) == 14, "Please update implementation after adding new Intrinsic!"
+    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
+    assert len(Intrinsic) == 16, "Please update implementation after adding new Intrinsic!"
 
     # Write header.
-    if not directive_skip_comments:
-        file.write("# This file is auto-generated by MSPL python subcommand! \n")
-        file.write("\n")
-        file.write("# Allocate stack (As is MSPL is Stack-Based Language): \n")
-    file.write("stack = list()\n")
-    if not directive_skip_comments:
-        file.write("\n")
-        file.write("# Work with stack functions: \n")
-    file.write("def push(v):\n\tstack.append(v)\n")
-    file.write("def pop():\n\treturn stack.pop()\n")
-    if not directive_skip_comments:
-        file.write("\n\n")
-        file.write(f"# Source ({basename(path)}): \n")
+    __header()
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -1361,9 +1612,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
         # Get comment data.
         location = "Line %d, Row %d" % current_operator.token.location[1:3]
-        comment = f"  # Token: {current_operator.token.text} [{location}]"
-        if directive_skip_comments:
-            comment = ""
+        comment = "" if directive_skip_comments else f"  # Token: {current_operator.token.text} [{location}]"
 
         # Grab our operator
         if current_operator.type == OperatorType.PUSH_INTEGER:
@@ -1373,7 +1622,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
             assert isinstance(current_operator.operand, int), "Type error, parser level error?"
 
             # Write data.
-            file.write(current_indent + f"push({current_operator.operand}){comment}\n")
+            write(f"stack.append({current_operator.operand})")
         elif current_operator.type == OperatorType.INTRINSIC:
             # Intrinsic operator.
 
@@ -1384,77 +1633,87 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 # Intristic plus operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(pop() + pop()){comment}\n")
+                write("stack.append(stack.pop() + stack.pop())")
             elif current_operator.operand == Intrinsic.MINUS:
                 # Intristic minus operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(pop() - pop()){comment}\n")
+                write("stack.append(stack.pop() - stack.pop())")
+            elif current_operator.operand == Intrinsic.INCREMENT:
+                # Intristic increment operator.
+
+                # Write node data.
+                write("stack.append(stack.pop() + 1)")
+            elif current_operator.operand == Intrinsic.DECREMENT:
+                # Intristic decrement operator.
+
+                # Write node data.
+                write("stack.append(stack.pop() - 1)")
             elif current_operator.operand == Intrinsic.MULTIPLY:
                 # Intristic multiply operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(pop() * pop()){comment}\n")
+                write("stack.append(stack.pop() * stack.pop())")
             elif current_operator.operand == Intrinsic.DIVIDE:
                 # Intristic divide operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(pop() % pop()){comment}\n")
+                write(f"stack.append(stack.pop() % stack.pop())")
             elif current_operator.operand == Intrinsic.EQUAL:
                 # Intristic equal operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(int(pop() == pop())){comment}\n")
+                write("stack.append(int(stack.pop() == stack.pop()))")
             elif current_operator.operand == Intrinsic.NOT_EQUAL:
                 # Intristic not equal operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(int(pop() != pop())){comment}\n")
+                write("stack.append(int(stack.pop() != stack.pop()))")
             elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
                 # Intristic greater equal than operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(int(pop() >= pop())){comment}\n")
+                write("stack.append(int(stack.pop() <= stack.pop()))")
             elif current_operator.operand == Intrinsic.GREATER_THAN:
                 # Intristic greater than operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(int(pop() > pop())){comment}\n")
+                write("stack.append(int(stack.pop() < stack.pop()))")
             elif current_operator.operand == Intrinsic.LESS_THAN:
                 # Intristic less than operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(int(pop() < pop())){comment}\n")
+                write("stack.append(int(stack.pop() > stack.pop()))")
             elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
                 # Intristic less equal than operator.
 
                 # Write node data.
-                file.write(current_indent + f"push(int(pop() <= pop())){comment}\n")
+                write("stack.append(int(stack.pop() >= stack.pop()))")
             elif current_operator.operand == Intrinsic.SWAP:
                 # Intristic swap operator.
 
                 # Write node data.
-                file.write(current_indent + f"buffer_a = pop(){comment}\n")
-                file.write(current_indent + f"buffer_b = pop(){comment}\n")
-                file.write(current_indent + f"push(buffer_a){comment}\n")
-                file.write(current_indent + f"push(buffer_b){comment}\n")
+                write("buffer_a = stack.pop()")
+                write("buffer_b = stack.pop()")
+                write("stack.append(buffer_a)")
+                write("stack.append(buffer_b)")
             elif current_operator.operand == Intrinsic.COPY:
                 # Intristic copy operator.
 
                 # Write node data.
-                file.write(current_indent + f"buffer = pop(){comment}\n")
-                file.write(current_indent + f"push(buffer){comment}\n")
-                file.write(current_indent + f"push(buffer){comment}\n")
+                write("buffer = stack.pop()")
+                write("stack.append(buffer)")
+                write("stack.append(buffer)")
             elif current_operator.operand == Intrinsic.SHOW:
                 # Intristic show operator.
 
                 # Write node data.
-                file.write(current_indent + f"print(pop()){comment}\n")
+                write("print(stack.pop())")
             elif current_operator.operand == Intrinsic.FREE:
                 # Intristic free operator.
 
                 # Write node data.
-                file.write(current_indent + f"pop(){comment}\n")
+                write("stack.pop()")
             else:
                 # If unknown instrinsic type.
 
@@ -1469,7 +1728,65 @@ def python_generate(source: Source, context: ParserContext, path: str):
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
 
             # Write node data.
-            file.write(current_indent + f"if pop() != 0:{comment}\n")
+            write("if stack.pop() != 0:")
+
+            # Increase indent level.
+            current_indent_level += 1
+            current_indent = "\t" * current_indent_level
+        elif current_operator.type == OperatorType.WHILE:
+            # While operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+
+            # Remember name so we can write define at the top of the source.
+            current_while_defined_name = f"while_expression_ip{current_operator_index}"
+
+            # Remember comment.
+            current_while_comment = comment
+
+            # Write node data.
+            current_lines.append(f"{current_indent}{comment[2: ]}\n"
+                                 f"{current_indent}while {current_while_defined_name}()")
+
+            # Set we in while expression.
+            current_while_block = True
+        elif current_operator.type == OperatorType.THEN:
+            # Then operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+
+            if current_while_block:
+                # If we close while.
+
+                # Current insert position for lines.
+                while_block_insert_position = expressions_insert_position
+
+                # Insert header.
+                __comment = "" if directive_skip_comments else f"\t# -- Should be called from WHILE.\n"
+                current_lines.insert(while_block_insert_position,
+                                     f"def {current_while_defined_name}():{current_while_comment}\n" + __comment)
+
+                for while_stack_line in current_while_lines:
+                    # Iterater over while stack lines.
+
+                    # Increment.
+                    while_block_insert_position += 1
+
+                    # Insert.
+                    current_lines.insert(while_block_insert_position, f"\t{while_stack_line}")
+
+                # Insert return.
+                __comment = "" if directive_skip_comments else f"  # -- Return for calling from WHILE."
+                current_lines.insert(while_block_insert_position + 1,
+                                     f"\treturn stack.pop()" + __comment + "\n")
+
+            # Write node data.
+            current_lines.append(f":{comment}\n")
+
+            # Go out the expression.
+            current_while_block = False
 
             # Increase indent level.
             current_indent_level += 1
@@ -1485,7 +1802,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
             current_indent = "\t" * current_indent_level
 
             # Write node data.
-            file.write(current_indent + f"else:{comment}\n")
+            write("else:")
 
             # Increase indent level.
             current_indent_level += 1
@@ -1506,8 +1823,43 @@ def python_generate(source: Source, context: ParserContext, path: str):
         # Increment current index.
         current_operator_index += 1
 
+    # Write lines.
+    [file.write(stack_line) for stack_line in current_lines]
+
     # Close file.
     file.close()
+
+
+# Dump.
+
+def dump_print(source: Source):
+    """ Dumps source using print. """
+
+    # Get source operators count.
+    operators_count = len(source.operators)
+
+    # Current operator index from the source.
+    current_operator_index = 0
+
+    while current_operator_index < operators_count:
+        # While we not run out of the source operators list.
+
+        # Get current operator from the source.
+        current_operator = source.operators[current_operator_index]
+
+        # Operator in readable string.
+        if current_operator.type == OperatorType.INTRINSIC:
+            readable_operator = f"({current_operator_index}) {current_operator.operand}"
+        else:
+            readable_operator_type = str(current_operator.type)[len("OperatorType."):]
+            readable_operator = f"[{current_operator_index}] {readable_operator_type}, {current_operator.operand}"
+
+        # Dump print.
+        print(f"|Line{current_operator.token.location[1]}|", end=" ")
+        print(readable_operator)
+
+        # Increment current index.
+        current_operator_index += 1
 
 
 # CLI.
@@ -1632,6 +1984,7 @@ def cli_usage_message(runner_filename: str = None):
           f"\thelp; Show this message.\n"
           f"\trun; Intrerpretates source in Python.\n"
           f"\tpython; Generates python file from the source in output file [source*.mspl].py\n"
+          f"\tdump; Dumps operators from the source in output file [source*.mspl].py\n"
           f"\tgraph; Generates graphviz file from the source in output file [source*.mspl].dot", file=stdout)
 
 
@@ -1689,12 +2042,27 @@ def cli_entry_point():
 
         # Message.
         print(f"[Info] .py file \"{basename(cli_source_path)}.py\" generated!")
+    elif cli_subcommand == "dump":
+        # If this is dump subcommand.
+
+        # Get source.
+        cli_source, _ = load_source_from_file(cli_source_path)
+
+        # File exists check.
+        if cli_source is FileNotFoundError:
+            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
+
+        # Dump print.
+        dump_print(cli_source)
+
+        # Message.
+        print(f"[Info] File \"{basename(cli_source_path)}\" was dump printed!")
     else:
         # If unknown subcommand.
 
         # Message.
         cli_usage_message(__file__)
-        cli_error_message("Error", "Unknown subcommand `{cli_subcommand}`!")
+        cli_error_message("Error", f"Unknown subcommand `{cli_subcommand}`!")
 
 
 if __name__ == "__main__":
