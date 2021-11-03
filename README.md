@@ -15,8 +15,8 @@
 #### `show // Pop value from the stack and show it on the screen.`
 
 ## Some list of comands:
-#### `show`, `copy`, `if`, `else`,`endif`, `free`
-#### `+`, `-`, `*`, `==`, `!=`, `/`, `#DIRECTIVE`
+#### `show`, `copy`, `if`, `else`,`endif`, `free`, `swap`, `#DIRECTIVE`
+#### `+`, `-`, `*`, `==`, `!=`, `/`, `<`, `<=`, `>`, `>=`
 
 ## For the documentation, read `DOCUMENTATION.MD`
 ## Or `/src/examples/README.MD` for examples.

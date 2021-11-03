@@ -4,12 +4,17 @@
 #### `show` - Pop one element from the stack and show it.
 #### `copy` - Pop one element from the stack and push it 2 times (copy).
 #### `free` - Pop one element from the stack (Just drop it, free stack from it).
+#### `swap` - Pop two elements from the stack and swap them ([0, 1] => [1, 0]).
 #### `+` - Pop two elements from the stack and push their sum.
 #### `-` - Pop two elements from the stack and push their difference.
 #### `/` - Pop two elements from the stack and push their div, int (%).
 #### `*` - Pop two elements from the stack and push their multiply.
 #### `==` - Pop two elements from the stack and push 1 if they is equal or 0 if not.
 #### `!=` - Pop two elements from the stack and push 1 if they is not equal or 0 if yes.
+#### `<` - Pop two elements from the stack and push 1 if A[1] less than B[2] or 0 if not.
+#### `>` - Pop two elements from the stack and push 1 if A[1] greater than B[2] or 0 if not.
+#### `<=` - Pop two elements from the stack and push 1 if A[1] less or equal than B[2] or 0 if not.
+#### `>=` - Pop two elements from the stack and push 1 if A[1] greater or eqal than B[2] or 0 if not.
 #### `if` - Pop one element from the stack, if there is 0, jumps to the endif or else block, otherwise jumps in the conditonal branch (Read more in block "Conditonal")(`0 if 1024 show endif`).
 #### `else` - Other branch element of the if.
 #### `endif` - Closing element of the if.
