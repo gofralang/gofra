@@ -127,6 +127,10 @@ KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "endif": Keyword.ENDIF,
 }
 
+# Extra `tokens`.
+EXTRA_COMMENT = "//"
+EXTRA_DIRECTIVE = "#"
+
 
 @dataclass
 class Token:
@@ -178,6 +182,9 @@ class ParserContext:
 
     # Current parsing operator index.
     operator_index: OPERATOR_ADDRESS = 0
+
+    # Directives.
+    directive_linter_skip: bool = False
 
 
 # Other.
@@ -296,7 +303,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
 
                         # If this is comment - break.
                         # TODO: Try to fix something like 0//0 (comment not at the start) will lex not as should.
-                        if current_token_text.startswith("//"):
+                        if current_token_text.startswith(EXTRA_COMMENT):
                             break
 
                         # Return word token.
@@ -380,11 +387,37 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
             else:
                 # If not intrinsic.
 
-                # Message.
-                error_message(Stage.PARSER, current_token.location, "Error",
-                              f"Unknown WORD `{current_token.text}`, are you misspelled something?")
-                exit(1)
+                if current_token.text.startswith(EXTRA_DIRECTIVE):
+                    # If this is directive.
 
+                    # Grab the directive.
+                    directive = current_token.text[len(EXTRA_DIRECTIVE):]
+
+                    if directive == "LINTER_SKIP":
+                        # If this linter skip directive.
+
+                        if context.directive_linter_skip:
+                            # If already enabled.
+
+                            # Message.
+                            error_message(Stage.PARSER, current_token.location, "Error",
+                                          f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!")
+                            exit(1)
+
+                        # Skip linter.
+                        context.directive_linter_skip = True
+                    else:
+                        # If this is unknown direcitve.
+
+                        # Message.
+                        error_message(Stage.PARSER, current_token.location, "Error",
+                                      f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`")
+                        exit(1)
+                else:
+                    # Message.
+                    error_message(Stage.PARSER, current_token.location, "Error",
+                                  f"Unknown WORD `{current_token.text}`, are you misspelled something?")
+                    exit(1)
         elif current_token.type == TokenType.INTEGER:
             # If we got a integer.
 
@@ -480,6 +513,13 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
         # Exit at the parsing.
         exit(1)
 
+    if context.directive_linter_skip:
+        # If skip linter.
+
+        # Error message.
+        error_message(Stage.PARSER, (basename(path), 1, 1), "Warning",
+                      "LINTER SKIP DIRECTIVE! THIS IS UNSAFE!")
+
 
 # Interpretator.
 
@@ -507,160 +547,172 @@ def interpretator_run(source: Source):
         # Get current operator from the source.
         current_operator = source.operators[current_operator_index]
 
-        # Grab our operator
-        if current_operator.type == OperatorType.PUSH_INTEGER:
-            # Push integer operator.
+        try:
+            # Try / Catch to get unexpected Python errors.
 
-            # Type check.
-            assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
+            if current_operator.type == OperatorType.PUSH_INTEGER:
+                # Push integer operator.
 
-            # Push operand to the stack.
-            memory_execution_stack.append(current_operator.operand)
+                # Type check.
+                assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
 
-            # Increase operator index.
-            current_operator_index += 1
-        elif current_operator.type == OperatorType.INTRINSIC:
-            # Intrinsic operator.
-
-            if current_operator.operand == Intrinsic.PLUS:
-                # Intristic plus operator.
-
-                # Get both operands.
-                operand_a = memory_execution_stack.pop()
-                operand_b = memory_execution_stack.pop()
-
-                # Push sum to the stack.
-                memory_execution_stack.append(operand_a + operand_b)
+                # Push operand to the stack.
+                memory_execution_stack.append(current_operator.operand)
 
                 # Increase operator index.
                 current_operator_index += 1
-            elif current_operator.operand == Intrinsic.DIVIDE:
-                # Intristic divide operator.
+            elif current_operator.type == OperatorType.INTRINSIC:
+                # Intrinsic operator.
 
-                # Get both operands.
-                operand_a = memory_execution_stack.pop()
-                operand_b = memory_execution_stack.pop()
+                if current_operator.operand == Intrinsic.PLUS:
+                    # Intristic plus operator.
 
-                # Push divide to the stack.
-                memory_execution_stack.append(operand_a % operand_b)
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.MINUS:
-                # Intristic minus operator.
+                    # Push sum to the stack.
+                    memory_execution_stack.append(operand_a + operand_b)
 
-                # Get both operands.
-                operand_a = memory_execution_stack.pop()
-                operand_b = memory_execution_stack.pop()
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.DIVIDE:
+                    # Intristic divide operator.
 
-                # Push difference to the stack.
-                memory_execution_stack.append(operand_b - operand_a)
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.MULTIPLY:
-                # Intristic multiply operator.
+                    # Push divide to the stack.
+                    memory_execution_stack.append(operand_a % operand_b)
 
-                # Get both operands.
-                operand_a = memory_execution_stack.pop()
-                operand_b = memory_execution_stack.pop()
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MINUS:
+                    # Intristic minus operator.
 
-                # Push muliply to the stack.
-                memory_execution_stack.append(operand_a * operand_b)
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.EQUAL:
-                # Intristic equal operator.
+                    # Push difference to the stack.
+                    memory_execution_stack.append(operand_b - operand_a)
 
-                # Get both operands.
-                operand_a = memory_execution_stack.pop()
-                operand_b = memory_execution_stack.pop()
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MULTIPLY:
+                    # Intristic multiply operator.
 
-                # Push equal to the stack.
-                memory_execution_stack.append(int(operand_a == operand_b))
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.NOT_EQUAL:
-                # Intristic not equal operator.
+                    # Push muliply to the stack.
+                    memory_execution_stack.append(operand_a * operand_b)
 
-                # Get both operands.
-                operand_a = memory_execution_stack.pop()
-                operand_b = memory_execution_stack.pop()
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.EQUAL:
+                    # Intristic equal operator.
 
-                # Push not equal to the stack.
-                memory_execution_stack.append(int(operand_a != operand_b))
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.COPY:
-                # Intristic copy operator.
+                    # Push equal to the stack.
+                    memory_execution_stack.append(int(operand_a == operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.NOT_EQUAL:
+                    # Intristic not equal operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push not equal to the stack.
+                    memory_execution_stack.append(int(operand_a != operand_b))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.COPY:
+                    # Intristic copy operator.
+
+                    # Get operand.
+                    operand_a = memory_execution_stack.pop()
+
+                    # Push copy to the stack.
+                    memory_execution_stack.append(operand_a)
+                    memory_execution_stack.append(operand_a)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.FREE:
+                    # Intristic free operator.
+
+                    # Pop and left.
+                    memory_execution_stack.pop()
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.SHOW:
+                    # Intristic show operator.
+
+                    # Get operand.
+                    operand_a = memory_execution_stack.pop()
+
+                    # Show operand.
+                    print(operand_a)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                else:
+                    # If unknown instrinsic type.
+                    assert False, "Unknown instrinsic! (How?)"
+            elif current_operator.type == OperatorType.IF:
+                # IF operator.
 
                 # Get operand.
                 operand_a = memory_execution_stack.pop()
 
-                # Push copy to the stack.
-                memory_execution_stack.append(operand_a)
-                memory_execution_stack.append(operand_a)
+                # Type check.
+                assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.FREE:
-                # Intristic free operator.
+                if operand_a == 0:
+                    # If this is false.
 
-                # Pop and left.
-                memory_execution_stack.pop()
+                    # Jump to the operator operand.
+                    # As this is IF, so we should jump to the ENDIF.
+                    current_operator_index = current_operator.operand
+                else:
+                    # If this is true.
 
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.SHOW:
-                # Intristic show operator.
+                    # Increment operator index.
+                    # This is makes jump into the if branch.
+                    current_operator_index += 1
+            elif current_operator.type == OperatorType.ENDIF:
+                # ENDIF operator.
 
-                # Get operand.
-                operand_a = memory_execution_stack.pop()
-
-                # Show operand.
-                print(operand_a)
-
-                # Increase operator index.
-                current_operator_index += 1
-            else:
-                # If unknown instrinsic type.
-                assert False, "Unknown instrinsic! (How?)"
-        elif current_operator.type == OperatorType.IF:
-            # IF operator.
-
-            # Get operand.
-            operand_a = memory_execution_stack.pop()
-
-            # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
-
-            if operand_a == 0:
-                # If this is false.
+                # Type check.
+                assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
                 # Jump to the operator operand.
-                # As this is IF, so we should jump to the ENDIF.
+                # As this is ENDIF operator, we should have index + 1, index!
                 current_operator_index = current_operator.operand
             else:
-                # If this is true.
+                # If unknown operator type.
+                assert False, "Unknown operator type! (How?)"
+        except IndexError:
+            # Stack* error.
 
-                # Increment operator index.
-                # This is makes jump into the if branch.
-                current_operator_index += 1
-        elif current_operator.type == OperatorType.ENDIF:
-            # ENDIF operator.
+            # Error message.
+            error_message(Stage.RUNNER, current_operator.token.location, "Error",
+                          f"IndexError! This should be stack error (pop() when stack is empty?). "
+                          f"Do you used {EXTRA_DIRECTIVE}LINTER_SKIP directive? (From: "
+                          f"{current_operator.token.text})")
 
-            # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
-
-            # Jump to the operator operand.
-            # As this is ENDIF operator, we should have index + 1, index!
-            current_operator_index = current_operator.operand
-        else:
-            # If unknown operator type.
-            assert False, "Unknown operator type! (How?)"
+            exit(1)
 
     if len(memory_execution_stack) != 0:
         # If there is any in the stack.
@@ -1022,7 +1074,7 @@ def python_generate(source: Source, path: str):
     # Write header.
     file.write("# This file is auto-generated by MSPL python subcommand! \n")
     file.write("\n")
-    file.write("# Allocate stack (As is MSPL is Stack-Oriented Language): \n")
+    file.write("# Allocate stack (As is MSPL is Stack-Based Language): \n")
     file.write("stack = list()\n")
     file.write("\n")
     file.write("# Work with stack functions: \n")
@@ -1039,7 +1091,7 @@ def python_generate(source: Source, path: str):
 
         # Get comment data.
         location = "Line %d, Row %d" % current_operator.token.location[1:3]
-        comment = f"Text: {current_operator.token.text} [{location}]"
+        comment = f"Token: {current_operator.token.text} [{location}]"
 
         # Grab our operator
         if current_operator.type == OperatorType.PUSH_INTEGER:
@@ -1119,7 +1171,7 @@ def python_generate(source: Source, path: str):
 
             # Increase indent level.
             current_indent_level += 1
-            current_indent = current_indent
+            current_indent = "\t" * current_indent_level
         elif current_operator.type == OperatorType.ENDIF:
             # Endif operator.
 
@@ -1128,7 +1180,7 @@ def python_generate(source: Source, path: str):
 
             # Decrease indent level.
             current_indent_level -= 1
-            current_indent = current_indent
+            current_indent = "\t" * current_indent_level
         else:
             # If unknown operator type.
             assert False, f"Unknown operator type! (How?)"
@@ -1144,9 +1196,8 @@ if __name__ == "__main__":
     # Entry point.
 
     # CLI Options.
-    cli_source_path = f"{getcwd()}\\" + "examples\\if_example.mspl"
-    cli_subcommand = "interpretate"
-    cli_supress_linter = False
+    cli_source_path = f"{getcwd()}\\" + "examples\\stack_example.mspl"
+    cli_subcommand = "python"
 
     if cli_subcommand == "interpretate":
         # If this is interpretate subcommand.
@@ -1171,7 +1222,7 @@ if __name__ == "__main__":
         parser_context_source = Source(parser_context.operators)
 
         # Type check.
-        if not cli_supress_linter:
+        if not parser_context.directive_linter_skip:
             linter_type_check(parser_context_source)
 
         # Run interpretation.
@@ -1202,7 +1253,7 @@ if __name__ == "__main__":
         parser_context_source = Source(parser_context.operators)
 
         # Type check.
-        if not cli_supress_linter:
+        if not parser_context.directive_linter_skip:
             linter_type_check(parser_context_source)
 
         # Generate graph file.
@@ -1233,7 +1284,7 @@ if __name__ == "__main__":
         parser_context_source = Source(parser_context.operators)
 
         # Type check.
-        if not cli_supress_linter:
+        if not parser_context.directive_linter_skip:
             linter_type_check(parser_context_source)
 
         # Generate python file.
