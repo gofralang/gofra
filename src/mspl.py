@@ -1377,7 +1377,7 @@ def linter_type_check(source: Source, context: ParserContext):
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 20, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -1428,7 +1428,23 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push divide to the stack.
-                memory_linter_stack.push(int(operand_b / operand_a))
+                memory_linter_stack.push(int(operand_b // operand_a))
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MODULUS:
+                # Intristic modulus operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push modulus to the stack.
+                memory_linter_stack.push(int(operand_b % operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1593,6 +1609,43 @@ def linter_type_check(source: Source, context: ParserContext):
 
                 # Increase operator index.
                 current_operator_index += 1
+            elif current_operator.operand == Intrinsic.COPY:
+                # Intristic copy2 operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push copy to the stack.
+                memory_linter_stack.push(operand_b)
+                memory_linter_stack.push(operand_a)
+                memory_linter_stack.push(operand_b)
+                memory_linter_stack.push(operand_a)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.COPY_OVER:
+                # Intristic copy over operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                # Push copy to the stack.
+                memory_linter_stack.push(operand_b)
+                memory_linter_stack.push(operand_a)
+                memory_linter_stack.push(operand_b)
+
+                # Increase operator index.
+                current_operator_index += 1
             elif current_operator.operand == Intrinsic.DECREMENT:
                 # Intristic decrement operator.
 
@@ -1674,6 +1727,64 @@ def linter_type_check(source: Source, context: ParserContext):
                                                f"Trying to write at memory address {operand_b} "
                                                f"that underflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferUnderflow)", True)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
+                # Intristic memory write 4 bytes operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                if operand_b + 4 - 1 > context.memory_bytearray_size:
+                    # If this is gonna be memory overflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to write at memory address {operand_b + 4 - 1} "
+                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
+                                               " bytes (MemoryBufferOverflow)", True)
+                elif operand_b < 0:
+                    # If this is gonna be memory undeflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to write at memory address {operand_b} "
+                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
+                                               " bytes (MemoryBufferUnderflow)", True)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
+                # Intristic memory read 4 bytes operator.
+
+                # Get operand.
+                operand_a = memory_linter_stack.pop()
+
+                if operand_a + 4 - 1 > context.memory_bytearray_size:
+                    # If this is gonna be memory overflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to read from memory address {operand_a  + 4 - 1} "
+                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
+                                               " bytes (MemoryBufferOverflow)", True)
+                elif operand_a < 0:
+                    # If this is gonna be memory undeflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to read from memory address {operand_a} "
+                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
+                                               " bytes (MemoryBufferUnderflow)", True)
+
+                # Push memory to the stack.
+                memory_linter_stack.push(int())
 
                 # Increase operator index.
                 current_operator_index += 1
