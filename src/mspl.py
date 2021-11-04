@@ -1068,9 +1068,6 @@ def interpretator_run(source: Source):
                         # Increment byte index.
                         memory_byte_index += 1
 
-                    # Optional new line.
-                    print()
-
                     # Increase operator index.
                     current_operator_index += 1
                 elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
@@ -2018,7 +2015,6 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 write("\tmbbyte = memory[mbaddress + mbindex]")
                 write("\tprint(chr(mbbyte), end=\"\")")
                 write("\tmbindex += 1")
-                write("print()")
             else:
                 # If unknown instrinsic type.
 
