@@ -208,7 +208,7 @@ EXTRA_COMMENT = "//"
 EXTRA_DIRECTIVE = "#"
 
 # Memory size and null pointer.
-MEMORY_BYTEARRAY_SIZE = 1000
+MEMORY_BYTEARRAY_SIZE = 1000  # May be overwritten from directive #MEM_BUF_BYTE_SIZE_{Size}!
 MEMORY_BYTEARRAY_NULL_POINTER = 0
 
 
@@ -259,6 +259,9 @@ class ParserContext:
 
     # Memory stack.
     memory_stack: List[OPERATOR_ADDRESS] = field(default_factory=list)
+
+    # Default bytearray size.
+    memory_bytearray_size = MEMORY_BYTEARRAY_SIZE
 
     # Current parsing operator index.
     operator_index: OPERATOR_ADDRESS = 0
@@ -464,9 +467,28 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     else:
                         # If this is unknown direcitve.
 
-                        # Message.
-                        cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                   f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
+                        if directive.startswith("MEM_BUF_BYTE_SIZE="):
+                            # If this is starts with memory buffer byte size definition name.
+
+                            # Get new memory size.
+                            new_memory_bytearray_size = directive[len("MEM_BUF_BYTE_SIZE="):]
+
+                            try:
+                                new_memory_bytearray_size = int(new_memory_bytearray_size)
+                            except ValueError:
+                                # If error.
+
+                                # Message.
+                                cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` "
+                                                           f"passed invalid size `{new_memory_bytearray_size}`!", True)
+
+                            # Change size of the bytearray.
+                            context.memory_bytearray_size = new_memory_bytearray_size
+                        else:
+                            # Message.
+                            cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                       f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
                 else:
                     # Message.
                     cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
@@ -708,14 +730,14 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
 # Interpretator.
 
-def interpretator_run(source: Source):
+def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZE):
     """ Interpretates the source. """
 
     # Create empty stack.
     memory_execution_stack: Stack = Stack()
 
-    # Allocate MEMORY_BYTEARRAY_SIZE sized bytearray.
-    memory_bytearray: bytearray = bytearray(MEMORY_BYTEARRAY_SIZE)
+    # Allocate sized bytearray.
+    memory_bytearray: bytearray = bytearray(bytearray_size)
 
     # Get source operators count.
     operators_count = len(source.operators)
@@ -1171,7 +1193,7 @@ def interpretator_run(source: Source):
 
 # Linter.
 
-def linter_type_check(source: Source):
+def linter_type_check(source: Source, context: ParserContext):
     """ Linter static type check. """
 
     # TODO: Rework (remake).
@@ -1470,13 +1492,13 @@ def linter_type_check(source: Source):
                 memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                if operand_b > MEMORY_BYTEARRAY_SIZE:
+                if operand_b > context.memory_bytearray_size:
                     # If this is gonna be memory overflow.
 
                     # Error.
                     cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
                                                f"Trying to write at memory address {operand_b} "
-                                               f"that overflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferOverflow)", True)
                 elif operand_b < 0:
                     # If this is gonna be memory undeflow.
@@ -1484,7 +1506,7 @@ def linter_type_check(source: Source):
                     # Error.
                     cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
                                                f"Trying to write at memory address {operand_b} "
-                                               f"that underflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferUnderflow)", True)
 
                 # Increase operator index.
@@ -1495,13 +1517,13 @@ def linter_type_check(source: Source):
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
 
-                if operand_a > MEMORY_BYTEARRAY_SIZE:
+                if operand_a > context.memory_bytearray_size:
                     # If this is gonna be memory overflow.
 
                     # Error.
                     cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
                                                f"Trying to read from memory address {operand_a} "
-                                               f"that overflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferOverflow)", True)
                 elif operand_a < 0:
                     # If this is gonna be memory undeflow.
@@ -1509,7 +1531,7 @@ def linter_type_check(source: Source):
                     # Error.
                     cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
                                                f"Trying to read from memory address {operand_a} "
-                                               f"that underflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferUnderflow)", True)
 
                 # Push memory to the stack.
@@ -1524,14 +1546,14 @@ def linter_type_check(source: Source):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                if operand_b + operand_a > MEMORY_BYTEARRAY_SIZE:
+                if operand_b + operand_a > context.memory_bytearray_size:
                     # If this is gonna be memory overflow.
 
                     # Error.
                     cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
                                                f"Trying to read from memory address "
                                                f"from {operand_b} to {operand_b + operand_a} "
-                                               f"that overflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferOverflow)", True)
                 elif operand_a < 0:
                     # If this is gonna be memory undeflow.
@@ -1540,7 +1562,7 @@ def linter_type_check(source: Source):
                     cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
                                                f"Trying to read from memory address"
                                                f"from {operand_b} to {operand_b + operand_a} "
-                                               f"that underflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
                                                " bytes (MemoryBufferUnderflow)", True)
 
                 # Increase operator index.
@@ -1664,7 +1686,7 @@ def load_source_from_file(file_path: str) -> \
 
     # Type check.
     if not parser_context.directive_linter_skip:
-        linter_type_check(parser_context_source)
+        linter_type_check(parser_context_source, parser_context)
 
     # Return source and parser context.
     return parser_context_source, parser_context
@@ -2145,7 +2167,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
         # If we should write bytearray block.
 
         # Write.
-        current_lines.insert(bytearray_insert_position, f"memory = bytearray({MEMORY_BYTEARRAY_SIZE})")
+        current_lines.insert(bytearray_insert_position, f"memory = bytearray({context.memory_bytearray_size})")
         if not directive_skip_comments:
             current_lines.insert(bytearray_insert_position,
                                  "# Allocate memory buffer "
@@ -2340,14 +2362,14 @@ def cli_entry_point():
         # If this is interpretate subcommand.
 
         # Get source.
-        cli_source, _ = load_source_from_file(cli_source_path)
+        cli_source, cli_context = load_source_from_file(cli_source_path)
 
         # File exists check.
         if cli_source is FileNotFoundError:
             cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
 
         # Run interpretation.
-        interpretator_run(cli_source)
+        interpretator_run(cli_source, cli_context.memory_bytearray_size)
 
         # Message.
         print(f"[Info] File \"{basename(cli_source_path)}\" was run!")
