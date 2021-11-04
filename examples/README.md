@@ -14,3 +14,5 @@
 ##### Prints pyramid of asterics.
 - ## Hello World Example (07_hello_world.mspl):
 ##### Prints "Hello, World!" on the screen.
+- ## Directives Example (08_directives.mspl):
+##### Uses all of the directives.

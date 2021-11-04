@@ -20,6 +20,7 @@
 #### Directive starts with `#`, like: `#DIRECTIVE_NAME`,
 #### List of the directives:
 #### `#LINTER_SKIP` - *Unsafe* mode, disable linter check.
+#### `#MEM_BUF_BYTE_SIZE=N` - Says that there is only `N` bytes in the memory buffer.
 #### `#PYTHON_COMMENTS_SKIP` - Disable writing comments in the Python when generating it (Should don`t break anything), you may use this if you dont want system comments in your generated python scripts.
 
 # Comments

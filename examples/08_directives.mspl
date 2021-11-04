@@ -1,0 +1,13 @@
+// Uses all of the directives.
+
+// Skip linter stage check.
+#LINTER_SKIP
+
+// Skip generating comments when generating Python source code.
+#PYTHON_COMMENTS_SKIP
+
+// Say that there is only 4 bytes in the memory buffer.
+#MEM_BUF_BYTE_SIZE=4
+
+// Push and trash pop to have any tokens, so the source will run.
+0 free
