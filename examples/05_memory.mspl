@@ -1,0 +1,7 @@
+// Writes 97;98;99 to the memory (abc) and then prints in as "abc".
+
+mbptr 0 + 97 mbwrite // 0 97 mbwrite
+mbptr 1 + 98 mbwrite // 1 98 mbwrite
+mbptr 2 + 99 mbwrite // 2 99 mbwrite
+
+0 3 mbshowc

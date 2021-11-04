@@ -1,0 +1,8 @@
+// Prints all characters of the alphabet.
+
+0 while copy 26 < then
+    copy mbptr + copy 97 + mbwrite
+    inc
+endif free
+
+mbptr 26 mbshowc

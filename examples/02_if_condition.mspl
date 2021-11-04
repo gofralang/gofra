@@ -1,0 +1,9 @@
+// Shows 11 as conditions confgured to jump there (not 10)
+
+1 if
+    0 if
+        10 show
+    else
+        11 show
+    endif
+endif

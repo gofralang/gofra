@@ -79,19 +79,17 @@ class Keyword(Enum):
 class Intrinsic(Enum):
     """ Enumeration for intrinsic types. """
 
-    # Int.
+    # Int (loops).
     # Increment (Undols to: 1 -) like x--.
     INCREMENT = auto()
     # Increment (Undols to: 1 +) like x++.
     DECREMENT = auto()
-    # +
-    PLUS = auto()
-    # -
-    MINUS = auto()
-    # *
-    MULTIPLY = auto()
-    # /
-    DIVIDE = auto()
+
+    # Int.
+    PLUS = auto()  # +
+    MINUS = auto()  # -
+    MULTIPLY = auto()  # *
+    DIVIDE = auto()  # /
 
     # Boolean.
     # ==, !=
@@ -108,6 +106,12 @@ class Intrinsic(Enum):
     COPY = auto()
     FREE = auto()
     SWAP = auto()
+
+    # Memory.
+    MEMORY_BYTES_WRITE = auto()
+    MEMORY_BYTES_READ = auto()
+    MEMORY_BYTES_SHOW_CHARACTERS = auto()
+    MEMORY_BYTES_POINTER = auto()
 
     # Utils.
     SHOW = auto()
@@ -150,10 +154,8 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 16, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 20, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
-    "dec": Intrinsic.DECREMENT,
-    "inc": Intrinsic.INCREMENT,
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
     "*": Intrinsic.MULTIPLY,
@@ -165,10 +167,17 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     ">=": Intrinsic.LESS_EQUAL_THAN,
     "<=": Intrinsic.GREATER_EQUAL_THAN,
 
+    "dec": Intrinsic.DECREMENT,
+    "inc": Intrinsic.INCREMENT,
+    "mbwrite": Intrinsic.MEMORY_BYTES_WRITE,
+    "mbread": Intrinsic.MEMORY_BYTES_READ,
+    "mbshowc": Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS,
+    "mbptr": Intrinsic.MEMORY_BYTES_POINTER,
     "swap": Intrinsic.SWAP,
     "show": Intrinsic.SHOW,
     "copy": Intrinsic.COPY,
     "free": Intrinsic.FREE
+
 }
 INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
     value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
@@ -197,6 +206,10 @@ KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
 # Extra `tokens`.
 EXTRA_COMMENT = "//"
 EXTRA_DIRECTIVE = "#"
+
+# Memory size and null pointer.
+MEMORY_BYTEARRAY_SIZE = 1000
+MEMORY_BYTEARRAY_NULL_POINTER = 0
 
 
 @dataclass
@@ -701,6 +714,9 @@ def interpretator_run(source: Source):
     # Create empty stack.
     memory_execution_stack: Stack = Stack()
 
+    # Allocate MEMORY_BYTEARRAY_SIZE sized bytearray.
+    memory_bytearray: bytearray = bytearray(MEMORY_BYTEARRAY_SIZE)
+
     # Get source operators count.
     operators_count = len(source.operators)
 
@@ -711,7 +727,7 @@ def interpretator_run(source: Source):
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 16, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 20, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -922,6 +938,149 @@ def interpretator_run(source: Source):
 
                     # Increase operator index.
                     current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
+                    # Intristic memory write bytes operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    if operand_b > len(memory_bytearray):
+                        # If this is gonna be memory overflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to write at memory address {operand_b} "
+                                                   f"that overflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferOverflow)", True)
+                    elif operand_b < 0:
+                        # If this is gonna be memory undeflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to write at memory address {operand_b} "
+                                                   f"that underflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferUnderflow)", True)
+
+                    # Write memory.
+                    try:
+                        memory_bytearray[operand_b] = operand_a
+                    except IndexError:
+                        # Memory* error.
+
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer (over|under)flow "
+                                                   f"(Write to pointer {operand_b} when there is memory buffer "
+                                                   f"with size {len(memory_bytearray)} bytes)!", True)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
+                    # Intristic memory read bytes operator.
+
+                    # Get operand.
+                    operand_a = memory_execution_stack.pop()
+
+                    if operand_a > len(memory_bytearray):
+                        # If this is gonna be memory overflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to read from memory address {operand_a} "
+                                                   f"that overflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferOverflow)", True)
+                    elif operand_a < 0:
+                        # If this is gonna be memory undeflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to read from memory address {operand_a} "
+                                                   f"that underflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferUnderflow)", True)
+                    # Read memory at the pointer.
+                    try:
+                        memory_bytes = memory_bytearray[operand_a]
+                    except IndexError:
+                        # Memory* error.
+
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer (over|under)flow "
+                                                   f"(Read from pointer {operand_a} when there is memory buffer "
+                                                   f"with size {len(memory_bytearray)} bytes)!", True)
+                    else:
+                        # Push memory to the stack.
+                        memory_execution_stack.push(memory_bytes)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
+                    # Intristic memory show bytes as chars operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Start byte index.
+                    memory_byte_index = 0
+
+                    if operand_b + operand_a > len(memory_bytearray):
+                        # If this is gonna be memory overflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to read from memory address "
+                                                   f"from {operand_b} to {operand_b + operand_a} "
+                                                   f"that overflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferOverflow)", True)
+                    elif operand_a < 0:
+                        # If this is gonna be memory undeflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to read from memory address"
+                                                   f"from {operand_b} to {operand_b + operand_a} "
+                                                   f"that underflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferUnderflow)", True)
+
+                    while memory_byte_index < operand_a:
+                        # Iterate over length.
+
+                        # Get pointer to the memory byte.
+                        memory_pointer = operand_b + memory_byte_index
+
+                        # Read memory byte.
+                        try:
+                            memory_byte = memory_bytearray[memory_pointer]
+                        except IndexError:
+                            # Memory* error.
+
+                            # Error message.
+                            cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                       f"Memory buffer (over|under)flow "
+                                                       f"(Read from pointer {memory_pointer} when there is memory "
+                                                       f"buffer with size {len(memory_bytearray)} bytes)!", True)
+                        else:
+                            # Print decoded memory byte as char.
+                            print(chr(memory_byte), end="")
+
+                        # Increment byte index.
+                        memory_byte_index += 1
+
+                    # Optional new line.
+                    print()
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
+                    # Intristic increment operator.
+
+                    # Push pointer to the stack.
+                    memory_execution_stack.push(MEMORY_BYTEARRAY_NULL_POINTER)
+
+                    # Increase operator index.
+                    current_operator_index += 1
                 else:
                     # If unknown instrinsic type.
                     assert False, "Unknown instrinsic! (How?)"
@@ -1033,7 +1192,7 @@ def linter_type_check(source: Source):
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 16, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 20, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -1303,6 +1462,100 @@ def linter_type_check(source: Source):
 
                 # Increase operator index.
                 current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
+                # Intristic memory write bytes operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
+
+                # Get both operands.
+                memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                if operand_b > MEMORY_BYTEARRAY_SIZE:
+                    # If this is gonna be memory overflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to write at memory address {operand_b} "
+                                               f"that overflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               " bytes (MemoryBufferOverflow)", True)
+                elif operand_b < 0:
+                    # If this is gonna be memory undeflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to write at memory address {operand_b} "
+                                               f"that underflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               " bytes (MemoryBufferUnderflow)", True)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
+                # Intristic memory read bytes operator.
+
+                # Get operand.
+                operand_a = memory_linter_stack.pop()
+
+                if operand_a > MEMORY_BYTEARRAY_SIZE:
+                    # If this is gonna be memory overflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to read from memory address {operand_a} "
+                                               f"that overflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               " bytes (MemoryBufferOverflow)", True)
+                elif operand_a < 0:
+                    # If this is gonna be memory undeflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to read from memory address {operand_a} "
+                                               f"that underflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               " bytes (MemoryBufferUnderflow)", True)
+
+                # Push memory to the stack.
+                memory_linter_stack.push(int())
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
+                # Intristic memory show bytes as chars operator.
+
+                # Get both operands.
+                operand_a = memory_linter_stack.pop()
+                operand_b = memory_linter_stack.pop()
+
+                if operand_b + operand_a > MEMORY_BYTEARRAY_SIZE:
+                    # If this is gonna be memory overflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to read from memory address "
+                                               f"from {operand_b} to {operand_b + operand_a} "
+                                               f"that overflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               " bytes (MemoryBufferOverflow)", True)
+                elif operand_a < 0:
+                    # If this is gonna be memory undeflow.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
+                                               f"Trying to read from memory address"
+                                               f"from {operand_b} to {operand_b + operand_a} "
+                                               f"that underflows memory buffer size {MEMORY_BYTEARRAY_SIZE}"
+                                               " bytes (MemoryBufferUnderflow)", True)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
+                # Intristic increment operator.
+
+                # Push pointer to the stack.
+                memory_linter_stack.push(MEMORY_BYTEARRAY_NULL_POINTER)
+
+                # Increase operator index.
+                current_operator_index += 1
             else:
                 # If unknown instrinsic type.
                 assert False, "Unknown instrinsic! (How?)"
@@ -1559,6 +1812,12 @@ def python_generate(source: Source, context: ParserContext, path: str):
             current_lines.append("\n")
             current_lines.append("# Allocate stack (As is MSPL is Stack-Based Language): \n")
         current_lines.append("stack = []")
+        current_lines.append("\n")
+
+        # Update insert position.
+        nonlocal bytearray_insert_position
+        bytearray_insert_position = len(current_lines)
+
         if not directive_skip_comments:
             current_lines.append("\n\n")
             current_lines.append(f"# File ({basename(path)}): \n")
@@ -1571,6 +1830,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
         # Write source header.
         if not directive_skip_comments:
             current_lines.append("# Source:\n")
+
     # Open file.
     file = open(path + ".py", "w")
 
@@ -1590,16 +1850,24 @@ def python_generate(source: Source, context: ParserContext, path: str):
     current_indent_level = 0
     current_indent = ""
 
+    # Position to insert expressions block.
     expressions_insert_position = 0
+
+    # If true, we will warn about memory usage and write bytearray block.
+    write_bytearray_block = False
+
+    # Position to insery bytearray block if write_bytearray_block.
+    bytearray_insert_position = 0
+
     # While.
-    current_while_block = True
+    current_while_block = False
     current_while_comment = ""
     current_while_defined_name = ""
     current_while_lines = []
 
     # Check that there is no changes in operator type or intrinsic.
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
-    assert len(Intrinsic) == 16, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 20, "Please update implementation after adding new Intrinsic!"
 
     # Write header.
     __header()
@@ -1714,12 +1982,49 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
                 # Write node data.
                 write("stack.pop()")
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
+                # Intrinsic null pointer operator.
+
+                # Write node data.
+                write(f"stack.append({MEMORY_BYTEARRAY_NULL_POINTER})")
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
+                # Intrinsic memory bytes write operator.
+
+                # Write block.
+                write_bytearray_block = True
+
+                # Write node data.
+                write("buffer = stack.pop()")
+                write("memory[stack.pop()] = buffer")
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
+                # Intrinsic memory bytes read operator.
+
+                # Write block.
+                write_bytearray_block = True
+
+                # Write node data.
+                write(f"stack.append(memory[stack.pop()])")
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
+                # Intrinsic memory bytes show as characters operator.
+
+                # Write block.
+                write_bytearray_block = True
+
+                # Write node data.
+                write("mblength = stack.pop()")
+                write("mbaddress = stack.pop()")
+                write("mbindex = 0")
+                write("while mbindex < mblength:")
+                write("\tmbbyte = memory[mbaddress + mbindex]")
+                write("\tprint(chr(mbbyte), end=\"\")")
+                write("\tmbindex += 1")
+                write("print()")
             else:
                 # If unknown instrinsic type.
 
                 # Write node data.
                 cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
-                                           f"Intrinsic {INTRINSIC_TYPES_TO_NAME[current_operator.operand]} "
+                                           f"Intrinsic `{INTRINSIC_TYPES_TO_NAME[current_operator.operand]}` "
                                            f"is not implemented for python generation!", True)
         elif current_operator.type == OperatorType.IF:
             # If operator.
@@ -1788,6 +2093,9 @@ def python_generate(source: Source, context: ParserContext, path: str):
             # Go out the expression.
             current_while_block = False
 
+            # Reset current while lines list (stack).
+            current_while_lines.clear()
+
             # Increase indent level.
             current_indent_level += 1
             current_indent = "\t" * current_indent_level
@@ -1822,6 +2130,27 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
         # Increment current index.
         current_operator_index += 1
+
+    if write_bytearray_block:
+        # If we should write bytearray block.
+
+        # Write.
+        current_lines.insert(bytearray_insert_position, f"memory = bytearray({MEMORY_BYTEARRAY_SIZE})")
+        if not directive_skip_comments:
+            current_lines.insert(bytearray_insert_position,
+                                 "# Allocate memory buffer "
+                                 "(As you called MSPL memory work operators): \n")
+
+        # Warn user about using byte operations in python compilation.
+        cli_error_message("Warning", "YOU ARE USING MEMORY OPERATIONS, THAT MAY HAVE EXPLICIT BEHAVIOUR! "
+                                     "IT IS MAY HARDER TO CATCH ERROR IF YOU RUN COMPILED VERSION (NOT INTERPRETATED)")
+    if len(current_while_lines) != 0:
+        # If we have something at the while lines stack.
+
+        # Error.
+        cli_error_message_verbosed(Stage.COMPILATOR, source.operators[-1].token.location, "Error",
+                                   "While lines stack is not empty after running python generation! "
+                                   "(Compilation error?)", True)
 
     # Write lines.
     [file.write(stack_line) for stack_line in current_lines]
