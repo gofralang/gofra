@@ -5,14 +5,14 @@
 ## Features:
 - #### Interpretate code (Run).
 - #### Generate graph for the code (.dot).
-- #### Compile (Generate) python code (MSPL -> Python).
+- #### Compile (Generate) python code (MSPL -> Python) (Which is not compile memory operations very well).
 - #### Lint (Type check) very simple and slow.
 
 ## Language features:
 - #### Stack implementation (push, pop by operators)
 - #### Conditional IFs ([bool_from_stack] if [code] else [code] endif).
 - #### Loops WHILE (while [expression] then [code] endif)
-- #### Bytes Memory (mbwrite, mbread, mbshowc, mbptr)
+- #### Bytes Memory (mbwrite, mbread, mbshowc, mbptr (also 4b (4 Bytes) r/w versions))
 
 ## Simple example:
 #### `35 // Push 35 in the stack.`

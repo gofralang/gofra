@@ -2,13 +2,16 @@
 
 # Operations
 ## Simple
-#### `+`, `-`, `*`, `/`, `==`, `!=`, `<`, `>`,`<=`, `>=`.
+#### `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `>`,`<=`, `>=`.
 ### (This is base operations, so it shouldn`t be documented)
 ## Other
-#### `show` - Pop one element from the stack and show it.
-#### `copy` - Pop one element from the stack and push it 2 times (copy).
-#### `free` - Pop one element from the stack (Just drop it, free stack from it).
-#### `swap` - Pop two elements from the stack and swap them ([0, 1] => [1, 0]).
+#### `show` - Pop one element from the stack and show it. (`[0, 1] => [0]`)
+#### `copy` - Pop one element from the stack and push it 2 times (copy). (`[0, 1] => [0, 1, 1]`)
+#### `copy2` - Pop two elements from the stack and push it 4 times (copy) (`[0, 1] => [0, 1, 0, 1]`).
+#### `free` - Pop one element from the stack (Just drop it, free stack from it). (`[0, 1] => [0]`)
+#### `swap` - Pop two elements from the stack and swap them (`[0, 1] => [1, 0]`).
+#### `cop2` - Pop two elements from the stack and swap them (`[0, 1] => [1, 0]`).
+#### `swap` - Pop two elements from the stack and swap them (`[0, 1] => [1, 0]`).
 
 # Keywords*
 #### `if` - Pop one element from the stack, if there is 0, jumps to the endif or else block, otherwise jumps in the conditonal branch (Read more in block "Conditonal")(`0 if 1024 show endif`).
@@ -66,7 +69,13 @@ endif
 ```
 
 # Memory
-#### Supported: `MBWRITE`, `MBREAD`, `MBSHOW`, `MBPTR`
+#### Supported: 
+#### `mbwrite` - Pop two elements from the stack (`[pointer], [value] => []`), and writes value at the pointer to memory(1 byte | 8 bits cell)
+#### `mbread` - Pop one element from the stack (`[pointer] => [])`, and pushes back value at the pointer from memory (1 byte | 8 bits cell), 
+#### `mbshowc` - Pop two elements from the stack (`[pointer], [length] => []`), and shows every character in memory `[pointer]...[pointer+length-1]`, 
+#### `mbptr` - Push *null_pointer** to the stack (By default *0**) to write memory at
+#### `mbwrite4b` - Same as `mbwrite`, but writes 4 bytes | 32 bits (Remember that you should write next value at `[pointer] 4 +` as there is 4 bytes taken by that value)
+#### `mbread4b` - Same as `mbread`, but reads 4 bytes | 32 bits
 #### There is memory* support in the language, to use it you may do something like:
 ```
 // Write 9 to memory pointer 0.
