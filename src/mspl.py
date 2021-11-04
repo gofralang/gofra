@@ -2082,7 +2082,13 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 __comment = "" if directive_skip_comments else f"  # -- Return for calling from WHILE."
                 current_lines.insert(while_block_insert_position + 1,
                                      f"\treturn stack.pop()" + __comment + "\n")
+            else:
+                # If this is not while.
 
+                # Error.
+                cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
+                                           "Got `then`, when there is no `while` found! "
+                                           "(Parsing error?)", True)
             # Write node data.
             current_lines.append(f":{comment}\n")
 
@@ -2101,6 +2107,10 @@ def python_generate(source: Source, context: ParserContext, path: str):
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
+            # Write node data.
+            __comment = "" if directive_skip_comments else f"  # -- Be sure that there is no empty body."
+            current_lines.append(current_indent + f"pass{__comment}\n")
+
             # Decrease indent level.
             current_indent_level -= 1
             current_indent = "\t" * current_indent_level
@@ -2116,6 +2126,10 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
+            # Write node data.
+            __comment = "" if directive_skip_comments else f"  # -- Be sure that there is no empty body."
+            current_lines.append(current_indent + f"pass{__comment}\n")
 
             # Decrease indent level.
             current_indent_level -= 1
