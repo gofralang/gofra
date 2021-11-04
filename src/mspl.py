@@ -104,6 +104,8 @@ class Intrinsic(Enum):
 
     # Stack.
     COPY = auto()
+    COPY_OVER = auto()
+    COPY2 = auto()
     FREE = auto()
     SWAP = auto()
 
@@ -154,7 +156,7 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 20, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 22, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
@@ -176,6 +178,8 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "swap": Intrinsic.SWAP,
     "show": Intrinsic.SHOW,
     "copy": Intrinsic.COPY,
+    "copy2": Intrinsic.COPY2,
+    "copy_over": Intrinsic.COPY_OVER,
     "free": Intrinsic.FREE
 
 }
@@ -749,7 +753,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 20, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 22, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -919,6 +923,35 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
                     # Increase operator index.
                     current_operator_index += 1
+                elif current_operator.operand == Intrinsic.COPY2:
+                    # Intristic copy2 operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push copy to the stack.
+                    memory_execution_stack.push(operand_b)
+                    memory_execution_stack.push(operand_a)
+                    memory_execution_stack.push(operand_b)
+                    memory_execution_stack.push(operand_a)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.COPY_OVER:
+                    # Intristic copy over operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push copy to the stack.
+                    memory_execution_stack.push(operand_b)
+                    memory_execution_stack.push(operand_a)
+                    memory_execution_stack.push(operand_b)
+
+                    # Increase operator index.
+                    current_operator_index += 1
                 elif current_operator.operand == Intrinsic.DECREMENT:
                     # Intristic decrement operator.
 
@@ -995,6 +1028,15 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"Memory buffer (over|under)flow "
                                                    f"(Write to pointer {operand_b} when there is memory buffer "
                                                    f"with size {len(memory_bytearray)} bytes)!", True)
+
+                    except ValueError:
+                        # If this is 8bit (1byte) range (number) overflow.
+
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer cell can only contain 1 byte (8 bit) "
+                                                   f"that must be in range (0, 256),\nbut you passed number "
+                                                   f"{operand_a} which is not fits in the 1 byte cell! (ByteOverflow)", True)
 
                     # Increase operator index.
                     current_operator_index += 1

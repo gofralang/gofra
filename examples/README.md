@@ -7,7 +7,7 @@
 - ## While Loop Example (03_while_loop.mspl):
 ##### Show numbers from 0 to 10.
 - ## Alphabet Example (04_alphabet.mspl):
-##### Shows all alphabeth letters as characters.
+##### Shows all alphabet letters as characters.
 - ## Memory Example (05_memory.mspl):
 ##### Write chars `abc` in the memory, then show them as characters.
 - ## Pyramid Example (06_pyramid.mspl):
