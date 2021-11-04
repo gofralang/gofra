@@ -12,3 +12,5 @@
 ##### Write chars `abc` in the memory, then show them as characters.
 - ## Pyramid Example (06_pyramid.mspl):
 ##### Prints pyramid of asterics.
+- ## Hello World Example (07_hello_world.mspl):
+##### Prints "Hello, World!" on the screen.

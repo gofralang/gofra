@@ -1,0 +1,18 @@
+// Prints "Hello, World!" on the screen.
+
+mbptr
+copy 0 + 72 mbwrite
+copy 1 + 101 mbwrite
+copy 2 + 108 mbwrite
+copy 3 + 108 mbwrite
+copy 4 + 111 mbwrite
+copy 5 + 44 mbwrite
+copy 6 + 32 mbwrite
+copy 7 + 119 mbwrite
+copy 8 + 111 mbwrite
+copy 9 + 114 mbwrite
+copy 10 + 108 mbwrite
+copy 11 + 100 mbwrite
+copy 12 + 33 mbwrite
+copy 13 + 10 mbwrite
+copy 14 + mbshowc
