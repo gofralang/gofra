@@ -90,6 +90,7 @@ class Intrinsic(Enum):
     MINUS = auto()  # -
     MULTIPLY = auto()  # *
     DIVIDE = auto()  # /
+    MODULUS = auto()  # %
 
     # Boolean.
     # ==, !=
@@ -158,7 +159,7 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 24, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 25, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
@@ -170,6 +171,7 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     ">": Intrinsic.GREATER_THAN,
     ">=": Intrinsic.LESS_EQUAL_THAN,
     "<=": Intrinsic.GREATER_EQUAL_THAN,
+    "%": Intrinsic.MODULUS,
 
     "dec": Intrinsic.DECREMENT,
     "inc": Intrinsic.INCREMENT,
@@ -757,7 +759,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 24, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -790,7 +792,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_b = memory_execution_stack.pop()
 
                     # Push sum to the stack.
-                    memory_execution_stack.push(operand_a + operand_b)
+                    memory_execution_stack.push(operand_b + operand_a)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -802,7 +804,19 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_b = memory_execution_stack.pop()
 
                     # Push divide to the stack.
-                    memory_execution_stack.push(operand_a % operand_b)
+                    memory_execution_stack.push(int(operand_b // operand_a))
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MODULUS:
+                    # Intristic modulus operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Push divide to the stack.
+                    memory_execution_stack.push(int(operand_b % operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -826,7 +840,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_b = memory_execution_stack.pop()
 
                     # Push muliply to the stack.
-                    memory_execution_stack.push(operand_a * operand_b)
+                    memory_execution_stack.push(operand_b * operand_a)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -838,7 +852,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_b = memory_execution_stack.pop()
 
                     # Push equal to the stack.
-                    memory_execution_stack.push(int(operand_a == operand_b))
+                    memory_execution_stack.push(int(operand_b == operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -850,7 +864,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_b = memory_execution_stack.pop()
 
                     # Push not equal to the stack.
-                    memory_execution_stack.push(int(operand_a != operand_b))
+                    memory_execution_stack.push(int(operand_b != operand_a))
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -1398,7 +1412,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push sum to the stack.
-                memory_linter_stack.push(operand_a + operand_b)
+                memory_linter_stack.push(operand_b + operand_a)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1414,7 +1428,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push divide to the stack.
-                memory_linter_stack.push(operand_a % operand_b)
+                memory_linter_stack.push(int(operand_b / operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1446,7 +1460,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push muliply to the stack.
-                memory_linter_stack.push(operand_a * operand_b)
+                memory_linter_stack.push(operand_b * operand_a)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1462,7 +1476,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push equal to the stack.
-                memory_linter_stack.push(int(operand_a == operand_b))
+                memory_linter_stack.push(int(operand_b == operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1478,7 +1492,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push not equal to the stack.
-                memory_linter_stack.push(int(operand_a != operand_b))
+                memory_linter_stack.push(int(operand_b != operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1494,7 +1508,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push less than to the stack.
-                memory_linter_stack.push(int(operand_a < operand_b))
+                memory_linter_stack.push(int(operand_b < operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1510,7 +1524,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push greater than to the stack.
-                memory_linter_stack.push(int(operand_a > operand_b))
+                memory_linter_stack.push(int(operand_b > operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1526,7 +1540,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push less equal than to the stack.
-                memory_linter_stack.push(int(operand_a <= operand_b))
+                memory_linter_stack.push(int(operand_b <= operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1542,7 +1556,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push greater equal than to the stack.
-                memory_linter_stack.push(int(operand_a >= operand_b))
+                memory_linter_stack.push(int(operand_b >= operand_a))
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -2038,7 +2052,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
     # Check that there is no changes in operator type or intrinsic.
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
-    assert len(Intrinsic) == 20, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
 
     # Write header.
     __header()
@@ -2072,12 +2086,16 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 # Intristic plus operator.
 
                 # Write node data.
-                write("stack.append(stack.pop() + stack.pop())")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("stack.append(operand_b + operand_a)")
             elif current_operator.operand == Intrinsic.MINUS:
                 # Intristic minus operator.
 
                 # Write node data.
-                write("stack.append(stack.pop() - stack.pop())")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("stack.append(operand_b - operand_a)")
             elif current_operator.operand == Intrinsic.INCREMENT:
                 # Intristic increment operator.
 
@@ -2092,57 +2110,132 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 # Intristic multiply operator.
 
                 # Write node data.
-                write("stack.append(stack.pop() * stack.pop())")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("stack.append(operand_b * operand_a)")
             elif current_operator.operand == Intrinsic.DIVIDE:
                 # Intristic divide operator.
 
                 # Write node data.
-                write(f"stack.append(stack.pop() % stack.pop())")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write(f"stack.append(int(operand_b / operand_a))")
+            elif current_operator.operand == Intrinsic.MODULUS:
+                # Intristic modulus operator.
+
+                # Write node data.
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write(f"stack.append(int(operand_b % operand_a))")
             elif current_operator.operand == Intrinsic.EQUAL:
                 # Intristic equal operator.
 
                 # Write node data.
-                write("stack.append(int(stack.pop() == stack.pop()))")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("stack.append(int(operand_b == operand_a))")
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
+                # Intristic memory write 4 bytes operator.
+
+                # Write block.
+                write_bytearray_block = True
+
+                # Write node data.
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("memory_bytes = operand_a.to_bytes(length=4, byteorder=\"little\", signed=(operand_a < 0))")
+                write("memory[operand_b:operand_b + 4] = memory_bytes")
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
+                # Intristic memory read 4 bytes operator.
+
+                # Write block.
+                write_bytearray_block = True
+
+                # Write node data.
+                write("operand_a = stack.pop()")
+                write("memory_bytes = int.from_bytes(memory[operand_a:operand_a + 4], byteorder=\"little\")")
+                write("stack.append(memory_bytes)")
+
+                # Increase operator index.
+                current_operator_index += 1
             elif current_operator.operand == Intrinsic.NOT_EQUAL:
                 # Intristic not equal operator.
 
                 # Write node data.
-                write("stack.append(int(stack.pop() != stack.pop()))")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("stack.append(int(operand_b != operand_a))")
+            elif current_operator.operand == Intrinsic.COPY2:
+                # Intristic copy2 operator.
+
+                # Write node data.
+                write(f"operand_a = stack.pop()")
+                write(f"operand_b = stack.pop()")
+                write("stack.append(operand_b)")
+                write("stack.append(operand_a)")
+                write("stack.append(operand_b)")
+                write("stack.append(operand_a)")
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.operand == Intrinsic.COPY_OVER:
+                # Intristic copy over operator.
+
+                # Write node data.
+                write(f"operand_a = stack.pop()")
+                write(f"operand_b = stack.pop()")
+                write("stack.append(operand_b)")
+                write("stack.append(operand_a)")
+                write("stack.append(operand_b)")
+
+                # Increase operator index.
+                current_operator_index += 1
             elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
                 # Intristic greater equal than operator.
 
                 # Write node data.
-                write("stack.append(int(stack.pop() <= stack.pop()))")
+                write(f"operand_a = stack.pop()")
+                write(f"operand_b = stack.pop()")
+                write("stack.append(int(operand_b >= operand_a))")
             elif current_operator.operand == Intrinsic.GREATER_THAN:
                 # Intristic greater than operator.
 
                 # Write node data.
-                write("stack.append(int(stack.pop() < stack.pop()))")
+                write(f"operand_a = stack.pop()")
+                write(f"operand_b = stack.pop()")
+                write("stack.append(int(operand_b > operand_a))")
             elif current_operator.operand == Intrinsic.LESS_THAN:
                 # Intristic less than operator.
 
                 # Write node data.
-                write("stack.append(int(stack.pop() > stack.pop()))")
+                write(f"operand_a = stack.pop()")
+                write(f"operand_b = stack.pop()")
+                write("stack.append(int(operand_b < operand_a))")
             elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
                 # Intristic less equal than operator.
 
                 # Write node data.
-                write("stack.append(int(stack.pop() >= stack.pop()))")
+                write(f"operand_a = stack.pop()")
+                write(f"operand_b = stack.pop()")
+                write("stack.append(int(operand_b<= operand_a))")
             elif current_operator.operand == Intrinsic.SWAP:
                 # Intristic swap operator.
 
                 # Write node data.
-                write("buffer_a = stack.pop()")
-                write("buffer_b = stack.pop()")
-                write("stack.append(buffer_a)")
-                write("stack.append(buffer_b)")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("stack.append(operand_a)")
+                write("stack.append(operand_b)")
             elif current_operator.operand == Intrinsic.COPY:
                 # Intristic copy operator.
 
                 # Write node data.
-                write("buffer = stack.pop()")
-                write("stack.append(buffer)")
-                write("stack.append(buffer)")
+                write("operand_a = stack.pop()")
+                write("stack.append(operand_a)")
+                write("stack.append(operand_a)")
             elif current_operator.operand == Intrinsic.SHOW:
                 # Intristic show operator.
 
@@ -2165,8 +2258,9 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 write_bytearray_block = True
 
                 # Write node data.
-                write("buffer = stack.pop()")
-                write("memory[stack.pop()] = buffer")
+                write("operand_a = stack.pop()")
+                write("operand_b = stack.pop()")
+                write("memory[operand_b] = operand_a")
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
                 # Intrinsic memory bytes read operator.
 
@@ -2174,7 +2268,9 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 write_bytearray_block = True
 
                 # Write node data.
-                write(f"stack.append(memory[stack.pop()])")
+                write("operand_a = stack.pop()")
+                write("memory_byte = memory[operand_a]")
+                write(f"stack.append(memory_byte)")
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
                 # Intrinsic memory bytes show as characters operator.
 
@@ -2182,13 +2278,13 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 write_bytearray_block = True
 
                 # Write node data.
-                write("mblength = stack.pop()")
-                write("mbaddress = stack.pop()")
-                write("mbindex = 0")
-                write("while mbindex < mblength:")
-                write("\tmbbyte = memory[mbaddress + mbindex]")
-                write("\tprint(chr(mbbyte), end=\"\")")
-                write("\tmbindex += 1")
+                write("memory_length = stack.pop()")
+                write("memory_pointer = stack.pop()")
+                write("memory_index = 0")
+                write("while memory_index < memory_length:")
+                write("\tmemory_byte = memory[memory_pointer + memory_index]")
+                write("\tprint(chr(memory_byte), end=\"\")")
+                write("\tmemory_index += 1")
             else:
                 # If unknown instrinsic type.
 
@@ -2326,8 +2422,10 @@ def python_generate(source: Source, context: ParserContext, path: str):
                                  "(As you called MSPL memory work operators): \n")
 
         # Warn user about using byte operations in python compilation.
+        cli_error_message("Warning", "MEMORY OPERATIONS WORK NOT CORRECT NOW!")
         cli_error_message("Warning", "YOU ARE USING MEMORY OPERATIONS, THAT MAY HAVE EXPLICIT BEHAVIOUR! "
                                      "IT IS MAY HARDER TO CATCH ERROR IF YOU RUN COMPILED VERSION (NOT INTERPRETATED)")
+
     if len(current_while_lines) != 0:
         # If we have something at the while lines stack.
 
