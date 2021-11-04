@@ -112,6 +112,8 @@ class Intrinsic(Enum):
     # Memory.
     MEMORY_BYTES_WRITE = auto()
     MEMORY_BYTES_READ = auto()
+    MEMORY_BYTES_WRITE4 = auto()
+    MEMORY_BYTES_READ4 = auto()
     MEMORY_BYTES_SHOW_CHARACTERS = auto()
     MEMORY_BYTES_POINTER = auto()
 
@@ -156,7 +158,7 @@ OPERATOR_ADDRESS = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 22, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 24, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "+": Intrinsic.PLUS,
     "-": Intrinsic.MINUS,
@@ -173,6 +175,8 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "inc": Intrinsic.INCREMENT,
     "mbwrite": Intrinsic.MEMORY_BYTES_WRITE,
     "mbread": Intrinsic.MEMORY_BYTES_READ,
+    "mbwrite4b": Intrinsic.MEMORY_BYTES_WRITE4,
+    "mbread4b": Intrinsic.MEMORY_BYTES_READ4,
     "mbshowc": Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS,
     "mbptr": Intrinsic.MEMORY_BYTES_POINTER,
     "swap": Intrinsic.SWAP,
@@ -753,7 +757,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 22, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 24, "Please update implementation after adding new Intrinsic!"
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -1036,7 +1040,113 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
                                                    f"Memory buffer cell can only contain 1 byte (8 bit) "
                                                    f"that must be in range (0, 256),\nbut you passed number "
-                                                   f"{operand_a} which is not fits in the 1 byte cell! (ByteOverflow)", True)
+                                                   f"{operand_a} which is not fits in the 1 byte cell! (ByteOverflow)",
+                                                   True)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
+                    # Intristic memory write 4 bytes operator.
+
+                    # Get both operands.
+                    operand_a = memory_execution_stack.pop()
+                    operand_b = memory_execution_stack.pop()
+
+                    # Convert value to 4 bytes.
+                    try:
+                        operand_a = operand_a.to_bytes(length=4, byteorder="little", signed=(operand_a < 0))
+                    except OverflowError:
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer cell can only contain 4 byte (32 bit) "
+                                                   f"that must be in range (0, 4294967295),\nbut you passed number "
+                                                   f"{operand_a} which is not fits in the 4 byte cell! (ByteOverflow)",
+                                                   True)
+
+                    if operand_b + 4 - 1 > len(memory_bytearray):
+                        # If this is gonna be memory overflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to write 4 bytes to memory address from {operand_b} to "
+                                                   f"{operand_b + 4 - 1} "
+                                                   f"that overflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferOverflow)", True)
+                    elif operand_b < 0:
+                        # If this is gonna be memory undeflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to write at memory address "
+                                                   f"from {operand_b} to {operand_b + 2} "
+                                                   f"that underflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferUnderflow)", True)
+
+                    # Write memory.
+                    try:
+                        memory_bytearray[operand_b:operand_b + 4] = operand_a
+                    except IndexError:
+                        # Memory* error.
+
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer (over|under)flow "
+                                                   f"(Write to pointer from "
+                                                   f"{operand_b} to {operand_b + 4 - 1} "
+                                                   f"when there is memory buffer with size "
+                                                   f"{len(memory_bytearray)} bytes)!", True)
+
+                    except ValueError:
+                        # If this is 32bit (4byte) range (number) overflow.
+
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer cell can only contain 4 byte (32 bit) "
+                                                   f"that must be in range (0, 4294967295),\nbut you passed number "
+                                                   f"{operand_a} which is not fits in the 4 byte cell! (ByteOverflow)",
+                                                   True)
+
+                    # Increase operator index.
+                    current_operator_index += 1
+                elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
+                    # Intristic memory read 4 bytes operator.
+
+                    # Get operand.
+                    operand_a = memory_execution_stack.pop()
+
+                    if operand_a + 4 - 1 > len(memory_bytearray):
+                        # If this is gonna be memory overflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to read from memory address "
+                                                   f"{operand_a} to {operand_a + 4 - 1} "
+                                                   f"that overflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferOverflow)", True)
+                    elif operand_a < 0:
+                        # If this is gonna be memory undeflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Trying to read from memory address "
+                                                   f"{operand_a} to {operand_a + 4 - 1}"
+                                                   f"that underflows memory buffer size {(len(memory_bytearray))}"
+                                                   " bytes (MemoryBufferUnderflow)", True)
+                    # Read memory at the pointer.
+                    try:
+                        memory_bytes = int.from_bytes(memory_bytearray[operand_a:operand_a + 4], byteorder="little")
+                    except IndexError:
+                        # Memory* error.
+
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer (over|under)flow "
+                                                   f"(Read from pointer {operand_a} to {operand_a + 4 - 1} "
+                                                   f"when there is memory buffer with size "
+                                                   f"{len(memory_bytearray)} bytes)!", True)
+                    else:
+                        # Push memory to the stack.
+                        memory_execution_stack.push(memory_bytes)
 
                     # Increase operator index.
                     current_operator_index += 1
@@ -1064,7 +1174,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    " bytes (MemoryBufferUnderflow)", True)
                     # Read memory at the pointer.
                     try:
-                        memory_bytes = memory_bytearray[operand_a]
+                        memory_byte = memory_bytearray[operand_a]
                     except IndexError:
                         # Memory* error.
 
@@ -1075,7 +1185,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"with size {len(memory_bytearray)} bytes)!", True)
                     else:
                         # Push memory to the stack.
-                        memory_execution_stack.push(memory_bytes)
+                        memory_execution_stack.push(memory_byte)
 
                     # Increase operator index.
                     current_operator_index += 1
