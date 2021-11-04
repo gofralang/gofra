@@ -10,3 +10,5 @@
 ##### Shows all alphabeth letters as characters.
 - ## Memory Example (05_memory.mspl):
 ##### Write chars `abc` in the memory, then show them as characters.
+- ## Pyramid Example (06_pyramid.mspl):
+##### Prints pyramid of asterics.

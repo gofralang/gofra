@@ -1,0 +1,38 @@
+// Prints pyramid of asterics (Char `42`), with 15* elements.
+
+1 while copy 15 < then
+    copy while copy 0 > then
+
+        copy mbptr + 1 + 42 mbwrite
+
+        dec
+    endif free
+
+    copy mbptr 2 + swap mbshowc
+
+    mbptr 0 + 10 mbwrite
+    mbptr 0 + 1 mbshowc
+
+    inc
+endif free
+
+
+// Code below is not storing row characters,
+// It`s just showc one by one which is more simplier,
+// But not so optimized / perfect.
+
+
+// 1 while copy 15 < then
+//    copy while copy 0 > then
+//
+//        mbptr 42 mbwrite
+//        mbptr 1 mbshowc
+//
+//        dec
+//    endif free
+//
+//    mbptr 10 mbwrite
+//    mbptr 1 mbshowc
+//
+//    inc
+//endif free
