@@ -480,18 +480,19 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                         if directive.startswith("MEM_BUF_BYTE_SIZE="):
                             # If this is starts with memory buffer byte size definition name.
 
-                            # Get new memory size.
-                            new_memory_bytearray_size = directive[len("MEM_BUF_BYTE_SIZE="):]
+                            # Get directive value from all directive text.
+                            directive_value = directive[len("MEM_BUF_BYTE_SIZE="):]
 
+                            # Get new memory size
                             try:
-                                new_memory_bytearray_size = int(new_memory_bytearray_size)
+                                new_memory_bytearray_size = int(directive_value)
                             except ValueError:
                                 # If error.
 
                                 # Message.
                                 cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                            f"Directive `{EXTRA_DIRECTIVE}{directive}` "
-                                                           f"passed invalid size `{new_memory_bytearray_size}`!", True)
+                                                           f"passed invalid size `{directive_value}`!", True)
 
                             # Change size of the bytearray.
                             context.memory_bytearray_size = new_memory_bytearray_size
@@ -1311,6 +1312,9 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                 if operand_a == 0:
                     # If this is false.
 
+                    # Type check.
+                    assert isinstance(source.operators[current_operator.operand].operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
                     # Jump to the operator operand.
                     # As this is THEN, so we should jump to the ENDIF.
                     current_operator_index = source.operators[current_operator.operand].operand
@@ -1937,8 +1941,7 @@ def linter_type_check(source: Source, context: ParserContext):
 # Source.
 
 
-def load_source_from_file(file_path: str) -> \
-        tuple[Union[Source, type(FileNotFoundError)], Union[ParserContext, type(FileNotFoundError)]]:
+def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
     """ Load file, then return ready source and context for it. (Tokenized, Parsed, Linted). """
 
     # Read source lines.
@@ -1946,8 +1949,8 @@ def load_source_from_file(file_path: str) -> \
         with open(file_path, "r", encoding="UTF-8") as source_file:
             source_lines = source_file.readlines()
     except FileNotFoundError:
-        # Return.
-        return FileNotFoundError, FileNotFoundError
+        # Error.
+        cli_error_message("Error", f"File \"{file_path}\" not founded!", True)
 
     # Parser context.
     parser_context = ParserContext()
@@ -2159,7 +2162,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
     current_while_block = False
     current_while_comment = ""
     current_while_defined_name = ""
-    current_while_lines = []
+    current_while_lines: List[str] = []
 
     # Check that there is no changes in operator type or intrinsic.
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
@@ -2674,14 +2677,26 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
         exit(0)
 
         # Return path as source file and help (argv[0]).
-        return ["", argument_vector[0]]
+        return ["", argument_vector[0], False]
     elif len(argument_vector) == 2:
         # Expected ARGV length.
-        pass
-    else:
-        # Message.
-        cli_usage_message(argument_runner_filename)
-        cli_error_message("Error", "Unexpected arguments!", True)
+
+        # Push silent to false.
+        argument_vector.pop()
+        argument_vector.append(False)
+    elif len(argument_vector) == 3:
+        # If this is may silent argument.
+
+        if argument_vector[2] == "-silent":
+            # If silent.
+
+            # Push silent to false.
+            argument_vector.pop()
+            argument_vector.append(True)
+        else:
+            # Message.
+            cli_usage_message(argument_runner_filename)
+            cli_error_message("Error", "Unexpected arguments!", True)
 
     # Return final ARGV.
     return argument_vector
@@ -2713,11 +2728,12 @@ def cli_usage_message(runner_filename: str = None):
 def cli_entry_point():
     """ Entry point for the CLI. """
 
-    # Welcome message.
-    cli_welcome_message()
-
     # CLI Options.
-    cli_source_path, cli_subcommand = cli_validate_argument_vector(argv)
+    cli_source_path, cli_subcommand, cli_silent = cli_validate_argument_vector(argv)
+
+    # Welcome message.
+    if not cli_silent:
+        cli_welcome_message()
 
     if cli_subcommand == "run":
         # If this is interpretate subcommand.
@@ -2725,60 +2741,48 @@ def cli_entry_point():
         # Get source.
         cli_source, cli_context = load_source_from_file(cli_source_path)
 
-        # File exists check.
-        if cli_source is FileNotFoundError:
-            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
-
         # Run interpretation.
         interpretator_run(cli_source, cli_context.memory_bytearray_size)
 
         # Message.
-        print(f"[Info] File \"{basename(cli_source_path)}\" was run!")
+        if not cli_silent:
+            print(f"[Info] File \"{basename(cli_source_path)}\" was run!")
     elif cli_subcommand == "graph":
         # If this is graph subcommand.
 
         # Get source.
         cli_source, _ = load_source_from_file(cli_source_path)
 
-        # File exists check.
-        if cli_source is FileNotFoundError:
-            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
-
         # Generate graph file.
         graph_generate(cli_source, cli_source_path)
 
         # Message.
-        print(f"[Info] .dot file \"{basename(cli_source_path)}.dot\" generated!")
+        if not cli_silent:
+            print(f"[Info] .dot file \"{basename(cli_source_path)}.dot\" generated!")
     elif cli_subcommand == "python":
         # If this is python subcommand.
 
         # Get source.
         cli_source, cli_context = load_source_from_file(cli_source_path)
 
-        # File exists check.
-        if cli_source is FileNotFoundError:
-            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
-
         # Generate python file.
         python_generate(cli_source, cli_context, cli_source_path)
 
         # Message.
-        print(f"[Info] .py file \"{basename(cli_source_path)}.py\" generated!")
+        if not cli_silent:
+            print(f"[Info] .py file \"{basename(cli_source_path)}.py\" generated!")
     elif cli_subcommand == "dump":
         # If this is dump subcommand.
 
         # Get source.
         cli_source, _ = load_source_from_file(cli_source_path)
 
-        # File exists check.
-        if cli_source is FileNotFoundError:
-            cli_error_message("Error", f"File \"{cli_source_path}\" not founded!", True)
-
         # Dump print.
         dump_print(cli_source)
 
         # Message.
-        print(f"[Info] File \"{basename(cli_source_path)}\" was dump printed!")
+        if not cli_silent:
+            print(f"[Info] File \"{basename(cli_source_path)}\" was dump printed!")
     else:
         # If unknown subcommand.
 
