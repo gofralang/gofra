@@ -1,0 +1,17 @@
+// Shows sum of the numbers from 1 to N.
+
+// Write 0 as start sum.
+mbptr 0 mbwrite4b
+
+1 while copy 1000 < then // N = 1000
+    // While from 1 to 1000
+
+    // Read sum and sum it with copied counter (to left on stack).
+    copy mbptr mbread4b +
+
+    // Write sum back.
+    mbptr swap mbwrite4b
+inc endif free // Increment while, free counter after.
+
+// Read 4 byte and show (result).
+mbptr mbread4b show

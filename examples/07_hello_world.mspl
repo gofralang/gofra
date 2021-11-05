@@ -1,6 +1,8 @@
 // Prints "Hello, World!" on the screen.
 
-mbptr
+mbptr // Get start memory pointer.
+
+// Write chars in the memory[0:14]
 copy 0 + 72 mbwrite
 copy 1 + 101 mbwrite
 copy 2 + 108 mbwrite
@@ -15,4 +17,6 @@ copy 10 + 108 mbwrite
 copy 11 + 100 mbwrite
 copy 12 + 33 mbwrite
 copy 13 + 10 mbwrite
+
+// Show all chacters.
 copy 14 + mbshowc

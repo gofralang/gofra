@@ -2,5 +2,4 @@
 
 0 while copy 10 < then
     copy show
-    inc
-endif free
+inc endif free

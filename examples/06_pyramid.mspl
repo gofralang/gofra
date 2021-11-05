@@ -1,20 +1,22 @@
 // Prints pyramid of asterics (Char `42`), with 15* elements.
 
 1 while copy 15 < then
+    // While from 1 to 15.
+
     copy while copy 0 > then
+        // From counter to 0.
 
+        // Write to pointer [pointer + index] value 42 (Asterics).
         copy mbptr + 1 + 42 mbwrite
+    dec endif free
 
-        dec
-    endif free
-
+    // Show all row.
     copy mbptr 2 + swap mbshowc
 
+    // Show char 10 (newline).
     mbptr 0 + 10 mbwrite
     mbptr 0 + 1 mbshowc
-
-    inc
-endif free
+inc endif free
 
 
 // Code below is not storing row characters,
@@ -24,15 +26,9 @@ endif free
 
 // 1 while copy 15 < then
 //    copy while copy 0 > then
-//
 //        mbptr 42 mbwrite
 //        mbptr 1 mbshowc
-//
-//        dec
-//    endif free
-//
+//    dec endif free
 //    mbptr 10 mbwrite
 //    mbptr 1 mbshowc
-//
-//    inc
-//endif free
+//inc endif free
