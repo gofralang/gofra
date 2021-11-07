@@ -1,28 +1,25 @@
-# Most Simple|Stupid Programming language. (MSPL)
+# Most Simple|Stupid Programming language. (MSPL) 
+ ***Stack - Based programming language "written in Python"***
 
-### ***Stack - Based programming language "written in Python"***
 
-## Features:
-- #### Interpretate code (Run).
-- #### Generate graph for the code (.dot).
-- #### Compile (Generate) python code (MSPL -> Python) (Which is not compile memory operations very well).
-- #### Lint (Type check) very simple and slow.
+## Features
+- Interpretate code (Run it).
+- Generate graph for the code (`.dot` graphviz).
+- Compile (Generate) python code (MSPL -> Python).
+- Lint (Type check) [WIP].
 
-## Language features:
-- #### Stack implementation (push, pop by operators)
-- #### Conditional IFs ([bool_from_stack] if [code] else [code] endif).
-- #### Loops WHILE (while [expression] then [code] endif)
-- #### Bytes Memory (mbwrite, mbread, mbshowc, mbptr (also 4b (4 Bytes) r/w versions))
+## Language features
+- Stack implementation (push, pop)
+- Conditional IFs ([bool_from_stack] if [code] else [code] endif).
+- WHILE loops (while [expression] then [code] endif)
+- Bytearray Memory (mbwrite, mbread, mbshowc, mbptr etc...)
 
-## Simple example:
-#### `35 // Push 35 in the stack.`
-#### `5 // Push 5 in the stack.`
-#### `+ // Pop both 35 and 5, and push their sum in the stack.`
-#### `show // Pop value from the stack and show it on the screen.`
+## Simple example
+```mode: opascal
+35 // Push 35 in the stack.
+5 // Push 5 in the stack.
++ // Pop both 35 and 5, and push their sum in the stack.
+show // Pop value from the stack and show it on the screen.
+```
 
-## For the documentation, read `DOCUMENTATION.MD`
-## Or `/examples/README.MD` for examples.
-
-# Previews:
-## Graph:
-![Graph](graph.jpg)
+## Documentation: `DOCUMENTATION.MD`, Examples: `./examples/README.MD`.
