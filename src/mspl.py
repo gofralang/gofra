@@ -493,9 +493,9 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                                 cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                            f"Directive `{EXTRA_DIRECTIVE}{directive}` "
                                                            f"passed invalid size `{directive_value}`!", True)
-
-                            # Change size of the bytearray.
-                            context.memory_bytearray_size = new_memory_bytearray_size
+                            else:
+                                # Change size of the bytearray.
+                                context.memory_bytearray_size = new_memory_bytearray_size
                         else:
                             # Message.
                             cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
@@ -1312,12 +1312,16 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                 if operand_a == 0:
                     # If this is false.
 
+                    # Endif jump operator index.
+                    endif_jump_operator_index = source.operators[current_operator.operand].operand
+
                     # Type check.
-                    assert isinstance(source.operators[current_operator.operand].operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+                    assert isinstance(endif_jump_operator_index, OPERATOR_ADDRESS), \
+                        "Type error, parser level error?"
 
                     # Jump to the operator operand.
                     # As this is THEN, so we should jump to the ENDIF.
-                    current_operator_index = source.operators[current_operator.operand].operand
+                    current_operator_index = int(endif_jump_operator_index)
                 else:
                     # If this is true.
 
@@ -1904,15 +1908,24 @@ def linter_type_check(source: Source, context: ParserContext):
         elif current_operator.type == OperatorType.THEN:
             # THEN operator.
 
-            # TODO: Add While / Then Lint.
+            # Check stack size.
+            if len(memory_linter_stack) < 1:
+                cli_no_arguments_error_message(current_operator, True)
+
             # Free operand.
             memory_linter_stack.pop()
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
+            # Endif jump operator index.
+            endif_jump_operator_index = source.operators[current_operator.operand].operand
+
+            # Type check.
+            assert isinstance(endif_jump_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
+
             # Jump to the ENDIF from WHILE.
-            current_operator_index = source.operators[current_operator.operand].operand
+            current_operator_index = int(endif_jump_operator_index)
         elif current_operator.type == OperatorType.ENDIF:
             # ENDIF operator.
 
@@ -2053,12 +2066,17 @@ def graph_generate(source: Source, path: str):
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
+            # Get ENDIF operator index.
+            endif_operator_index = source.operators[current_operator.operand].operand
+
+            # Type check.
+            assert isinstance(endif_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
+
             # Write node data
-            endif_operator_index = source.operators[current_operator.operand].operand - 1
             file.write(f"    Operator_{current_operator_index} [shape=record label=then];\n")
             file.write(f"    Operator_{current_operator_index} -> "
                        f"Operator_{current_operator_index + 1} [label=true];\n")
-            file.write(f"    Operator_{current_operator_index} -> Operator_{endif_operator_index} [label=false];\n")
+            file.write(f"    Operator_{current_operator_index} -> Operator_{endif_operator_index - 1} [label=false];\n")
         elif current_operator.type == OperatorType.ENDIF:
             # Endif operator.
 
@@ -2570,7 +2588,7 @@ def dump_print(source: Source):
         # While we not run out of the source operators list.
 
         # Get current operator from the source.
-        current_operator = source.operators[current_operator_index]
+        current_operator: Operator = source.operators[current_operator_index]
 
         # Operator in readable string.
         if current_operator.type == OperatorType.INTRINSIC:
@@ -2626,13 +2644,18 @@ def cli_no_arguments_error_message(operator: Operator, force_exit: bool = False)
         cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
                                    f"`{INTRINSIC_TYPES_TO_NAME[operator.operand]}` "
                                    f"intrinsic should have more arguments at the stack, but it was not founded!")
-
     elif operator.type == OperatorType.IF:
         # IF Operator.
 
         # Error
         cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
                                    "`IF` operator should have 1 argument at the stack, but it was not found!")
+    elif operator.type == OperatorType.THEN:
+        # THEN Operator.
+
+        # Error
+        cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
+                                   "`THEN` operator should have 1 argument at the stack, but it was not found!")
     else:
         # Unknown operator.
         assert False, "Tried to call no_arguments_error_message() " \
@@ -2677,23 +2700,18 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
         exit(0)
 
         # Return path as source file and help (argv[0]).
-        return ["", argument_vector[0], False]
+        return ["", argument_vector[0], ""]
     elif len(argument_vector) == 2:
         # Expected ARGV length.
 
-        # Push silent to false.
-        argument_vector.pop()
-        argument_vector.append(False)
+        # All ok.
+        pass
     elif len(argument_vector) == 3:
         # If this is may silent argument.
 
-        if argument_vector[2] == "-silent":
+        if argument_vector[2] != "-silent":
             # If silent.
 
-            # Push silent to false.
-            argument_vector.pop()
-            argument_vector.append(True)
-        else:
             # Message.
             cli_usage_message(argument_runner_filename)
             cli_error_message("Error", "Unexpected arguments!", True)
@@ -2730,6 +2748,7 @@ def cli_entry_point():
 
     # CLI Options.
     cli_source_path, cli_subcommand, cli_silent = cli_validate_argument_vector(argv)
+    cli_silent: bool = bool(cli_silent == "-silent")
 
     # Welcome message.
     if not cli_silent:

@@ -23,7 +23,7 @@ test_start_time = time.time()
 LANG_PATH = "../src/mspl.py"
 
 # Should we run MyPy.
-MYPY_RUN = False
+MYPY_RUN = True
 
 # If we should record new, and not test.
 RECORD_NEW = False
@@ -101,7 +101,7 @@ if MYPY_RUN:
     else:
         print(f"[MyPy][OK]!")
     if CLEAR_AFTER:
-        os.removedirs(".mypy_cache")
+        os.remove(".mypy_cache")
 else:
     print(f"[MyPy][Disabled]!")
 
