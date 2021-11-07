@@ -1358,7 +1358,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     if len(memory_execution_stack) > 0:
         # If there is any in the stack.
 
-        # Should be not called? (as we call type checker type_checker_static_type_check).
+        # TODO: Should be not called? (As we call type checker type_checker_static_type_check).
 
         # Error message.
         cli_error_message_verbosed(Stage.RUNNER, ("__runner__", 1, 1), "Warning",
@@ -1367,12 +1367,18 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
 # Linter.
 
-def linter_type_check(source: Source, context: ParserContext):
+def linter_type_check(source: Source):
     """ Linter static type check. """
 
-    # TODO: Rework (remake).
+    # TODO: IF/WHILE anylyse fixes.
 
-    # Create empty stack.
+    # Check that there is no new operator type.
+    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
+
+    # Check that there is no new instrinsic type.
+    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
+
+    # Create empty linter stack.
     memory_linter_stack = Stack()
 
     # Get source operators count.
@@ -1381,27 +1387,30 @@ def linter_type_check(source: Source, context: ParserContext):
     # Current operator index from the source.
     current_operator_index = 0
 
-    # Check that there is no new operator type.
-    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
+    # Check that there is more than zero operators in context.
+    if operators_count == 0:
+        # If there is no operators in the final parser context.
 
-    # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
+        # Error.
+        cli_error_message_verbosed(Stage.LINTER, ("__linter__", 1, 1), "Error",
+                                   "There is no operators found in given file after parsing, "
+                                   "are you given empty file or file without resulting operators?", True)
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
 
         # Get current operator from the source.
-        current_operator = source.operators[current_operator_index]
+        current_operator: Operator = source.operators[current_operator_index]
 
         # Grab our operator
         if current_operator.type == OperatorType.PUSH_INTEGER:
-            # Push integer operator.
+            # PUSH INTEGER operator.
 
             # Type check.
             assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
 
-            # Push operand to the stack.
-            memory_linter_stack.push(current_operator.operand)
+            # Push operand type to the stack.
+            memory_linter_stack.push(int)
 
             # Increase operator index.
             current_operator_index += 1
@@ -1419,11 +1428,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push sum to the stack.
-                memory_linter_stack.push(operand_b + operand_a)
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.DIVIDE:
                 # Intristic divide operator.
 
@@ -1435,11 +1448,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push divide to the stack.
-                memory_linter_stack.push(int(operand_b // operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.MODULUS:
                 # Intristic modulus operator.
 
@@ -1451,11 +1468,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push modulus to the stack.
-                memory_linter_stack.push(int(operand_b % operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.MINUS:
                 # Intristic minus operator.
 
@@ -1467,11 +1488,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push difference to the stack.
-                memory_linter_stack.push(operand_b - operand_a)
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.MULTIPLY:
                 # Intristic multiply operator.
 
@@ -1483,11 +1508,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push muliply to the stack.
-                memory_linter_stack.push(operand_b * operand_a)
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.EQUAL:
                 # Intristic equal operator.
 
@@ -1499,11 +1528,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push equal to the stack.
-                memory_linter_stack.push(int(operand_b == operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.NOT_EQUAL:
                 # Intristic not equal operator.
 
@@ -1515,11 +1548,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push not equal to the stack.
-                memory_linter_stack.push(int(operand_b != operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.LESS_THAN:
                 # Intristic less than operator.
 
@@ -1531,11 +1568,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push less than to the stack.
-                memory_linter_stack.push(int(operand_b < operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.GREATER_THAN:
                 # Intristic greater than operator.
 
@@ -1547,11 +1588,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push greater than to the stack.
-                memory_linter_stack.push(int(operand_b > operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
                 # Intristic less equal than operator.
 
@@ -1563,11 +1608,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push less equal than to the stack.
-                memory_linter_stack.push(int(operand_b <= operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
                 # Intristic greater equal than operator.
 
@@ -1579,11 +1628,15 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                # Push greater equal than to the stack.
-                memory_linter_stack.push(int(operand_b >= operand_a))
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.SWAP:
                 # Intristic swap operator.
 
@@ -1598,9 +1651,6 @@ def linter_type_check(source: Source, context: ParserContext):
                 # Push swapped to the stack.
                 memory_linter_stack.push(operand_a)
                 memory_linter_stack.push(operand_b)
-
-                # Increase operator index.
-                current_operator_index += 1
             elif current_operator.operand == Intrinsic.COPY:
                 # Intristic copy operator.
 
@@ -1614,10 +1664,7 @@ def linter_type_check(source: Source, context: ParserContext):
                 # Push copy to the stack.
                 memory_linter_stack.push(operand_a)
                 memory_linter_stack.push(operand_a)
-
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.operand == Intrinsic.COPY:
+            elif current_operator.operand == Intrinsic.COPY2:
                 # Intristic copy2 operator.
 
                 # Check stack size.
@@ -1633,9 +1680,6 @@ def linter_type_check(source: Source, context: ParserContext):
                 memory_linter_stack.push(operand_a)
                 memory_linter_stack.push(operand_b)
                 memory_linter_stack.push(operand_a)
-
-                # Increase operator index.
-                current_operator_index += 1
             elif current_operator.operand == Intrinsic.COPY_OVER:
                 # Intristic copy over operator.
 
@@ -1648,12 +1692,9 @@ def linter_type_check(source: Source, context: ParserContext):
                 operand_b = memory_linter_stack.pop()
 
                 # Push copy to the stack.
-                memory_linter_stack.push(operand_b)
+                memory_linter_stack.push(operand_a)
                 memory_linter_stack.push(operand_a)
                 memory_linter_stack.push(operand_b)
-
-                # Increase operator index.
-                current_operator_index += 1
             elif current_operator.operand == Intrinsic.DECREMENT:
                 # Intristic decrement operator.
 
@@ -1664,11 +1705,12 @@ def linter_type_check(source: Source, context: ParserContext):
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
 
-                # Push decrement to the stack.
-                memory_linter_stack.push(operand_a - 1)
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.INCREMENT:
                 # Intristic increment operator.
 
@@ -1679,11 +1721,12 @@ def linter_type_check(source: Source, context: ParserContext):
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
 
-                # Push increment to the stack.
-                memory_linter_stack.push(operand_a + 1)
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.FREE:
                 # Intristic free operator.
 
@@ -1691,11 +1734,8 @@ def linter_type_check(source: Source, context: ParserContext):
                 if len(memory_linter_stack) < 1:
                     cli_no_arguments_error_message(current_operator, True)
 
-                # Pop and left.
+                # Free operand.
                 memory_linter_stack.pop()
-
-                # Increase operator index.
-                current_operator_index += 1
             elif current_operator.operand == Intrinsic.SHOW:
                 # Intristic show operator.
 
@@ -1703,11 +1743,12 @@ def linter_type_check(source: Source, context: ParserContext):
                 if len(memory_linter_stack) < 1:
                     cli_no_arguments_error_message(current_operator, True)
 
-                # Pop and left.
-                memory_linter_stack.pop()
+                # Get operand.
+                operand_a = memory_linter_stack.pop()
 
-                # Increase operator index.
-                current_operator_index += 1
+                # Check type.
+                if operand_a != int:
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
                 # Intristic memory write bytes operator.
 
@@ -1716,28 +1757,15 @@ def linter_type_check(source: Source, context: ParserContext):
                     cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
-                memory_linter_stack.pop()
+                operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                if operand_b > context.memory_bytearray_size:
-                    # If this is gonna be memory overflow.
-
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to write at memory address {operand_b} "
-                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferOverflow)", True)
-                elif operand_b < 0:
-                    # If this is gonna be memory undeflow.
-
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to write at memory address {operand_b} "
-                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferUnderflow)", True)
-
-                # Increase operator index.
-                current_operator_index += 1
+                # Check type.
+                if operand_a != int:  # TODO: Pointer.
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
                 # Intristic memory write 4 bytes operator.
 
@@ -1746,123 +1774,76 @@ def linter_type_check(source: Source, context: ParserContext):
                     cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
-                memory_linter_stack.pop()
+                operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                if operand_b + 4 - 1 > context.memory_bytearray_size:
-                    # If this is gonna be memory overflow.
+                # Check type.
+                if operand_a != int:  # TODO: Pointer.
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                # Check type.
+                if operand_b != int:
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to write at memory address {operand_b + 4 - 1} "
-                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferOverflow)", True)
-                elif operand_b < 0:
-                    # If this is gonna be memory undeflow.
-
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to write at memory address {operand_b} "
-                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferUnderflow)", True)
-
-                # Increase operator index.
-                current_operator_index += 1
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
                 # Intristic memory read 4 bytes operator.
 
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    cli_no_arguments_error_message(current_operator, True)
+
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
 
-                if operand_a + 4 - 1 > context.memory_bytearray_size:
-                    # If this is gonna be memory overflow.
+                # Check type.
+                if operand_a != int:  # TODO: Pointer.
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
 
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to read from memory address {operand_a  + 4 - 1} "
-                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferOverflow)", True)
-                elif operand_a < 0:
-                    # If this is gonna be memory undeflow.
-
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to read from memory address {operand_a} "
-                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferUnderflow)", True)
-
-                # Push memory to the stack.
-                memory_linter_stack.push(int())
-
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
                 # Intristic memory read bytes operator.
 
+                # Check stack size.
+                if len(memory_linter_stack) < 1:
+                    cli_no_arguments_error_message(current_operator, True)
+
                 # Get operand.
                 operand_a = memory_linter_stack.pop()
 
-                if operand_a > context.memory_bytearray_size:
-                    # If this is gonna be memory overflow.
+                # Check type.
+                if operand_a != int:  # TODO: Pointer.
+                    cli_argument_type_error_message(current_operator, 2, operand_a, int, True)
 
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to read from memory address {operand_a} "
-                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferOverflow)", True)
-                elif operand_a < 0:
-                    # If this is gonna be memory undeflow.
-
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to read from memory address {operand_a} "
-                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferUnderflow)", True)
-
-                # Push memory to the stack.
-                memory_linter_stack.push(int())
-
-                # Increase operator index.
-                current_operator_index += 1
+                # Push to the stack.
+                memory_linter_stack.push(int)
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
                 # Intristic memory show bytes as chars operator.
+
+                # Check stack size.
+                if len(memory_linter_stack) < 2:
+                    cli_no_arguments_error_message(current_operator, True)
 
                 # Get both operands.
                 operand_a = memory_linter_stack.pop()
                 operand_b = memory_linter_stack.pop()
 
-                if operand_b + operand_a > context.memory_bytearray_size:
-                    # If this is gonna be memory overflow.
+                # Check type.
+                if operand_a != int:  # TODO: Pointer.
+                    cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+                if operand_b != int:  # TODO: Pointer.
+                    cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to read from memory address "
-                                               f"from {operand_b} to {operand_b + operand_a} "
-                                               f"that overflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferOverflow)", True)
-                elif operand_a < 0:
-                    # If this is gonna be memory undeflow.
-
-                    # Error.
-                    cli_error_message_verbosed(Stage.LINTER, current_operator.token.location, "Error",
-                                               f"Trying to read from memory address"
-                                               f"from {operand_b} to {operand_b + operand_a} "
-                                               f"that underflows memory buffer size {context.memory_bytearray_size}"
-                                               " bytes (MemoryBufferUnderflow)", True)
-
-                # Increase operator index.
-                current_operator_index += 1
             elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
                 # Intristic increment operator.
 
                 # Push pointer to the stack.
-                memory_linter_stack.push(MEMORY_BYTEARRAY_NULL_POINTER)
-
-                # Increase operator index.
-                current_operator_index += 1
+                memory_linter_stack.push(int)
             else:
                 # If unknown instrinsic type.
-                assert False, "Unknown instrinsic! (How?)"
+                assert False, "Got unexpected / unknon intrinsic type! (How?)"
+
+            # Increase operator index.
+            current_operator_index += 1
         elif current_operator.type == OperatorType.IF:
             # IF operator.
 
@@ -1873,21 +1854,16 @@ def linter_type_check(source: Source, context: ParserContext):
             # Get operand.
             operand_a = memory_linter_stack.pop()
 
+            # Check type.
+            if operand_a != int:
+                cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
+
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
-            if operand_a == 0:
-                # If this is false.
-
-                # Jump to the operator operand.
-                # As this is IF, so we should jump to the ENDIF.
-                current_operator_index = current_operator.operand
-            else:
-                # If this is true.
-
-                # Increment operator index.
-                # This is makes jump into the if branch.
-                current_operator_index += 1
+            # Increment operator index.
+            # This is makes jump into the if branch.
+            current_operator_index += 1
         elif current_operator.type == OperatorType.ELSE:
             # ELSE operator.
 
@@ -1908,15 +1884,19 @@ def linter_type_check(source: Source, context: ParserContext):
         elif current_operator.type == OperatorType.THEN:
             # THEN operator.
 
+            # Type check.
+            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+
             # Check stack size.
             if len(memory_linter_stack) < 1:
                 cli_no_arguments_error_message(current_operator, True)
 
-            # Free operand.
-            memory_linter_stack.pop()
+            # Get operand.
+            operand_a = memory_linter_stack.pop()
 
-            # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+            # Check type.
+            if operand_a != int:
+                cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
 
             # Endif jump operator index.
             endif_jump_operator_index = source.operators[current_operator.operand].operand
@@ -1937,13 +1917,13 @@ def linter_type_check(source: Source, context: ParserContext):
             current_operator_index = current_operator.operand
         else:
             # If unknown operator type.
-            assert False, "Unknown operator type! (How?)"
+            assert False, "Got unexpected / unknon operator type! (How?)"
 
     if len(memory_linter_stack) != 0:
         # If there is any in the stack.
 
-        # Get last operator location.
-        location = source.operators[current_operator_index - 1].token.location
+        # Get last operator token location.
+        location: LOCATION = source.operators[current_operator_index - 1].token.location
 
         # Error message.
         cli_error_message_verbosed(Stage.LINTER, location, "Error",
@@ -1990,7 +1970,7 @@ def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
     # Type check.
     assert isinstance(parser_context.directive_linter_skip, bool), "Expected linter skip directive to be boolean."
     if not parser_context.directive_linter_skip:
-        linter_type_check(parser_context_source, parser_context)
+        linter_type_check(parser_context_source)
 
     # Return source and parser context.
     return parser_context_source, parser_context
@@ -2782,6 +2762,43 @@ def cli_no_arguments_error_message(operator: Operator, force_exit: bool = False)
         # Unknown operator.
         assert False, "Tried to call no_arguments_error_message() " \
                       "for operator that does not need arguments! (Type checker error?)"
+
+    # If we should force exit.
+    if force_exit:
+        exit(1)
+
+
+def cli_argument_type_error_message(operator: Operator, argument_index: int,
+                                    actual_type: type, expected_type: type, force_exit: bool = False):
+    """ Shows unexpected argument type passed error message to the CLI. """
+
+    if operator.type == OperatorType.INTRINSIC:
+        # Intrinsic Operator.
+
+        # Type check.
+        assert isinstance(operator.operand, Intrinsic), "Type error, parser level error?"
+
+        # Error
+        cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
+                                   f"`{INTRINSIC_TYPES_TO_NAME[operator.operand]}` "
+                                   f"intrinsic expected {argument_index} argument "
+                                   f"to be with type {expected_type}, but it has type {actual_type}!")
+    elif operator.type == OperatorType.IF:
+        # IF Operator.
+
+        # Error
+        cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
+                                   f"`IF` operator expected type {expected_type} but got {actual_type}!")
+    elif operator.type == OperatorType.THEN:
+        # THEN Operator.
+
+        # Error
+        cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
+                                   f"`THEN` operator expected type {expected_type} but got {actual_type}!")
+    else:
+        # Unknown operator.
+        assert False, "Tried to call cli_argument_type_error_message() " \
+                      "for unknown operator! (Type checker error?)"
 
     # If we should force exit.
     if force_exit:
