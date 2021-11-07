@@ -1,3 +1,3 @@
 # Source:
 
-### This folder contains source file (`mspl.py`).
+### This folder contains source file of the language (`mspl.py`).

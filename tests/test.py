@@ -5,9 +5,9 @@
 import subprocess
 import shlex
 import typing
-import os.path
 import time
 import os
+
 
 def cli_execute(commands: typing.List[str]) -> subprocess.CompletedProcess:
     """ Executes CLI command. """
@@ -66,8 +66,8 @@ for test_directory in TEST_DIRECTORIS:
             dump_result = cli_execute(cli_base_command + ["dump", "-silent"])
 
         # Get run result.
-        run_result_current = str(run_result.stdout.decode("utf-8"))
-        run_result_current = run_result_current.encode().decode("unicode_escape")
+        run_result_current = run_result.stdout.decode("utf-8")
+        run_result_current = run_result_current.encode("unicode_escape").decode("utf-8")
 
         if RECORD_NEW:
             # If we record.
@@ -80,13 +80,16 @@ for test_directory in TEST_DIRECTORIS:
             record_file_path = TEST_RECORDS_DIRECTORY + os.path.basename(cli_execute_path) + ".txt"
             with open(record_file_path, "r") as record_file:
                 run_result_expected = "".join(record_file.readlines())
-                run_result_expected = run_result_expected.encode().decode("unicode_escape")
 
             if run_result_current != run_result_expected:
                 # If no same result.
 
                 # Print.
-                print(f"[Test][Failed] File {cli_execute_path} expected result {run_result_expected}, but got {run_result_current}!")
+                print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", but got \"{run_result_current}\"!")
+            else:
+                # Print.
+                print(f"[Test][OK] File {cli_execute_path}!")
+
         # Clean after.
         if CLEAR_AFTER and RUN_OTHER:
             os.remove(cli_execute_path + ".dot")
@@ -101,7 +104,10 @@ if MYPY_RUN:
     else:
         print(f"[MyPy][OK]!")
     if CLEAR_AFTER:
-        os.remove(".mypy_cache")
+        try:
+            os.remove(".mypy_cache")
+        except PermissionError:
+            pass
 else:
     print(f"[MyPy][Disabled]!")
 
