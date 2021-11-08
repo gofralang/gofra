@@ -1,0 +1,8 @@
+mbptr 0 mbwrite4b
+1 while copy 1000 < then
+    copy copy 3 % 0 == swap 2 % 0 == + 1 <= if
+        copy mbptr mbread4b +
+        mbptr swap mbwrite4b
+    endif
+inc endif free
+mbptr mbread4b show

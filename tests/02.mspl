@@ -1,0 +1,24 @@
+mbptr 0 + 1 mbwrite4b
+mbptr 4 + 2 mbwrite4b
+mbptr 12 + 0 mbwrite4b
+mbptr 8 + 0 mbwrite4b
+1 0 while copy 0 == then
+    mbptr 0 + mbread4b
+    mbptr 4 + mbread4b +
+    mbptr 4 + mbread4b mbptr 12 + swap mbwrite4b
+    mbptr 4 + swap mbwrite4b
+    mbptr 0 + mbptr 12 + mbread4b mbwrite4b
+    mbptr 4 + mbread4b 2 % 0 == if
+        mbptr 12 + mbread4b
+        mbptr 4 + mbread4b +
+        mbptr 12 + swap mbwrite4b
+    endif
+    swap copy 30 <= if
+        mbptr 0 + mbread4b show
+        mbptr 4 + mbread4b show
+        mbptr 8 + mbread4b show
+        mbptr 12 + mbread4b show
+        swap inc swap dec
+    endif swap
+    swap inc swap
+endif free free
