@@ -1,15 +1,15 @@
-181   mbptr 0 + swap mbwrite4b
-8     mbptr 4 + swap mbwrite
+181   MPTR 0 + swap mwrite4b
+8     MPTR 4 + swap mwrite
 
-1 while copy 3 < then
-    mbptr 0 + mbread4b
-    mbptr 4 + mbread
+1 while copy 3 < do
+    MPTR 0 + mread4b
+    MPTR 4 + mread
     copy2
 
-    / mbptr 0 + swap mbwrite4b
+    / MPTR 0 + swap mwrite4b
     % show
 
-    mbptr 0 + mbread4b mbptr 4 + mbread < if
+    MPTR 0 + mread4b MPTR 4 + mread < if
         inc
-    endif
-endif free
+    end
+end free

@@ -1,11 +1,11 @@
 // Prints all characters of the alphabet.
 
-0 while copy 26 < then
+0 while copy 26 < do
     // From to 0 to 26 (Alphabet size).
 
     // Write [97+I] to [I].
-    copy mbptr + copy 97 + mbwrite
-inc endif free
+    copy MPTR + copy 97 + mwrite
+inc end free
 
 // Shows 26 characters.
-mbptr 26 mbshowc
+MPTR 26 mshowc

@@ -2,10 +2,8 @@
 
 1 if
     0 if
-        // 1 and 0 - 10.
         10 show
     else
-        //
         11 show
-    endif
-endif
+    end
+end

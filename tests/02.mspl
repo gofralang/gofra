@@ -1,24 +1,24 @@
-mbptr 0 + 1 mbwrite4b
-mbptr 4 + 2 mbwrite4b
-mbptr 12 + 0 mbwrite4b
-mbptr 8 + 0 mbwrite4b
-1 0 while copy 0 == then
-    mbptr 0 + mbread4b
-    mbptr 4 + mbread4b +
-    mbptr 4 + mbread4b mbptr 12 + swap mbwrite4b
-    mbptr 4 + swap mbwrite4b
-    mbptr 0 + mbptr 12 + mbread4b mbwrite4b
-    mbptr 4 + mbread4b 2 % 0 == if
-        mbptr 12 + mbread4b
-        mbptr 4 + mbread4b +
-        mbptr 12 + swap mbwrite4b
-    endif
+MPTR 0 + 1 mwrite4b
+MPTR 4 + 2 mwrite4b
+MPTR 12 + 0 mwrite4b
+MPTR 8 + 0 mwrite4b
+1 0 while copy 0 == do
+    MPTR 0 + mread4b
+    MPTR 4 + mread4b +
+    MPTR 4 + mread4b MPTR 12 + swap mwrite4b
+    MPTR 4 + swap mwrite4b
+    MPTR 0 + MPTR 12 + mread4b mwrite4b
+    MPTR 4 + mread4b 2 % 0 == if
+        MPTR 12 + mread4b
+        MPTR 4 + mread4b +
+        MPTR 12 + swap mwrite4b
+    end
     swap copy 30 <= if
-        mbptr 0 + mbread4b show
-        mbptr 4 + mbread4b show
-        mbptr 8 + mbread4b show
-        mbptr 12 + mbread4b show
+        MPTR 0 + mread4b show
+        MPTR 4 + mread4b show
+        MPTR 8 + mread4b show
+        MPTR 12 + mread4b show
         swap inc swap dec
-    endif swap
+    end swap
     swap inc swap
-endif free free
+end free free

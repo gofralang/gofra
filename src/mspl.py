@@ -66,9 +66,9 @@ class Keyword(Enum):
     # Conditions.
     IF = auto()
     WHILE = auto()
-    THEN = auto()
+    DO = auto()
     ELSE = auto()
-    ENDIF = auto()
+    END = auto()
 
 
 class Intrinsic(Enum):
@@ -106,12 +106,12 @@ class Intrinsic(Enum):
     SWAP = auto()
 
     # Memory.
-    MEMORY_BYTES_WRITE = auto()
-    MEMORY_BYTES_READ = auto()
-    MEMORY_BYTES_WRITE4 = auto()
-    MEMORY_BYTES_READ4 = auto()
-    MEMORY_BYTES_SHOW_CHARACTERS = auto()
-    MEMORY_BYTES_POINTER = auto()
+    MEMORY_WRITE = auto()
+    MEMORY_READ = auto()
+    MEMORY_WRITE4BYTES = auto()
+    MEMORY_READ4BYTES = auto()
+    MEMORY_SHOW_CHARACTERS = auto()
+    MEMORY_POINTER = auto()
 
     # Utils.
     SHOW = auto()
@@ -132,9 +132,9 @@ class OperatorType(Enum):
     # Conditions and loops.
     IF = auto()
     WHILE = auto()
-    THEN = auto()
+    DO = auto()
     ELSE = auto()
-    ENDIF = auto()
+    END = auto()
 
 
 # Types.
@@ -184,12 +184,12 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "free": Intrinsic.FREE,
 
     # Memory.
-    "mbwrite": Intrinsic.MEMORY_BYTES_WRITE,
-    "mbread": Intrinsic.MEMORY_BYTES_READ,
-    "mbwrite4b": Intrinsic.MEMORY_BYTES_WRITE4,
-    "mbread4b": Intrinsic.MEMORY_BYTES_READ4,
-    "mbshowc": Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS,
-    "mbptr": Intrinsic.MEMORY_BYTES_POINTER
+    "mwrite": Intrinsic.MEMORY_WRITE,
+    "mread": Intrinsic.MEMORY_READ,
+    "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
+    "mread4b": Intrinsic.MEMORY_READ4BYTES,
+    "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
+    "MPTR": Intrinsic.MEMORY_POINTER
 
 }
 INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
@@ -212,8 +212,8 @@ KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "else": Keyword.ELSE,
     "while": Keyword.WHILE,
-    "then": Keyword.THEN,
-    "endif": Keyword.ENDIF,
+    "do": Keyword.DO,
+    "end": Keyword.END,
 }
 
 # Extra `tokens`.
@@ -561,19 +561,19 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                 # Increment operator index.
                 context.operator_index += 1
-            elif current_token.value == Keyword.THEN:
-                # This is THEN keyword.
+            elif current_token.value == Keyword.DO:
+                # This is DO keyword.
 
                 if len(context.memory_stack) == 0:
                     # If there is nothing on the memory stack.
 
                     # Error.
                     cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
-                                               "`then` should used after the `while` block!", True)
+                                               "`do` should used after the `while` block!", True)
 
                 # Push operator to the context.
                 context.operators.append(Operator(
-                    type=OperatorType.THEN,
+                    type=OperatorType.DO,
                     token=current_token
                 ))
 
@@ -586,7 +586,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Error.
                     cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
-                                               "`then` should used after the `while` block!", True)
+                                               "`do` should used after the `while` block!", True)
 
                 # Say that we crossreference WHILE block.
                 context.operators[context.operator_index].operand = block_operator_index
@@ -636,8 +636,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # Error message.
                     cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
                                                "`else` can only used after `if` block!", True)
-            elif current_token.value == Keyword.ENDIF:
-                # If this is endif keyword.
+            elif current_token.value == Keyword.END:
+                # If this is end keyword.
 
                 # Get block operator from the stack.
                 block_operator_index = context.memory_stack.pop()
@@ -648,21 +648,21 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Push operator to the context.
                     context.operators.append(Operator(
-                        type=OperatorType.ENDIF,
+                        type=OperatorType.END,
                         token=current_token
                     ))
 
-                    # Say that start IF block refers to this ENDIF block.
+                    # Say that start IF block refers to this END block.
                     context.operators[block_operator_index].operand = context.operator_index
 
-                    # Say that this ENDIF block refers to next operator index.
+                    # Say that this END block refers to next operator index.
                     context.operators[context.operator_index].operand = context.operator_index + 1
                 elif block_operator.type == OperatorType.ELSE:
                     # If this is ELSE block.
 
                     # Push operator to the context.
                     context.operators.append(Operator(
-                        type=OperatorType.ENDIF,
+                        type=OperatorType.END,
                         token=current_token
                     ))
 
@@ -671,33 +671,33 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Say that we should jump to the next position.
                     context.operators[context.operator_index].operand = context.operator_index + 1
-                elif block_operator.type == OperatorType.THEN:
-                    # If this is THEN block.
+                elif block_operator.type == OperatorType.DO:
+                    # If this is DO block.
 
                     # Type check.
-                    assert block_operator.operand is not None, "THEN operator has unset operand! Parser level error?"
+                    assert block_operator.operand is not None, "DO operator has unset operand! Parser level error?"
                     assert isinstance(block_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
                     # Push operator to the context.
                     context.operators.append(Operator(
-                        type=OperatorType.ENDIF,
+                        type=OperatorType.END,
                         token=current_token
                     ))
 
-                    # Say that THEN crossreference to the WHILE block.
+                    # Say that DO crossreference to the WHILE block.
                     context.operators[context.operator_index].operand = block_operator.operand
 
                     # Say that WHILE should jump in the DO body.
                     context.operators[block_operator.operand].operand = context.operator_index + 1
                 else:
-                    # If invalid we call endif not after the if or else.
+                    # If invalid we call end not after the if or else.
 
                     # Get error location.
                     error_location = block_operator.token.location
 
                     # Error message.
                     cli_error_message_verbosed(Stage.PARSER, error_location, "Error",
-                                               "`endif` can only close `if`, `else` or `then` block!", True)
+                                               "`end` can only close `if`, `else` or `do` block!", True)
 
                 # Increment operator index.
                 context.operator_index += 1
@@ -954,8 +954,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
                     # Show operand.
                     print(operand_a)
-                elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
-                    # Intristic memory write bytes operator.
+                elif current_operator.operand == Intrinsic.MEMORY_WRITE:
+                    # Intristic memory write operator.
 
                     # Get both operands.
                     operand_a = memory_execution_stack.pop()
@@ -999,7 +999,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that must be in range (0, 256),\nbut you passed number "
                                                    f"{operand_a} which is not fits in the 1 byte cell! (ByteOverflow)",
                                                    True)
-                elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
+                elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
                     # Intristic memory write 4 bytes operator.
 
                     # Get both operands.
@@ -1059,7 +1059,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that must be in range (0, 4294967295),\nbut you passed number "
                                                    f"{operand_a} which is not fits in the 4 byte cell! (ByteOverflow)",
                                                    True)
-                elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
+                elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
                     # Intristic memory read 4 bytes operator.
 
                     # Get operand.
@@ -1098,8 +1098,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     else:
                         # Push memory to the stack.
                         memory_execution_stack.push(memory_bytes)
-                elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
-                    # Intristic memory read bytes operator.
+                elif current_operator.operand == Intrinsic.MEMORY_READ:
+                    # Intristic memory read operator.
 
                     # Get operand.
                     operand_a = memory_execution_stack.pop()
@@ -1134,8 +1134,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     else:
                         # Push memory to the stack.
                         memory_execution_stack.push(memory_byte)
-                elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
-                    # Intristic memory show bytes as chars operator.
+                elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
+                    # Intristic memory show as chars operator.
 
                     # Get both operands.
                     operand_a = memory_execution_stack.pop()
@@ -1186,8 +1186,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
                         # Increment byte index.
                         memory_byte_index += 1
-                elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
-                    # Intristic increment operator.
+                elif current_operator.operand == Intrinsic.MEMORY_POINTER:
+                    # Intristic memory pointer operator.
 
                     # Push pointer to the stack.
                     memory_execution_stack.push(MEMORY_BYTEARRAY_NULL_POINTER)
@@ -1214,7 +1214,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                         "Type error, parser level error?"
 
                     # Jump to the operator operand.
-                    # As this is IF, so we should jump to the ENDIF.
+                    # As this is IF, so we should jump to the END.
                     current_operator_index = current_operator.operand
                 else:
                     # If this is true.
@@ -1231,8 +1231,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                 # Jump to the operator operand.
                 # As this is ELSE operator, we should have index + 1, index!
                 current_operator_index = current_operator.operand
-            elif current_operator.type == OperatorType.THEN:
-                # THEN operator.
+            elif current_operator.type == OperatorType.DO:
+                # DO operator.
 
                 # Get operand.
                 operand_a = memory_execution_stack.pop()
@@ -1244,15 +1244,15 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     # If this is false.
 
                     # Endif jump operator index.
-                    endif_jump_operator_index = source.operators[current_operator.operand].operand
+                    end_jump_operator_index = source.operators[current_operator.operand].operand
 
                     # Type check.
-                    assert isinstance(endif_jump_operator_index, OPERATOR_ADDRESS), \
+                    assert isinstance(end_jump_operator_index, OPERATOR_ADDRESS), \
                         "Type error, parser level error?"
 
                     # Jump to the operator operand.
-                    # As this is THEN, so we should jump to the ENDIF.
-                    current_operator_index = int(endif_jump_operator_index)
+                    # As this is DO, so we should jump to the END.
+                    current_operator_index = int(end_jump_operator_index)
                 else:
                     # If this is true.
 
@@ -1265,8 +1265,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                 # Increment operator index.
                 # This is makes jump into the if statement (expression).
                 current_operator_index += 1
-            elif current_operator.type == OperatorType.ENDIF:
-                # ENDIF operator.
+            elif current_operator.type == OperatorType.END:
+                # END operator.
 
                 # Type check.
                 assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
@@ -1276,7 +1276,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     "Type error, parser level error?"
 
                 # Jump to the operator operand.
-                # As this is ENDIF operator, we should have index + 1, index!
+                # As this is END operator, we should have index + 1, index!
                 current_operator_index = current_operator.operand
             else:
                 # If unknown operator type.
@@ -1682,8 +1682,8 @@ def linter_type_check(source: Source):
                 # Check type.
                 if operand_a != TYPE_INTEGER:
                     cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
-            elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
-                # Intristic memory write bytes operator.
+            elif current_operator.operand == Intrinsic.MEMORY_WRITE:
+                # Intristic memory write operator.
 
                 # Check stack size.
                 if len(memory_linter_stack) < 2:
@@ -1699,7 +1699,7 @@ def linter_type_check(source: Source):
                 # Check type.
                 if operand_b != TYPE_INTEGER:
                     cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
-            elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
+            elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
                 # Intristic memory write 4 bytes operator.
 
                 # Check stack size.
@@ -1716,8 +1716,7 @@ def linter_type_check(source: Source):
                 # Check type.
                 if operand_b != TYPE_INTEGER:
                     cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
-
-            elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
+            elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
                 # Intristic memory read 4 bytes operator.
 
                 # Check stack size.
@@ -1733,8 +1732,8 @@ def linter_type_check(source: Source):
 
                 # Push to the stack.
                 memory_linter_stack.push(int)
-            elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
-                # Intristic memory read bytes operator.
+            elif current_operator.operand == Intrinsic.MEMORY_READ:
+                # Intristic memory read operator.
 
                 # Check stack size.
                 if len(memory_linter_stack) < 1:
@@ -1749,7 +1748,7 @@ def linter_type_check(source: Source):
 
                 # Push to the stack.
                 memory_linter_stack.push(int)
-            elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
+            elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
                 # Intristic memory show bytes as chars operator.
 
                 # Check stack size.
@@ -1766,8 +1765,8 @@ def linter_type_check(source: Source):
                 if operand_b != TYPE_INTEGER:
                     cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
 
-            elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
-                # Intristic increment operator.
+            elif current_operator.operand == Intrinsic.MEMORY_POINTER:
+                # Intristic memory pointer operator.
 
                 # Push pointer to the stack.
                 memory_linter_stack.push(int)
@@ -1814,8 +1813,8 @@ def linter_type_check(source: Source):
 
             # Increase operator index.
             current_operator_index += 1
-        elif current_operator.type == OperatorType.THEN:
-            # THEN operator.
+        elif current_operator.type == OperatorType.DO:
+            # DO operator.
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
@@ -1832,21 +1831,21 @@ def linter_type_check(source: Source):
                 cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
 
             # Endif jump operator index.
-            endif_jump_operator_index = source.operators[current_operator.operand].operand
+            end_jump_operator_index = source.operators[current_operator.operand].operand
 
             # Type check.
-            assert isinstance(endif_jump_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
+            assert isinstance(end_jump_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
 
-            # Jump to the ENDIF from WHILE.
-            current_operator_index = int(endif_jump_operator_index)
-        elif current_operator.type == OperatorType.ENDIF:
-            # ENDIF operator.
+            # Jump to the END from WHILE.
+            current_operator_index = int(end_jump_operator_index)
+        elif current_operator.type == OperatorType.END:
+            # END operator.
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
             # Jump to the operator operand.
-            # As this is ENDIF operator, we should have index + 1, index!
+            # As this is END operator, we should have index + 1, index!
             current_operator_index = current_operator.operand
         else:
             # If unknown operator type.
@@ -2024,40 +2023,40 @@ def graph_generate(source: Source, path: str):
             # Description: WHILE actually just refers to the next operation.
             file.write(f"    Operator_{current_operator_index} [shape=record label=while];\n")
             file.write(f"    Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
-        elif current_operator.type == OperatorType.THEN:
-            # THEN operator.
+        elif current_operator.type == OperatorType.DO:
+            # DO operator.
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
-            # Get ENDIF operator index.
-            endif_operator_index = source.operators[current_operator.operand].operand
+            # Get END operator index.
+            end_operator_index = source.operators[current_operator.operand].operand
 
             # Type check.
-            assert isinstance(endif_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
+            assert isinstance(end_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
 
             # Write operator data.
-            file.write(f"    Operator_{current_operator_index} [shape=record label=then];\n")
+            file.write(f"    Operator_{current_operator_index} [shape=record label=do];\n")
 
             # Write operator false/true ways.
             file.write(f"    Operator_{current_operator_index} -> Operator_{current_operator_index + 1} "
                        f"[label=true];\n")
-            file.write(f"    Operator_{current_operator_index} -> Operator_{endif_operator_index - 1} "
+            file.write(f"    Operator_{current_operator_index} -> Operator_{end_operator_index - 1} "
                        f"[label=false];\n")
-        elif current_operator.type == OperatorType.ENDIF:
-            # ENDIF operator.
+        elif current_operator.type == OperatorType.END:
+            # END operator.
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
             # Write operator data.
-            # Description: ENDIF actually just refers to the next operation.
-            file.write(f"   Operator_{current_operator_index} [shape=record label=endif];\n")
+            # Description: END actually just refers to the next operation.
+            file.write(f"   Operator_{current_operator_index} [shape=record label=end];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
         else:
             # If unknown operator type.
             assert False, f"Unknown operator type! " \
-                          f"(How? Maybe you forgot add new \"elif\" after incrementing assertion above?)"
+                          f"(How? Maybe you forgot add new \"else\" after incrementing assertion above?)"
 
         # Increment current index.
         current_operator_index += 1
@@ -2282,7 +2281,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
             write("stack.append(operand_b)")
             write("stack.append(operand_a)")
             write("stack.append(operand_b)")
-        elif current_operator.operand == Intrinsic.MEMORY_BYTES_POINTER:
+        elif current_operator.operand == Intrinsic.MEMORY_POINTER:
             # Intrinsic null pointer operator.
 
             # Write bytearray block.
@@ -2291,8 +2290,8 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Write operator data.
             write(f"stack.append({MEMORY_BYTEARRAY_NULL_POINTER})")
-        elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE:
-            # Intrinsic memory bytes write operator.
+        elif current_operator.operand == Intrinsic.MEMORY_WRITE:
+            # Intrinsic memory write operator.
 
             # Write bytearray block.
             current_bytearray_should_written = True
@@ -2302,8 +2301,8 @@ def python_generate(source: Source, context: ParserContext, path: str):
             write("operand_a = stack.pop()")
             write("operand_b = stack.pop()")
             write("memory[operand_b] = operand_a")
-        elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ:
-            # Intrinsic memory bytes read operator.
+        elif current_operator.operand == Intrinsic.MEMORY_READ:
+            # Intrinsic memory read operator.
 
             # Write bytearray block.
             current_bytearray_should_written = True
@@ -2313,7 +2312,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
             write("operand_a = stack.pop()")
             write("memory_byte = memory[operand_a]")
             write("stack.append(memory_byte)")
-        elif current_operator.operand == Intrinsic.MEMORY_BYTES_WRITE4:
+        elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
             # Intristic memory write 4 bytes operator.
 
             # Write bytearray block.
@@ -2325,7 +2324,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
             write("operand_b = stack.pop()")
             write("memory_bytes = operand_a.to_bytes(length=4, byteorder=\"little\", signed=(operand_a < 0))")
             write("memory[operand_b:operand_b + 4] = memory_bytes")
-        elif current_operator.operand == Intrinsic.MEMORY_BYTES_READ4:
+        elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
             # Intristic memory read 4 bytes operator.
 
             # Write bytearray block.
@@ -2337,8 +2336,8 @@ def python_generate(source: Source, context: ParserContext, path: str):
             write("memory_bytes = int.from_bytes(memory[operand_a:operand_a + 4], byteorder=\"little\")")
             write("stack.append(memory_bytes)")
 
-        elif current_operator.operand == Intrinsic.MEMORY_BYTES_SHOW_CHARACTERS:
-            # Intrinsic memory bytes show as characters operator.
+        elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
+            # Intrinsic memory show as characters operator.
 
             # Write bytearray block.
             current_bytearray_should_written = True
@@ -2410,8 +2409,8 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Set that we in while expression.
             current_while_block = True
-        elif current_operator.type == OperatorType.THEN:
-            # THEN operator.
+        elif current_operator.type == OperatorType.DO:
+            # DO operator.
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
@@ -2446,7 +2445,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
                 # Error.
                 cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
-                                           "Got `then`, when there is no `while` block started! "
+                                           "Got `do`, when there is no `while` block started! "
                                            "(Parsing error?)", True)
 
             # Write operator.
@@ -2478,9 +2477,9 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Increase indent level.
             __update_indent(1)
-        elif current_operator.type == OperatorType.ENDIF:
-            # ENDIF operator.
-            # Actually, there is no ENDIF in Python.
+        elif current_operator.type == OperatorType.END:
+            # END operator.
+            # Actually, there is no END in Python.
 
             # Type check.
             assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
@@ -2685,12 +2684,12 @@ def cli_no_arguments_error_message(operator: Operator, force_exit: bool = False)
         # Error
         cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
                                    "`IF` operator should have 1 argument at the stack, but it was not found!")
-    elif operator.type == OperatorType.THEN:
-        # THEN Operator.
+    elif operator.type == OperatorType.DO:
+        # DO Operator.
 
         # Error
         cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
-                                   "`THEN` operator should have 1 argument at the stack, but it was not found!")
+                                   "`DO` operator should have 1 argument at the stack, but it was not found!")
     else:
         # Unknown operator.
         assert False, "Tried to call no_arguments_error_message() " \
@@ -2722,12 +2721,12 @@ def cli_argument_type_error_message(operator: Operator, argument_index: int,
         # Error
         cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
                                    f"`IF` operator expected type {expected_type} but got {actual_type}!")
-    elif operator.type == OperatorType.THEN:
-        # THEN Operator.
+    elif operator.type == OperatorType.DO:
+        # DO Operator.
 
         # Error
         cli_error_message_verbosed(Stage.LINTER, operator.token.location, "Error",
-                                   f"`THEN` operator expected type {expected_type} but got {actual_type}!")
+                                   f"`DO` operator expected type {expected_type} but got {actual_type}!")
     else:
         # Unknown operator.
         assert False, "Tried to call cli_argument_type_error_message() " \

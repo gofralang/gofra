@@ -1,8 +1,8 @@
 // Writes 97;98;99 to the memory (abc) and then prints in as "abc".
 
-mbptr 0 + 97 mbwrite // 0 97 mbwrite
-mbptr 1 + 98 mbwrite // 1 98 mbwrite
-mbptr 2 + 99 mbwrite // 2 99 mbwrite
+MPTR 0 + 97 mwrite // 0 97 mwrite
+MPTR 1 + 98 mwrite // 1 98 mwrite
+MPTR 2 + 99 mwrite // 2 99 mwrite
 
 // Shows 3 characters.
-mbptr 3 mbshowc
+MPTR 3 mshowc
