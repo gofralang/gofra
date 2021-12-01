@@ -2777,7 +2777,7 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
         # Expected ARGV length.
 
         # All ok.
-        pass
+        return [*argument_vector, ""]
     elif len(argument_vector) == 3:
         # If this is may silent argument.
 
