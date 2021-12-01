@@ -10,12 +10,12 @@
 
 ## Language features
 - Stack implementation (push, pop)
-- Conditional IFs ([bool_from_stack] if [code] else [code] endif).
-- WHILE loops (while [expression] then [code] endif)
+- Conditional IFs ([bool_from_stack] if [code] else [code] end).
+- WHILE loops (while [expression] do [code] end)
 - Bytearray Memory (mbwrite, mbread, mbshowc, mbptr etc...)
 
 ## Simple example
-```mode: opascal
+```
 35 // Push 35 in the stack.
 5 // Push 5 in the stack.
 + // Pop both 35 and 5, and push their sum in the stack.
