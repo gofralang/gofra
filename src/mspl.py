@@ -63,12 +63,13 @@ class Stage(Enum):
 class Keyword(Enum):
     """ Enumeration for keyword types. """
 
-    # Conditions.
+    # Keywords.
     IF = auto()
     WHILE = auto()
     DO = auto()
     ELSE = auto()
     END = auto()
+    DEFINE = auto()
 
 
 class Intrinsic(Enum):
@@ -130,12 +131,13 @@ class OperatorType(Enum):
     PUSH_INTEGER = auto()
     INTRINSIC = auto()
 
-    # Conditions and loops.
+    # Conditions, loops and other.
     IF = auto()
     WHILE = auto()
     DO = auto()
     ELSE = auto()
     END = auto()
+    DEFINE = auto()
 
 
 # Types.
@@ -191,7 +193,6 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "mread4b": Intrinsic.MEMORY_READ4BYTES,
     "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
 
-
     # Constants*.
     "MPTR": Intrinsic.MEMORY_POINTER,
     "NULL": Intrinsic.NULL
@@ -211,13 +212,17 @@ STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
 }
 
 # Keyword names / types.
-assert len(Keyword) == 5, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
+assert len(Keyword) == 6, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "else": Keyword.ELSE,
     "while": Keyword.WHILE,
     "do": Keyword.DO,
     "end": Keyword.END,
+    "define": Keyword.DEFINE
+}
+KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
+    value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()
 }
 
 # Extra `tokens`.
@@ -258,6 +263,16 @@ class Operator:
 
     # Operand of the operator.
     operand: OPERAND = None
+
+
+@dataclass
+class Definition:
+    """ Definition dataclass implementation. """
+    # Location of the definition.
+    location: LOCATION
+
+    # List of tokens for definition.
+    tokens: list[Token] = field(default_factory=list)
 
 
 @dataclass
@@ -413,16 +428,19 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 8, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
-    assert len(Keyword) == 5, "Please update implementation after adding new Keyword!"
+    assert len(Keyword) == 6, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
     assert len(TokenType) == 3, "Please update implementation after adding new TokenType!"
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
+
+    # Definitions.
+    definitions: Dict[str, Definition] = dict()
 
     if len(reversed_tokens) == 0:
         # If there is no tokens.
@@ -458,67 +476,75 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
             else:
                 # If not intrinsic.
 
-                if current_token.text.startswith(EXTRA_DIRECTIVE):
-                    # If this is directive.
+                if current_token.text in definitions:
+                    # If this is definition.
 
-                    # Grab the directive.
-                    directive = current_token.text[len(EXTRA_DIRECTIVE):]
+                    # Expand definition tokens.
+                    reversed_tokens += reversed(definitions[current_token.text].tokens)
+                    continue
+                else:
+                    # If this is not definition.
+                    if current_token.text.startswith(EXTRA_DIRECTIVE):
+                        # If this is directive.
 
-                    if directive == "LINTER_SKIP":
-                        # If this linter skip directive.
+                        # Grab the directive.
+                        directive = current_token.text[len(EXTRA_DIRECTIVE):]
 
-                        if context.directive_linter_skip:
-                            # If already enabled.
+                        if directive == "LINTER_SKIP":
+                            # If this linter skip directive.
 
-                            # Message.
-                            cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                       f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
-
-                        # Skip linter.
-                        context.directive_linter_skip = True
-                    elif directive == "PYTHON_COMMENTS_SKIP":
-                        # If this python skip comments directive.
-
-                        if context.directive_python_comments_skip:
-                            # If already enabled.
-
-                            # Message.
-                            cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                       f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
-
-                        # Skip comments.
-                        context.directive_python_comments_skip = True
-                    else:
-                        # If this is unknown direcitve.
-
-                        if directive.startswith("MEM_BUF_BYTE_SIZE="):
-                            # If this is starts with memory buffer byte size definition name.
-
-                            # Get directive value from all directive text.
-                            directive_value = directive[len("MEM_BUF_BYTE_SIZE="):]
-
-                            # Get new memory size
-                            try:
-                                new_memory_bytearray_size = int(directive_value)
-                            except ValueError:
-                                # If error.
+                            if context.directive_linter_skip:
+                                # If already enabled.
 
                                 # Message.
                                 cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` "
-                                                           f"passed invalid size `{directive_value}`!", True)
-                            else:
-                                # Change size of the bytearray.
-                                context.memory_bytearray_size = new_memory_bytearray_size
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
+
+                            # Skip linter.
+                            context.directive_linter_skip = True
+                        elif directive == "PYTHON_COMMENTS_SKIP":
+                            # If this python skip comments directive.
+
+                            if context.directive_python_comments_skip:
+                                # If already enabled.
+
+                                # Message.
+                                cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
+
+                            # Skip comments.
+                            context.directive_python_comments_skip = True
                         else:
-                            # Message.
-                            cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                       f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
-                else:
-                    # Message.
-                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                               f"Unknown WORD `{current_token.text}`, are you misspelled something?",
-                                               True)
+                            # If this is unknown direcitve.
+
+                            if directive.startswith("MEM_BUF_BYTE_SIZE="):
+                                # If this is starts with memory buffer byte size definition name.
+
+                                # Get directive value from all directive text.
+                                directive_value = directive[len("MEM_BUF_BYTE_SIZE="):]
+
+                                # Get new memory size
+                                try:
+                                    new_memory_bytearray_size = int(directive_value)
+                                except ValueError:
+                                    # If error.
+
+                                    # Message.
+                                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                               f"Directive `{EXTRA_DIRECTIVE}{directive}` "
+                                                               f"passed invalid size `{directive_value}`!", True)
+                                else:
+                                    # Change size of the bytearray.
+                                    context.memory_bytearray_size = new_memory_bytearray_size
+                            else:
+                                # Message.
+                                cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                           f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
+                    else:
+                        # Message.
+                        cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                   f"Unknown WORD `{current_token.text}`, "
+                                                   f"are you misspelled something?", True)
         elif current_token.type == TokenType.INTEGER:
             # If we got a integer.
 
@@ -705,6 +731,76 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                 # Increment operator index.
                 context.operator_index += 1
+            elif current_token.value == Keyword.DEFINE:
+                # This is DEFINE keyword.
+
+                if len(reversed_tokens) == 0:
+                    # No name for definition is given.
+
+                    # Error message.
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                               "`define` should have name after the keyword, "
+                                               "do you has unfinished definition?", True)
+
+                # Get name for definition.
+                definition_name = reversed_tokens.pop()
+
+                if definition_name.type != TokenType.WORD:
+                    # If name is not word.
+
+                    # Error message.
+                    cli_error_message_verbosed(Stage.PARSER, definition_name.location, "Error",
+                                               "`define` name, should be of type WORD, sorry, "
+                                               "but you can`t use something that you give as "
+                                               "name for the definition!", True)
+
+                if definition_name.text in definitions:
+                    # If already defined.
+
+                    # Error messages.
+                    cli_error_message_verbosed(Stage.PARSER, definition_name.location, "Error",
+                                               "Definition with name {} was already defined!", False)
+                    cli_error_message_verbosed(Stage.PARSER, definitions[definition_name.text].location, "Error",
+                                               "Original definition was here...", True)
+
+                if definition_name.text in INTRINSIC_NAMES_TO_TYPE or definition_name.text in KEYWORD_NAMES_TO_TYPE:
+                    # If default item.
+
+                    # Error message.
+                    cli_error_message_verbosed(Stage.PARSER, definition_name.location, "Error",
+                                               "Can`t define definition with language defined name!", True)
+
+                # Create blank new definition.
+                definition = Definition(current_token.location, [])
+
+                # Add definition.
+                definitions[definition_name.text] = definition
+
+                while len(reversed_tokens) > 0:
+                    # If there is still tokens.
+
+                    # Get new token.
+                    current_token = reversed_tokens.pop()
+
+                    if current_token.type == TokenType.KEYWORD and \
+                            current_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]:
+                        # If this is end.
+                        break
+
+                    # Append token.
+                    definition.tokens.append(current_token)
+
+                if not (current_token.type == TokenType.KEYWORD and
+                        current_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]):
+                    # If got not end at end of definition.
+
+                    # Error message.
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                               "`define` should have `end` at the end of definition, "
+                                               "but it was not founded!", True)
+
+                # Increment operator index.
+                context.operator_index += 1
             else:
                 # If unknown keyword type.
                 assert False, "Unknown keyword type! (How?)"
@@ -739,7 +835,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     """ Interpretates the source. """
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 8, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 26, "Please update implementation after adding new Intrinsic!"
@@ -1287,6 +1383,11 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                 # Jump to the operator operand.
                 # As this is END operator, we should have index + 1, index!
                 current_operator_index = current_operator.operand
+            elif current_operator.type == OperatorType.DEFINE:
+                # DEFINE Operator.
+
+                # Error.
+                assert False, "Got definition operator at runner stage, parser level error?"
             else:
                 # If unknown operator type.
                 assert False, "Unknown operator type! (How?)"
@@ -1315,7 +1416,7 @@ def linter_type_check(source: Source):
     # TODO: IF/WHILE anylyse fixes.
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 8, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 26, "Please update implementation after adding new Intrinsic!"
@@ -1860,6 +1961,11 @@ def linter_type_check(source: Source):
             # Jump to the operator operand.
             # As this is END operator, we should have index + 1, index!
             current_operator_index = current_operator.operand
+        elif current_operator.type == OperatorType.DEFINE:
+            # DEFINE Operator.
+
+            # Error.
+            assert False, "Got definition operator at linter stage, parser level error?"
         else:
             # If unknown operator type.
             assert False, "Got unexpected / unknon operator type! (How?)"
@@ -1927,7 +2033,7 @@ def graph_generate(source: Source, path: str):
     """ Generates graph from the source. """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 7, "Please update implementation for graph generation after adding new OperatorType!"
+    assert len(OperatorType) == 8, "Please update implementation for graph generation after adding new OperatorType!"
 
     def __write_header():
         """ Writes header block and start. """
@@ -2066,6 +2172,11 @@ def graph_generate(source: Source, path: str):
             # Description: END actually just refers to the next operation.
             file.write(f"   Operator_{current_operator_index} [shape=record label=end];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
+        elif current_operator.type == OperatorType.DEFINE:
+            # DEFINE Operator.
+
+            # Error.
+            assert False, "Got definition operator at runner stage, parser level error?"
         else:
             # If unknown operator type.
             assert False, f"Unknown operator type! " \
@@ -2087,7 +2198,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
     """ Generates graph from the source. """
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 7, "Please update implementation for python generation after adding new OperatorType!"
+    assert len(OperatorType) == 8, "Please update implementation for python generation after adding new OperatorType!"
     assert len(Intrinsic) == 26, "Please update implementation for python generationg after adding new Intrinsic!"
 
     def __update_indent(value: int):
@@ -2508,6 +2619,11 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Decrease indent level.
             __update_indent(-1)
+        elif current_operator.type == OperatorType.DEFINE:
+            # DEFINE Operator.
+
+            # Error.
+            assert False, "Got definition operator at runner stage, parser level error?"
         else:
             # If unknown operator type.
             assert False, f"Got unexpected / unknon operator type! (How?)"

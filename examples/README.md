@@ -20,3 +20,5 @@
 ##### Writes 1024 to the memory as 4 bytes and then prints all 4 bytes one-by-one.
 - ## Sum Numbers From 1 To N Example (01_sum_numbers_from_1_to_N.mspl):
 ##### Shows sum of the numbers from 1 to N.
+- ## Define Example (11_stack.mspl): 
+##### Define difenition.

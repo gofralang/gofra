@@ -28,6 +28,14 @@
 #### Comment starts with `//`, like: `// Comment`.
 #### (There is one bug with comments, you should write comments without any at the start of the line (Spaces allowed))
 
+# Definitions
+#### Supported: `DEFINE`, `END`
+#### There is definitions in the language, to use it you may do something like:
+```
+define NAME ... end // You may change name.
+NAME // Will expand.
+```
+
 # Constants
 #### `NULL` - Returns 0.
 #### `MPTR` - Returns null-pointer (Should be 0 for non-compiled (even if python)).
@@ -45,7 +53,6 @@
         1023 show
     end
 else
-
     512 show
 end
 
