@@ -28,6 +28,10 @@
 #### Comment starts with `//`, like: `// Comment`.
 #### (There is one bug with comments, you should write comments without any at the start of the line (Spaces allowed))
 
+# Constants
+#### `NULL` - Returns 0.
+#### `MPTR` - Returns null-pointer (Should be 0 for non-compiled (even if python)).
+
 # Conditional
 #### Supported: `IF`, `ELSE`, `END`
 #### There is conditional in the language, to use it you may do something like:
@@ -68,27 +72,27 @@ end
 
 # Memory
 #### Supported: 
-#### `mbwrite` - Pop two elements from the stack (`[pointer], [value] => []`), and writes value at the pointer to memory(1 byte | 8 bits cell)
-#### `mbread` - Pop one element from the stack (`[pointer] => [])`, and pushes back value at the pointer from memory (1 byte | 8 bits cell), 
-#### `mbshowc` - Pop two elements from the stack (`[pointer], [length] => []`), and shows every character in memory `[pointer]...[pointer+length-1]`, 
-#### `mbptr` - Push *null_pointer** to the stack (By default *0**) to write memory at
-#### `mbwrite4b` - Same as `mbwrite`, but writes 4 bytes | 32 bits (Remember that you should write next value at `[pointer] 4 +` as there is 4 bytes taken by that value)
-#### `mbread4b` - Same as `mbread`, but reads 4 bytes | 32 bits
+#### `mwrite` - Pop two elements from the stack (`[pointer], [value] => []`), and writes value at the pointer to memory(1 byte | 8 bits cell)
+#### `mread` - Pop one element from the stack (`[pointer] => [])`, and pushes back value at the pointer from memory (1 byte | 8 bits cell), 
+#### `mshowc` - Pop two elements from the stack (`[pointer], [length] => []`), and shows every character in memory `[pointer]...[pointer+length-1]`, 
+#### `MPTR` - Push *null_pointer** to the stack (By default *0**) to write memory at
+#### `mwrite4b` - Same as `mwrite`, but writes 4 bytes | 32 bits (Remember that you should write next value at `[pointer] 4 +` as there is 4 bytes taken by that value)
+#### `mread4b` - Same as `mread`, but reads 4 bytes | 32 bits
 #### There is memory* support in the language, to use it you may do something like:
 ```
 // Write 9 to memory pointer 0.
-0 9 mbwrite
+0 9 mwrite
 
 // Same as above.
-mbptr 9 mbwrite
+MPTR 9 mwrite
 
 // Read that 9 from memory and push onto the stack.
-mbptr mbread // Do not forgot to call `free` after, so there is no unused data in the stack.
+MPTR mread // Do not forgot to call `free` after, so there is no unused data in the stack.
 
 // Write AB (97, 98 codes) to the memory.
-mbptr 0 + 97 write
-mbptr 1 + 98 write
+MPTR 0 + 97 write
+MPTR 1 + 98 write
 
 // Show 2 chars from the memory.
-mbptr 2 mbshowc
+MPTR 2 mshowc
 ```
