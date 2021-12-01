@@ -9,6 +9,7 @@ import time
 import os
 import sys
 
+
 def cli_execute(commands: typing.List[str]) -> subprocess.CompletedProcess:
     """ Executes CLI command. """
 
@@ -27,6 +28,9 @@ MYPY_RUN = True
 
 # If we should record new, and not test.
 RECORD_NEW = False
+
+# If true, stop processing if there is failure at one of the tests.
+STOP_AT_FAILURE = False
 
 # Run Python/Dump/Graph.
 RUN_OTHER = True
@@ -72,6 +76,9 @@ for test_directory in TEST_DIRECTORIS:
                     print(f"[Test][Failed][OTHER] File {cli_execute_path} returned error code {run_result.returncode}, "
                           f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
 
+                    # Exit.
+                    if STOP_AT_FAILURE:
+                        exit(1)
         # Get run result.
         run_result_current = run_result.stdout.decode("utf-8")
         run_result_current = run_result_current.encode("unicode_escape").decode("utf-8")
@@ -93,6 +100,10 @@ for test_directory in TEST_DIRECTORIS:
                 print(f"[Test][Failed] File {cli_execute_path} returned error code {run_result.returncode}, "
                       f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
 
+                # Exit.
+                if STOP_AT_FAILURE:
+                    exit(1)
+
             with open(record_file_path, "r") as record_file:
                 run_result_expected = "".join(record_file.readlines())
 
@@ -102,6 +113,10 @@ for test_directory in TEST_DIRECTORIS:
                 # Print.
                 print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", "
                       f"but got \"{run_result_current}\"!", file=sys.stderr)
+
+                # Exit.
+                if STOP_AT_FAILURE:
+                    exit(1)
             else:
                 # Print.
                 print(f"[Test][OK] File {cli_execute_path}!")
@@ -120,6 +135,9 @@ if MYPY_RUN:
     mypy_results = str(mypy_results.stdout.decode("utf-8"))
     if not mypy_results.startswith("Success"):
         print(f"[MyPy][Failed]:\n {mypy_results}", file=sys.stderr)
+        # Exit.
+        if STOP_AT_FAILURE:
+            exit(1)
     else:
         print(f"[MyPy][OK]!")
     if CLEAR_AFTER:
