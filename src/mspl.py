@@ -114,6 +114,7 @@ class Intrinsic(Enum):
     MEMORY_POINTER = auto()
 
     # Utils.
+    NULL = auto()
     SHOW = auto()
 
 
@@ -158,7 +159,7 @@ TYPE_POINTER = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 25, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 26, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     # Math.
     "+": Intrinsic.PLUS,
@@ -189,8 +190,11 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
     "mread4b": Intrinsic.MEMORY_READ4BYTES,
     "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
-    "MPTR": Intrinsic.MEMORY_POINTER
 
+
+    # Constants*.
+    "MPTR": Intrinsic.MEMORY_POINTER,
+    "NULL": Intrinsic.NULL
 }
 INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
     value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
@@ -738,7 +742,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 26, "Please update implementation after adding new Intrinsic!"
 
     # Create empty stack.
     memory_execution_stack: Stack = Stack()
@@ -1191,6 +1195,11 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
                     # Push pointer to the stack.
                     memory_execution_stack.push(MEMORY_BYTEARRAY_NULL_POINTER)
+                elif current_operator.operand == Intrinsic.NULL:
+                    # Intristic null operator.
+
+                    # Push pointer to the stack.
+                    memory_execution_stack.push(0)
                 else:
                     # If unknown instrinsic type.
                     assert False, "Unknown instrinsic! (How?)"
@@ -1309,7 +1318,7 @@ def linter_type_check(source: Source):
     assert len(OperatorType) == 7, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 25, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 26, "Please update implementation after adding new Intrinsic!"
 
     # Create empty linter stack.
     memory_linter_stack = Stack()
@@ -1764,9 +1773,13 @@ def linter_type_check(source: Source):
                     cli_argument_type_error_message(current_operator, 1, operand_a, int, True)
                 if operand_b != TYPE_INTEGER:
                     cli_argument_type_error_message(current_operator, 2, operand_b, int, True)
-
             elif current_operator.operand == Intrinsic.MEMORY_POINTER:
                 # Intristic memory pointer operator.
+
+                # Push pointer to the stack.
+                memory_linter_stack.push(int)
+            elif current_operator.operand == Intrinsic.NULL:
+                # Intristic null operator.
 
                 # Push pointer to the stack.
                 memory_linter_stack.push(int)
@@ -2075,7 +2088,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
     # Check that there is no changes in operator type or intrinsic.
     assert len(OperatorType) == 7, "Please update implementation for python generation after adding new OperatorType!"
-    assert len(Intrinsic) == 25, "Please update implementation for python generationg after adding new Intrinsic!"
+    assert len(Intrinsic) == 26, "Please update implementation for python generationg after adding new Intrinsic!"
 
     def __update_indent(value: int):
         """ Updates indent by given value. """
@@ -2290,6 +2303,11 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Write operator data.
             write(f"stack.append({MEMORY_BYTEARRAY_NULL_POINTER})")
+        elif current_operator.operand == Intrinsic.NULL:
+            # Intrinsic null operator.
+
+            # Write operator data.
+            write(f"stack.append(0)")
         elif current_operator.operand == Intrinsic.MEMORY_WRITE:
             # Intrinsic memory write operator.
 
