@@ -7,7 +7,7 @@ import shlex
 import typing
 import time
 import os
-
+import sys
 
 def cli_execute(commands: typing.List[str]) -> subprocess.CompletedProcess:
     """ Executes CLI command. """
@@ -29,7 +29,7 @@ MYPY_RUN = True
 RECORD_NEW = False
 
 # Run Python/Dump/Graph.
-RUN_OTHER = False
+RUN_OTHER = True
 
 # Should we clear after?
 CLEAR_AFTER = True
@@ -62,9 +62,15 @@ for test_directory in TEST_DIRECTORIS:
         # Run commands.
         run_result = cli_execute(cli_base_command + ["run", "-silent"])
         if RUN_OTHER:
+
             graph_result = cli_execute(cli_base_command + ["graph", "-silent"])
             python_result = cli_execute(cli_base_command + ["python", "-silent"])
             dump_result = cli_execute(cli_base_command + ["dump", "-silent"])
+            for result in (graph_result, python_result, dump_result):
+                if result.returncode != 0:
+                    # Print.
+                    print(f"[Test][Failed][OTHER] File {cli_execute_path} returned error code {run_result.returncode}, "
+                          f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
 
         # Get run result.
         run_result_current = run_result.stdout.decode("utf-8")
@@ -81,6 +87,12 @@ for test_directory in TEST_DIRECTORIS:
                 record_file.write(run_result_current)
         else:
             # Read expected result.
+
+            if run_result.returncode != 0:
+                # Print.
+                print(f"[Test][Failed] File {cli_execute_path} returned error code {run_result.returncode}, "
+                      f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
+
             with open(record_file_path, "r") as record_file:
                 run_result_expected = "".join(record_file.readlines())
 
@@ -88,22 +100,26 @@ for test_directory in TEST_DIRECTORIS:
                 # If no same result.
 
                 # Print.
-                print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", but got \"{run_result_current}\"!")
+                print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", "
+                      f"but got \"{run_result_current}\"!", file=sys.stderr)
             else:
                 # Print.
                 print(f"[Test][OK] File {cli_execute_path}!")
 
         # Clean after.
         if CLEAR_AFTER and RUN_OTHER:
-            os.remove(cli_execute_path + ".dot")
-            os.remove(cli_execute_path + ".py")
+            try:
+                os.remove(cli_execute_path + ".dot")
+                os.remove(cli_execute_path + ".py")
+            except FileNotFoundError:
+                pass
 
 # Run MyPy on the core.
 if MYPY_RUN:
     mypy_results = cli_execute(["mypy", LANG_PATH])
     mypy_results = str(mypy_results.stdout.decode("utf-8"))
     if not mypy_results.startswith("Success"):
-        print(f"[MyPy][Failed]:\n {mypy_results}")
+        print(f"[MyPy][Failed]:\n {mypy_results}", file=sys.stderr)
     else:
         print(f"[MyPy][OK]!")
     if CLEAR_AFTER:
