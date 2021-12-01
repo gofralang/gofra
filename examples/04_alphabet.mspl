@@ -1,11 +1,14 @@
 // Prints all characters of the alphabet.
 
-0 while copy 26 < do
-    // From to 0 to 26 (Alphabet size).
+// Alphabet size
+define ALPHABET_SIZE 26 end
+
+0 while copy ALPHABET_SIZE < do
+    // From to 0 to alphabet size.
 
     // Write [97+I] to [I].
     copy MPTR + copy 97 + mwrite
 inc end free
 
-// Shows 26 characters.
-MPTR 26 mshowc
+// Show characters.
+MPTR ALPHABET_SIZE mshowc

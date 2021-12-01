@@ -1,10 +1,13 @@
 // Shows sum of the numbers from 1 to N.
 
+// N.
+define N 1000 end
+
 // Write 0 as start sum.
 MPTR 0 mwrite4b
 
-1 while copy 1000 < do // N = 1000
-    // While from 1 to 1000
+1 while copy N < do
+    // While from 1 to N
 
     // Read sum and sum it with copied counter (to left on stack).
     copy MPTR mread4b +

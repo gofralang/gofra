@@ -789,7 +789,6 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Append token.
                     definition.tokens.append(current_token)
-
                 if not (current_token.type == TokenType.KEYWORD and
                         current_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]):
                     # If got not end at end of definition.
@@ -798,9 +797,6 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                "`define` should have `end` at the end of definition, "
                                                "but it was not founded!", True)
-
-                # Increment operator index.
-                context.operator_index += 1
             else:
                 # If unknown keyword type.
                 assert False, "Unknown keyword type! (How?)"

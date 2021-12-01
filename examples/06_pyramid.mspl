@@ -1,7 +1,10 @@
-// Prints pyramid of asterics (Char `42`), with 15* elements.
+// Prints pyramid of asterics (Char `42`), with SIZE elements.
 
-1 while copy 15 < do
-    // While from 1 to 15.
+// Size.
+define SIZE 15 end
+
+1 while copy SIZE < do
+    // While from 1 to SIZE.
 
     copy while copy 0 > do
         // From counter to 0.
@@ -24,7 +27,7 @@ inc end free
 // But not so optimized / perfect.
 
 
-// 1 while copy 15 < do
+// 1 while copy SIZE < do
 //    copy while copy 0 > do
 //        MPTR 42 mwrite
 //        MPTR 1 mshowc
