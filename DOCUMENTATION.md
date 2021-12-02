@@ -36,6 +36,9 @@ define NAME ... end // You may change name.
 NAME // Will expand.
 ```
 
+# Characters
+#### `'a'` - Pushes 97 (Code) of the  character into the stack.
+
 # Constants
 #### `NULL` - Returns 0.
 #### `MPTR` - Returns null-pointer (Should be 0 for non-compiled (even if python)).

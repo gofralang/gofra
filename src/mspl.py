@@ -122,6 +122,7 @@ class Intrinsic(Enum):
 class TokenType(Enum):
     """ Enumeration for token types. """
     INTEGER = auto()
+    CHARACTER = auto()
     WORD = auto()
     KEYWORD = auto()
 
@@ -228,6 +229,8 @@ KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
 # Extra `tokens`.
 EXTRA_COMMENT = "//"
 EXTRA_DIRECTIVE = "#"
+EXTRA_CHAR = "'"
+EXTRA_STRING = "\""
 
 # Memory size and null pointer.
 MEMORY_BYTEARRAY_SIZE = 1000  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
@@ -326,7 +329,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
     """ Tokenizes lines into list of the Tokens. """
 
     # Check that there is no changes in token type.
-    assert len(TokenType) == 3, "Please update implementation after adding new TokenType!"
+    assert len(TokenType) == 4, "Please update implementation after adding new TokenType!"
 
     # Get the basename.
     file_parent = basename(file_parent)
@@ -364,7 +367,55 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
             # Get the location.
             current_location = (file_parent, current_line_index + 1, current_collumn_index + 1)
 
-            if True:
+            if current_line[current_collumn_index] == EXTRA_CHAR:
+                # If we got character quote*.
+                # Index of the column end.
+                # (Trying to find closing quote*
+                current_collumn_end_index = lexer_find_collumn(current_line, current_collumn_index + 1,
+                                                               lambda char: char == EXTRA_CHAR)
+
+                if current_collumn_end_index >= len(current_line) or \
+                        current_line[current_collumn_end_index] != EXTRA_CHAR:
+                    # If we got not EXTRA_CHAR or exceed current line length.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LEXER, current_location, "Error",
+                                               "There is unclosed character literal. "
+                                               f"Do you forgot to place `{EXTRA_CHAR}`?", True)
+
+                # Get current token text.
+                current_token_text = current_line[current_collumn_index + 1: current_collumn_end_index]
+
+                # Get current char value.
+                current_char_value = current_token_text.encode("UTF-8").\
+                    decode("unicode_escape").encode("latin-1").decode("UTF-8").encode("UTF-8")
+
+                if len(current_char_value) != 1:
+                    # If there is 0 or more than 1 characters*.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LEXER, current_location, "Error",
+                                               "Unexpected number of characters in the character literal."
+                                               "Only one character is allowed in character literal", True)
+                # Return character token.
+                yield Token(
+                    type=TokenType.CHARACTER,
+                    text=current_token_text,
+                    location=current_location,
+                    value=current_char_value[0]
+                )
+
+                # Find first non space char.
+                current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index + 1,
+                                                           lambda char: not char.isspace())
+            elif current_line[current_collumn_index] == EXTRA_STRING:
+                # If this is string.
+
+                # Error.
+                cli_error_message_verbosed(Stage.LEXER, current_location, "Error",
+                                           "Strings is not implemented in the language lexer and next steps!"
+                                           " Only characters is implemented for now!", True)
+            else:
                 # Index of the column end.
                 current_collumn_end_index = lexer_find_collumn(current_line, current_collumn_index,
                                                                lambda char: char.isspace())
@@ -434,7 +485,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     assert len(Keyword) == 6, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
-    assert len(TokenType) == 3, "Please update implementation after adding new TokenType!"
+    assert len(TokenType) == 4, "Please update implementation after adding new TokenType!"
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
@@ -498,7 +549,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                                 # Message.
                                 cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!",
+                                                           True)
 
                             # Skip linter.
                             context.directive_linter_skip = True
@@ -510,7 +562,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                                 # Message.
                                 cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!",
+                                                           True)
 
                             # Skip comments.
                             context.directive_python_comments_skip = True
@@ -547,6 +600,21 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                                                    f"are you misspelled something?", True)
         elif current_token.type == TokenType.INTEGER:
             # If we got a integer.
+
+            # Type check.
+            assert isinstance(current_token.value, int), "Type error, lexer level error?"
+
+            # Add operator to the context.
+            context.operators.append(Operator(
+                type=OperatorType.PUSH_INTEGER,
+                token=current_token,
+                operand=current_token.value
+            ))
+
+            # Increment operator index.
+            context.operator_index += 1
+        elif current_token.type == TokenType.CHARACTER:
+            # If we got a character.
 
             # Type check.
             assert isinstance(current_token.value, int), "Type error, lexer level error?"

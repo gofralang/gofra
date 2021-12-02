@@ -11,7 +11,7 @@
 - ## Memory Example (05_memory.mspl):
 ##### Write chars `abc` in the memory, then show them as characters.
 - ## Pyramid Example (06_pyramid.mspl):
-##### Prints pyramid of asterics.
+##### Prints pyramid of given character.
 - ## Hello World Example (07_hello_world.mspl):
 ##### Prints "Hello, World!" on the screen.
 - ## Directives Example (08_directives.mspl):

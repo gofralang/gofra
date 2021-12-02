@@ -6,8 +6,8 @@ define ALPHABET_SIZE 26 end
 0 while copy ALPHABET_SIZE < do
     // From to 0 to alphabet size.
 
-    // Write [97+I] to [I].
-    copy MPTR + copy 97 + mwrite
+    // Write ['a'+I] to [I].
+    copy MPTR + copy 'a' + mwrite
 inc end free
 
 // Show characters.

@@ -13,6 +13,7 @@
 - Conditional IFs ([bool_from_stack] if [code] else [code] end).
 - WHILE loops (while [expression] do [code] end)
 - Bytearray Memory (mbwrite, mbread, mbshowc, mbptr etc...)
+- Character literals, string literals (WIP, Not implemented YET).
 - A lot more features...
 
 ## Simple example

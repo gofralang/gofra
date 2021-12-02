@@ -3,20 +3,20 @@
 MPTR // Get start memory pointer.
 
 // Write chars in the memory[0:14]
-copy 0 + 72 mwrite
-copy 1 + 101 mwrite
-copy 2 + 108 mwrite
-copy 3 + 108 mwrite
-copy 4 + 111 mwrite
-copy 5 + 44 mwrite
-copy 6 + 32 mwrite
-copy 7 + 119 mwrite
-copy 8 + 111 mwrite
-copy 9 + 114 mwrite
-copy 10 + 108 mwrite
-copy 11 + 100 mwrite
-copy 12 + 33 mwrite
-copy 13 + 10 mwrite
+copy 0  + 'H' mwrite
+copy 1  + 'e' mwrite
+copy 2  + 'l' mwrite
+copy 3  + 'l' mwrite
+copy 4  + 'o' mwrite
+copy 5  + ',' mwrite
+copy 6  + ' ' mwrite
+copy 7  + 'W' mwrite
+copy 8  + 'o' mwrite
+copy 9  + 'r' mwrite
+copy 10 + 'l' mwrite
+copy 11 + 'd' mwrite
+copy 12 + '!' mwrite
+copy 13 + '\n' mwrite
 
 // Show all chacters.
 copy 14 + mshowc

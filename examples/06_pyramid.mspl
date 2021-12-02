@@ -1,7 +1,9 @@
-// Prints pyramid of asterics (Char `42`), with SIZE elements.
+// Prints pyramid of given characters, with SIZE elements.
 
 // Size.
 define SIZE 15 end
+// Char to show.
+define CHAR '*' end
 
 1 while copy SIZE < do
     // While from 1 to SIZE.
@@ -9,16 +11,16 @@ define SIZE 15 end
     copy while copy 0 > do
         // From counter to 0.
 
-        // Write to pointer [pointer + index] value 42 (Asterics).
-        copy MPTR + 1 + 42 mwrite
+        // Write to pointer [pointer + index] value CHAR.
+        copy MPTR + 1 + CHAR mwrite
     dec end free
 
     // Show all row.
     copy MPTR 2 + swap mshowc
 
-    // Show char 10 (newline).
-    MPTR 0 + 10 mwrite
-    MPTR 0 + 1 mshowc
+    // Show newline.
+    MPTR '\n' mwrite
+    MPTR 1 mshowc
 inc end free
 
 
