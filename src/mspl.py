@@ -3165,6 +3165,22 @@ def python_generate(source: Source, context: ParserContext, path: str):
     file.close()
 
 
+# Compile.
+
+def compile_bytecode(operators: List[Operator]):
+    """ Compiles operators to bytecode. """
+
+    # Get source operators count.
+    operators_count = len(operators)
+
+    # Check that there is more than zero operators in source.
+    if operators_count == 0:
+        # Error.
+        cli_error_message("Error", "Compilation even dont get any operators to compile!", True)
+
+    pass
+
+
 # Dump.
 
 def dump_print(operators: List[Operator]):
@@ -3376,6 +3392,8 @@ def cli_usage_message(runner_filename: str = None):
           f"\thelp; Show this message.\n"
           f"\trun; Intrerpretates source in Python.\n"
           f"\tpython; Generates python file from the source in output file [source*.mspl].py\n"
+          f"\tcompile; Compiles source file to bytecode [source*.mspl].msbc\n"
+          f"\texecute; Executes source file from bytecode [source*.msbc] from `compile` command\n"
           f"\tdump; Dumps operators from the source in output file [source*.mspl].py\n"
           f"\tgraph; Generates graphviz file from the source in output file [source*.mspl].dot", file=stdout)
 
@@ -3447,6 +3465,31 @@ def cli_entry_point():
         # Message.
         if not cli_silent:
             print(f"[Info] File \"{basename(cli_source_path)}\" was dump printed!")
+    elif cli_subcommand == "compile":
+        # If this is compile subcommand.
+
+        # Get source from loaded file.
+        cli_source, _ = loaded_file
+
+        # Compile.
+        compile_bytecode(cli_source.operators)
+
+        # Message.
+        if not cli_silent:
+            print(f"[Info] File \"{basename(cli_source_path)}.msbc\" was compiled!")
+    elif cli_subcommand == "execute":
+        # If this is execute subcommand.
+
+        # Get source from loaded file.
+        cli_source, _ = loaded_file
+
+        # Execute.
+        # execute_bytecode(cli_source.operators)
+        print(f"[Info] EXECUTING IS NOT IMPLEMENTED YET")
+
+        # Message.
+        if not cli_silent:
+            print(f"[Info] File \"{basename(cli_source_path)}.msbc\" was executed!")
     else:
         # If unknown subcommand.
 
