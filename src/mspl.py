@@ -1,364 +1,15 @@
 # MSPL Source Code.
 # "Most Simple|Stupid Programming Language".
 
-# Dataclass.
-from dataclasses import dataclass, field
+__author__ = "Kirill Zhosul @kirillzhosul"
+__license__ = "MIT"
 
-# System error.
+from typing import Callable, Generator
 from sys import stderr, stdout
-
-# Current working directory and basename.
 from os.path import basename
-
-# Enum for types.
-from enum import Enum, auto
-
-# Typing for type hints.
-from typing import Optional, Union, Tuple, List, Dict, Callable, Generator
-
-# CLI.
 from sys import argv
 
-
-class Stack:
-    """ Stack implementation for the language (More optional then useful). """
-
-    # Empty list as stack.
-    __stack = None
-
-    def __init__(self):
-        """ Magic __init__(). """
-
-        # Set stack.
-        self.__stack = list()
-
-    def __len__(self):
-        """ Magic __len__(). """
-
-        # Check length.
-        return len(self.__stack)
-
-    def push(self, value):
-        """ Push any value on the stack. """
-
-        # Push.
-        self.__stack.append(value)
-
-    def pop(self):
-        """ Pop any value from the stack. """
-
-        # Pop.
-        return self.__stack.pop()
-
-
-class Stage(Enum):
-    """ Enumeration for stage types. """
-    LEXER = auto(),
-    PARSER = auto(),
-    LINTER = auto()
-    RUNNER = auto()
-    COMPILATOR = auto()
-
-
-class Keyword(Enum):
-    """ Enumeration for keyword types. """
-
-    # Keywords.
-    IF = auto()
-    WHILE = auto()
-    DO = auto()
-    ELSE = auto()
-    END = auto()
-    DEFINE = auto()
-
-
-class Intrinsic(Enum):
-    """ Enumeration for intrinsic types. """
-
-    # Int (loops).
-    # Increment (Undols to: 1 -) like x--.
-    INCREMENT = auto()
-    # Increment (Undols to: 1 +) like x++.
-    DECREMENT = auto()
-
-    # Int.
-    PLUS = auto()  # +
-    MINUS = auto()  # -
-    MULTIPLY = auto()  # *
-    DIVIDE = auto()  # /
-    MODULUS = auto()  # %
-
-    # Boolean.
-    # ==, !=
-    EQUAL = auto()
-    NOT_EQUAL = auto()
-    # <, >
-    LESS_THAN = auto()
-    GREATER_THAN = auto()
-    # <=, >=
-    LESS_EQUAL_THAN = auto()
-    GREATER_EQUAL_THAN = auto()
-
-    # Stack.
-    COPY = auto()
-    COPY_OVER = auto()
-    COPY2 = auto()
-    FREE = auto()
-    SWAP = auto()
-
-    # Memory.
-    MEMORY_WRITE = auto()
-    MEMORY_READ = auto()
-    MEMORY_WRITE4BYTES = auto()
-    MEMORY_READ4BYTES = auto()
-    MEMORY_SHOW_CHARACTERS = auto()
-    MEMORY_POINTER = auto()
-
-    # I/O.
-    IO_READ_INTEGER = auto()
-    IO_READ_STRING = auto()
-    # IO_WRITE = auto() -- Same as `show` / `mshowc`.
-
-    # Utils.
-    NULL = auto()
-    SHOW = auto()
-
-
-class TokenType(Enum):
-    """ Enumeration for token types. """
-    INTEGER = auto()
-    CHARACTER = auto()
-    STRING = auto()
-    WORD = auto()
-    KEYWORD = auto()
-    BYTECODE = auto()
-
-
-class OperatorType(Enum):
-    """ Enumeration for operaror types. """
-    PUSH_INTEGER = auto()
-    PUSH_STRING = auto()
-    INTRINSIC = auto()
-
-    # Conditions, loops and other.
-    IF = auto()
-    WHILE = auto()
-    DO = auto()
-    ELSE = auto()
-    END = auto()
-    DEFINE = auto()
-
-
-# Types.
-
-# Operand.
-OPERAND = Optional[Union[int, str, Intrinsic]]
-
-# Location.
-LOCATION = Tuple[str, int, int]
-
-# Value.
-VALUE = Union[int, str, Keyword]
-
-# Adress to the another operator (type hinting).
-OPERATOR_ADDRESS = int
-
-# Language data types.
-TYPE_INTEGER = int
-TYPE_POINTER = int
-
-# Other.
-
-# Intrinsic names / types.
-assert len(Intrinsic) == 28, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
-INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
-    # Math.
-    "+": Intrinsic.PLUS,
-    "-": Intrinsic.MINUS,
-    "*": Intrinsic.MULTIPLY,
-    "/": Intrinsic.DIVIDE,
-    "==": Intrinsic.EQUAL,
-    "!=": Intrinsic.NOT_EQUAL,
-    "<": Intrinsic.LESS_THAN,
-    ">": Intrinsic.GREATER_THAN,
-    ">=": Intrinsic.LESS_EQUAL_THAN,
-    "<=": Intrinsic.GREATER_EQUAL_THAN,
-    "%": Intrinsic.MODULUS,
-
-    # Stack.
-    "dec": Intrinsic.DECREMENT,
-    "inc": Intrinsic.INCREMENT,
-    "swap": Intrinsic.SWAP,
-    "show": Intrinsic.SHOW,
-    "copy": Intrinsic.COPY,
-    "copy2": Intrinsic.COPY2,
-    "copy_over": Intrinsic.COPY_OVER,
-    "free": Intrinsic.FREE,
-
-    # Memory.
-    "mwrite": Intrinsic.MEMORY_WRITE,
-    "mread": Intrinsic.MEMORY_READ,
-    "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
-    "mread4b": Intrinsic.MEMORY_READ4BYTES,
-    "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
-
-    # I/O.
-    "io_read_str": Intrinsic.IO_READ_STRING,
-    "io_read_int": Intrinsic.IO_READ_INTEGER,
-
-    # Constants*.
-    "MPTR": Intrinsic.MEMORY_POINTER,
-    "NULL": Intrinsic.NULL
-}
-INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
-    value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
-}
-
-# Stage names.
-assert len(Stage) == 5, "Please update STAGE_TYPES_TO_NAME after adding new Stage!"
-STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
-    Stage.LEXER: "Lexing",
-    Stage.PARSER: "Parsing",
-    Stage.LINTER: "Linter",
-    Stage.RUNNER: "Running",
-    Stage.COMPILATOR: "Compilation"
-}
-
-# Keyword names / types.
-assert len(Keyword) == 6, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
-KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
-    "if": Keyword.IF,
-    "else": Keyword.ELSE,
-    "while": Keyword.WHILE,
-    "do": Keyword.DO,
-    "end": Keyword.END,
-    "define": Keyword.DEFINE
-}
-KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
-    value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()
-}
-
-assert len(Intrinsic) == 28, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
-BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE: Dict[str, Intrinsic] = {
-    # Math.
-    "I+": Intrinsic.PLUS,
-    "I-": Intrinsic.MINUS,
-    "I*": Intrinsic.MULTIPLY,
-    "I/": Intrinsic.DIVIDE,
-    "I==": Intrinsic.EQUAL,
-    "I!=": Intrinsic.NOT_EQUAL,
-    "I<": Intrinsic.LESS_THAN,
-    "I>": Intrinsic.GREATER_THAN,
-    "I>=": Intrinsic.LESS_EQUAL_THAN,
-    "I<=": Intrinsic.GREATER_EQUAL_THAN,
-    "I%": Intrinsic.MODULUS,
-
-    # Stack.
-    "I--": Intrinsic.DECREMENT,
-    "I++": Intrinsic.INCREMENT,
-    "I_SWAP": Intrinsic.SWAP,
-    "I_SHOW": Intrinsic.SHOW,
-    "I_COPY": Intrinsic.COPY,
-    "I_COPY_2": Intrinsic.COPY2,
-    "I_COPY_OVER": Intrinsic.COPY_OVER,
-    "I_FREE": Intrinsic.FREE,
-
-    # Memory.
-    "mwrite": Intrinsic.MEMORY_WRITE,
-    "mread": Intrinsic.MEMORY_READ,
-    "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
-    "mread4b": Intrinsic.MEMORY_READ4BYTES,
-    "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
-
-    # I/O.
-    "io_read_str": Intrinsic.IO_READ_STRING,
-    "io_read_int": Intrinsic.IO_READ_INTEGER,
-
-    # Constants*.
-    "I_MPTR": Intrinsic.MEMORY_POINTER,
-    "I_NULL": Intrinsic.NULL
-}
-
-# Extra `tokens`.
-EXTRA_ESCAPE = "\\"
-EXTRA_COMMENT = "//"
-EXTRA_DIRECTIVE = "#"
-EXTRA_CHAR = "'"
-EXTRA_STRING = "\""
-
-# Memory size and null pointer.
-MEMORY_BYTEARRAY_SIZE = 1000  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
-MEMORY_BYTEARRAY_NULL_POINTER = 0
-
-
-@dataclass
-class Token:
-    """ Token dataclass implementation """
-
-    # Type of the token.
-    type: TokenType
-
-    # Text of the token.
-    text: str
-
-    # Location of the token.
-    location: LOCATION
-
-    # Value of the token.
-    value: VALUE
-
-
-@dataclass
-class Operator:
-    """ Operator dataclass implementation. """
-
-    # Type of the operator.
-    type: OperatorType
-
-    # Token of the operator.
-    token: Token
-
-    # Operand of the operator.
-    operand: OPERAND = None
-
-
-@dataclass
-class Definition:
-    """ Definition dataclass implementation. """
-    # Location of the definition.
-    location: LOCATION
-
-    # List of tokens for definition.
-    tokens: list[Token] = field(default_factory=list)
-
-
-@dataclass
-class Source:
-    """ Source dataclass implementation. """
-
-    # List of source operators.
-    operators: List[Operator] = field(default_factory=list)
-
-
-@dataclass
-class ParserContext:
-    """ Parser context dataclass implementation. """
-
-    # Operators list.
-    operators: List[Operator] = field(default_factory=list)
-
-    # Memory stack.
-    memory_stack: List[OPERATOR_ADDRESS] = field(default_factory=list)
-
-    # Default bytearray size.
-    memory_bytearray_size = MEMORY_BYTEARRAY_SIZE
-
-    # Current parsing operator index.
-    operator_index: OPERATOR_ADDRESS = 0
-
-    # Directives.
-    directive_linter_skip: bool = False
-    directive_python_comments_skip: bool = False
+from mspl_types import *
 
 
 # Lexer.
@@ -370,7 +21,7 @@ def lexer_find_collumn(line: str, start: int, predicate_function: Callable[[str]
     end = len(line)
 
     while start < end and not predicate_function(line[start]):
-        # While we dont reach end or not trigger predicate function.
+        # While we don't reach end or not trigger predicate function.
 
         # Increment start.
         start += 1
@@ -444,7 +95,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
         # Get line.
         current_line = lines[current_line_index]
 
-        # Find first non space char.
+        # Find first non-space char.
         current_collumn_index = lexer_find_collumn(current_line, 0, lambda char: not char.isspace())
 
         # Get current line length.
@@ -496,7 +147,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                     value=current_char_value[0]
                 )
 
-                # Find first non space char.
+                # Find first non-space char.
                 current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index + 1,
                                                            lambda char: not char.isspace())
             elif current_line[current_collumn_index] == EXTRA_STRING:
@@ -569,7 +220,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                     value=lexer_unescape_string(current_token_text)
                 )
 
-                # Find first non space char.
+                # Find first non-space char.
                 current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
             else:
@@ -622,7 +273,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                         value=current_token_integer
                     )
 
-                # Find first non space char.
+                # Find first non-space char.
                 current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
 
@@ -756,7 +407,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                                                    f"Unknown WORD `{current_token.text}`, "
                                                    f"are you misspelled something?", True)
         elif current_token.type == TokenType.INTEGER:
-            # If we got a integer.
+            # If we got an integer.
 
             # Type check.
             assert isinstance(current_token.value, int), "Type error, lexer level error?"
@@ -832,7 +483,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                 # Increment operator index.
                 context.operator_index += 1
             elif current_token.value == Keyword.DO:
-                # This is DO keyword.
+                # This is `DO` keyword.
 
                 if len(context.memory_stack) == 0:
                     # If there is nothing on the memory stack.
@@ -898,7 +549,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # Increment operator index.
                     context.operator_index += 1
                 else:
-                    # If not IF.
+                    # If not `IF`.
 
                     # Get error location.
                     error_location = block_operator.token.location
@@ -1188,7 +839,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
                     # Check that there is no overflow.
                     if string_length > memory_string_size:
-                        # If overflow.
+                        # If overflowed.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1385,7 +1036,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_b = memory_execution_stack.pop()
 
                     if operand_b > len(memory_bytearray):
-                        # If this is gonna be memory overflow.
+                        # If this is going to be memory overflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1393,7 +1044,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that overflows memory buffer size {(len(memory_bytearray))}"
                                                    " bytes (MemoryBufferOverflow)", True)
                     elif operand_b < 0:
-                        # If this is gonna be memory undeflow.
+                        # If this is going to be memory undeflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1441,7 +1092,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    True)
 
                     if operand_b + 4 - 1 > len(memory_bytearray):
-                        # If this is gonna be memory overflow.
+                        # If this is going to be memory overflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1450,7 +1101,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that overflows memory buffer size {(len(memory_bytearray))}"
                                                    " bytes (MemoryBufferOverflow)", True)
                     elif operand_b < 0:
-                        # If this is gonna be memory undeflow.
+                        # If this is going to be memory undeflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1489,7 +1140,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_a = memory_execution_stack.pop()
 
                     if operand_a + 4 - 1 > len(memory_bytearray):
-                        # If this is gonna be memory overflow.
+                        # If this is going to be memory overflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1498,7 +1149,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that overflows memory buffer size {(len(memory_bytearray))}"
                                                    " bytes (MemoryBufferOverflow)", True)
                     elif operand_a < 0:
-                        # If this is gonna be memory undeflow.
+                        # If this is going to be memory undeflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1528,7 +1179,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_a = memory_execution_stack.pop()
 
                     if operand_a > len(memory_bytearray):
-                        # If this is gonna be memory overflow.
+                        # If this is going to be memory overflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1536,7 +1187,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that overflows memory buffer size {(len(memory_bytearray))}"
                                                    " bytes (MemoryBufferOverflow)", True)
                     elif operand_a < 0:
-                        # If this is gonna be memory undeflow.
+                        # If this is going to be memory undeflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1568,7 +1219,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     memory_string: bytes = b""
 
                     if operand_b + operand_a > len(memory_bytearray):
-                        # If this is gonna be memory overflow.
+                        # If this is going to be memory overflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -1577,7 +1228,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that overflows memory buffer size {(len(memory_bytearray))}"
                                                    " bytes (MemoryBufferOverflow)", True)
                     elif operand_a < 0:
-                        # If this is gonna be memory undeflow.
+                        # If this is going to be memory undeflow.
 
                         # Error.
                         cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
@@ -3209,7 +2860,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
 # Bytecode.
 
-def compile_bytecode(source: Source, context: ParserContext, path: str):
+def compile_bytecode(source: Source, _, path: str):
     """ Compiles operators to bytecode. """
 
     # Check that there is no changes in operator type or intrinsic.
@@ -3340,9 +2991,6 @@ def compile_bytecode(source: Source, context: ParserContext, path: str):
         elif current_operator.operand == Intrinsic.MEMORY_READ:
             # Intrinsic memory read operator.
 
-            # Write bytearray block.
-            current_bytearray_should_written = True
-
             # Write operator data.
             write("I_MEM_READ")
         elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
@@ -3353,16 +3001,10 @@ def compile_bytecode(source: Source, context: ParserContext, path: str):
         elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
             # Intristic memory read 4 bytes operator.
 
-            # Write bytearray block.
-            current_bytearray_should_written = True
-
             # Write operator data.
             write("I_MEM_READ_4B")
         elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
             # Intrinsic memory show as characters operator.
-
-            # Write bytearray block.
-            current_bytearray_should_written = True
 
             # Write operator data.
             write("I_MEM_SHOW_CHARS")
