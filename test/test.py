@@ -1,5 +1,5 @@
 # MSPL test source.
-# Tests all of the examples/source/test.
+# Tests all the examples/source/test.
 
 # Importing.
 import subprocess
@@ -27,7 +27,7 @@ LANG_PATH = "../src/mspl.py"
 MYPY_RUN = True
 
 # If we should record new, and not test.
-RECORD_NEW = False
+RECORD_NEW = True
 
 # If true, stop processing if there is failure at one of the tests.
 STOP_AT_FAILURE = False
@@ -90,61 +90,68 @@ for test_directory in TEST_DIRECTORIS:
             # If we record.
 
             # Write result.
-            with open(record_file_path, "w") as record_file:
-                record_file.write(run_result_current)
-        else:
-            # Read expected result.
+            with open(record_file_path, "w") as rf:
+                rf.write(run_result_current)
 
-            if run_result.returncode != 0:
-                # Print.
-                print(f"[Test][Failed] File {cli_execute_path} returned error code {run_result.returncode}, "
-                      f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
-
-                # Exit.
-                if STOP_AT_FAILURE:
-                    exit(1)
-
+        try:
             with open(record_file_path, "r") as record_file:
+                # Read expected result.
+
+                if run_result.returncode != 0:
+                    # Print.
+                    print(f"[Test][Failed] File {cli_execute_path} returned error code {run_result.returncode}, "
+                          f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
+
+                    # Exit.
+                    if STOP_AT_FAILURE:
+                        exit(1)
+
                 run_result_expected = "".join(record_file.readlines())
 
-            if run_result_current != run_result_expected:
-                # If no same result.
+                if run_result_current != run_result_expected:
+                    # If no same result.
 
-                # Print.
-                print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", "
-                      f"but got \"{run_result_current}\"!", file=sys.stderr)
+                    # Print.
+                    print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", "
+                          f"but got \"{run_result_current}\"!", file=sys.stderr)
 
-                # Exit.
-                if STOP_AT_FAILURE:
-                    exit(1)
-            else:
-                # Print.
-                print(f"[Test][OK] File {cli_execute_path}!")
+                    # Exit.
+                    if STOP_AT_FAILURE:
+                        exit(1)
+                else:
+                    # Print.
+                    print(f"[Test][OK] File {cli_execute_path}!")
 
-        # Clean after.
-        if CLEAR_AFTER and RUN_OTHER:
-            try:
-                os.remove(cli_execute_path + ".dot")
-                os.remove(cli_execute_path + ".py")
-            except FileNotFoundError:
-                pass
+            # Clean after.
+            if CLEAR_AFTER and RUN_OTHER:
+                try:
+                    os.remove(cli_execute_path + ".dot")
+                    os.remove(cli_execute_path + ".py")
+                except FileNotFoundError:
+                    pass
+        except FileNotFoundError:
+            print(f"[Test][OK] File {cli_execute_path} does not have record file! Please run with RECORD_NEW!", file=sys.stderr)
 
 # Run MyPy on the core.
 if MYPY_RUN:
-    mypy_results = cli_execute(["mypy", LANG_PATH])
-    mypy_results = str(mypy_results.stdout.decode("utf-8"))
-    if not mypy_results.startswith("Success"):
-        print(f"[MyPy][Failed]:\n {mypy_results}", file=sys.stderr)
-        # Exit.
-        if STOP_AT_FAILURE:
-            exit(1)
+    try:
+        mypy_results = cli_execute(["mypy", LANG_PATH])
+    except FileNotFoundError:
+        print(f"[MyPy][Failed]: MYPY is not installed!", file=sys.stderr)
     else:
-        print(f"[MyPy][OK]!")
-    if CLEAR_AFTER:
-        try:
-            os.remove(".mypy_cache")
-        except PermissionError:
-            pass
+        mypy_results = str(mypy_results.stdout.decode("utf-8"))
+        if not mypy_results.startswith("Success"):
+            print(f"[MyPy][Failed]:\n {mypy_results}", file=sys.stderr)
+            # Exit.
+            if STOP_AT_FAILURE:
+                exit(1)
+        else:
+            print(f"[MyPy][OK]!")
+        if CLEAR_AFTER:
+            try:
+                os.remove(".mypy_cache")
+            except PermissionError:
+                pass
 else:
     print(f"[MyPy][Disabled]!")
 
