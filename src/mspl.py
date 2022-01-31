@@ -131,6 +131,7 @@ class TokenType(Enum):
     STRING = auto()
     WORD = auto()
     KEYWORD = auto()
+    BYTECODE = auto()
 
 
 class OperatorType(Enum):
@@ -235,6 +236,47 @@ KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
 }
 KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
     value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()
+}
+
+assert len(Intrinsic) == 28, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
+BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE: Dict[str, Intrinsic] = {
+    # Math.
+    "I+": Intrinsic.PLUS,
+    "I-": Intrinsic.MINUS,
+    "I*": Intrinsic.MULTIPLY,
+    "I/": Intrinsic.DIVIDE,
+    "I==": Intrinsic.EQUAL,
+    "I!=": Intrinsic.NOT_EQUAL,
+    "I<": Intrinsic.LESS_THAN,
+    "I>": Intrinsic.GREATER_THAN,
+    "I>=": Intrinsic.LESS_EQUAL_THAN,
+    "I<=": Intrinsic.GREATER_EQUAL_THAN,
+    "I%": Intrinsic.MODULUS,
+
+    # Stack.
+    "I--": Intrinsic.DECREMENT,
+    "I++": Intrinsic.INCREMENT,
+    "I_SWAP": Intrinsic.SWAP,
+    "I_SHOW": Intrinsic.SHOW,
+    "I_COPY": Intrinsic.COPY,
+    "I_COPY_2": Intrinsic.COPY2,
+    "I_COPY_OVER": Intrinsic.COPY_OVER,
+    "I_FREE": Intrinsic.FREE,
+
+    # Memory.
+    "mwrite": Intrinsic.MEMORY_WRITE,
+    "mread": Intrinsic.MEMORY_READ,
+    "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
+    "mread4b": Intrinsic.MEMORY_READ4BYTES,
+    "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
+
+    # I/O.
+    "io_read_str": Intrinsic.IO_READ_STRING,
+    "io_read_int": Intrinsic.IO_READ_INTEGER,
+
+    # Constants*.
+    "I_MPTR": Intrinsic.MEMORY_POINTER,
+    "I_NULL": Intrinsic.NULL
 }
 
 # Extra `tokens`.
@@ -376,7 +418,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
     """ Tokenizes lines into list of the Tokens. """
 
     # Check that there is no changes in token type.
-    assert len(TokenType) == 5, "Please update implementation after adding new TokenType!"
+    assert len(TokenType) == 6, "Please update implementation after adding new TokenType!"
 
     # Get the basename.
     file_parent = basename(file_parent)
@@ -600,7 +642,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     assert len(Keyword) == 6, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
-    assert len(TokenType) == 5, "Please update implementation after adding new TokenType!"
+    assert len(TokenType) == 6, "Please update implementation after adding new TokenType!"
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
@@ -3165,7 +3207,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
     file.close()
 
 
-# Compile.
+# Bytecode.
 
 def compile_bytecode(source: Source, context: ParserContext, path: str):
     """ Compiles operators to bytecode. """
@@ -3452,6 +3494,75 @@ def compile_bytecode(source: Source, context: ParserContext, path: str):
     file.close()
 
 
+def execute_bytecode(path: str):
+    """ Executes bytecode file. """
+
+    # Check that there is no changes in operator type or intrinsic.
+    assert len(OperatorType) == 9, "Please update implementation for bytecode execution after adding new OperatorType!"
+    assert len(Intrinsic) == 28, "Please update implementation for bytecode execution after adding new Intrinsic!"
+
+    if not path.endswith(".msbc"):
+        cli_error_message("Error", f"File \"{path}\" should have extension `.msbc` for being executed!", True)
+        return
+
+    # Open file.
+    try:
+        file = open(path, "r")
+    except FileNotFoundError:
+        cli_error_message("Error", f"File \"{path}\" not founded!", True)
+        return
+    except (OSError, IOError, PermissionError) as _error:
+        cli_error_message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
+        return
+
+    # Tokenize operator tokens.
+    bc_op_tokens = []
+    for line in file.readlines():
+        op_tokens = line.split(" ")
+        for op_token in op_tokens:
+            if op_token == "\n" or op_token.replace(" ", "") == "":
+                continue
+            bc_op_tokens.append(op_token)
+
+    # New context.
+    parser_context = ParserContext()
+
+    # Convert OPs to MSPL interpretator operators.
+    current_bc_operator_index = 0
+    while current_bc_operator_index < len(bc_op_tokens):
+        bc_operator = bc_op_tokens[current_bc_operator_index]
+        if bc_operator == "SP_I":
+            parser_context.operators.append(Operator(
+                OperatorType.PUSH_INTEGER,
+                Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                int(bc_op_tokens[current_bc_operator_index + 1])
+            ))
+            current_bc_operator_index += 2
+            continue
+        elif bc_operator.startswith("I"):
+            current_bc_operator_index += 1
+
+            if bc_operator in BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE:
+                parser_context.operators.append(Operator(
+                    OperatorType.INTRINSIC,
+                    Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                    BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE[bc_operator]
+                ))
+            else:
+                cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",
+                                           f"Got unexpected bytecode intrinsic instruction - {repr(bc_operator)}!", True)
+        else:
+            cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",
+                                       f"Got unexpected bytecode instruction - {repr(bc_operator)}!", True)
+
+    # Run.
+    parser_context_source = Source(parser_context.operators)
+    interpretator_run(parser_context_source)
+
+    # Close file.
+    file.close()
+
+
 # Dump.
 
 def dump_print(operators: List[Operator]):
@@ -3603,7 +3714,7 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
 
         # Message.
         cli_usage_message(argument_runner_filename)
-        cli_error_message("Error", "Please pass file path to work with (.mspl extension)", True)
+        cli_error_message("Error", "Please pass file path to work with (.mspl or .msbc ~)", True)
     elif len(argument_vector) == 1:
         # Just one argument.
 
@@ -3685,8 +3796,9 @@ def cli_entry_point():
         cli_welcome_message()
 
     # Load source and check size of it.
-    loaded_file = load_source_from_file(cli_source_path)
-    assert len(loaded_file) == 2, "Got unexpected data from loaded file."
+    if cli_subcommand != "execute":
+        loaded_file = load_source_from_file(cli_source_path)
+        assert len(loaded_file) == 2, "Got unexpected data from loaded file."
 
     if cli_subcommand == "run":
         # If this is interpretate subcommand.
@@ -3751,12 +3863,8 @@ def cli_entry_point():
     elif cli_subcommand == "execute":
         # If this is execute subcommand.
 
-        # Get source from loaded file.
-        cli_source, _ = loaded_file
-
         # Execute.
-        # execute_bytecode(cli_source.operators)
-        print(f"[Info] EXECUTING IS NOT IMPLEMENTED YET")
+        execute_bytecode(cli_source_path)
 
         # Message.
         if not cli_silent:
