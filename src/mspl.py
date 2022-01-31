@@ -3167,18 +3167,289 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
 # Compile.
 
-def compile_bytecode(operators: List[Operator]):
+def compile_bytecode(source: Source, context: ParserContext, path: str):
     """ Compiles operators to bytecode. """
 
+    # Check that there is no changes in operator type or intrinsic.
+    assert len(OperatorType) == 9, "Please update implementation for bytecode compilation after adding new OperatorType!"
+    assert len(Intrinsic) == 28, "Please update implementation for bytecode compilation after adding new Intrinsic!"
+
+    def __write_operator_intrinsic(operator: Operator):
+        """ Writes default operator (non-intrinsic). """
+
+        # Check that this is intrinsic operator.
+        assert operator.type == OperatorType.INTRINSIC, "Non-INTRINSIC operators " \
+                                                        "should be written using __write_operator()!"
+
+        # Type check.
+        assert isinstance(current_operator.operand, Intrinsic), f"Type error, parser level error?"
+
+        if current_operator.operand == Intrinsic.PLUS:
+            # Intristic plus operator.
+
+            # Write operator data.
+            write("I+")
+        elif current_operator.operand == Intrinsic.MINUS:
+            # Intristic minus operator.
+
+            # Write operator data.
+            write("I-")
+        elif current_operator.operand == Intrinsic.INCREMENT:
+            # Intristic increment operator.
+
+            # Write operator data.
+            write("I++")
+        elif current_operator.operand == Intrinsic.DECREMENT:
+            # Intristic decrement operator.
+
+            # Write operator data.
+            write("I--")
+        elif current_operator.operand == Intrinsic.MULTIPLY:
+            # Intristic multiply operator.
+
+            # Write operator data.
+            write("I*")
+        elif current_operator.operand == Intrinsic.DIVIDE:
+            # Intristic divide operator.
+
+            # Write operator data.
+            write("I//")
+        elif current_operator.operand == Intrinsic.MODULUS:
+            # Intristic modulus operator.
+
+            # Write operator data.
+            write("I%")
+        elif current_operator.operand == Intrinsic.EQUAL:
+            # Intristic equal operator.
+
+            # Write operator data.
+            write("I==")
+        elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
+            # Intristic greater equal than operator.
+
+            # Write operator data.
+            write("I>=")
+        elif current_operator.operand == Intrinsic.GREATER_THAN:
+            # Intristic greater than operator.
+
+            # Write operator data.
+            write("I>")
+        elif current_operator.operand == Intrinsic.LESS_THAN:
+            # Intristic less than operator.
+
+            # Write operator data.
+            write("I<")
+        elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
+            # Intristic less equal than operator.
+
+            # Write operator data.
+            write("I<=")
+        elif current_operator.operand == Intrinsic.SWAP:
+            # Intristic swap operator.
+
+            # Write operator data.
+            write("I_SWAP")
+        elif current_operator.operand == Intrinsic.COPY:
+            # Intristic copy operator.
+
+            # Write operator data.
+            write("I_COPY")
+        elif current_operator.operand == Intrinsic.SHOW:
+            # Intristic show operator.
+
+            # Write operator data.
+            write("I_SHOW")
+        elif current_operator.operand == Intrinsic.FREE:
+            # Intristic free operator.
+
+            # Write operator data.
+            write("I_FREE")
+        elif current_operator.operand == Intrinsic.NOT_EQUAL:
+            # Intristic not equal operator.
+
+            # Write operator data.
+            write("I!=")
+        elif current_operator.operand == Intrinsic.COPY2:
+            # Intristic copy2 operator.
+
+            # Write operator data.
+            write("I_COPY2")
+        elif current_operator.operand == Intrinsic.COPY_OVER:
+            # Intristic copy over operator.
+
+            # Write operator data.
+            write("I_COPY_OVER")
+        elif current_operator.operand == Intrinsic.MEMORY_POINTER:
+            # Intrinsic null pointer operator.
+
+            # Write operator data.
+            write(f"I_MPTR")
+        elif current_operator.operand == Intrinsic.NULL:
+            # Intrinsic null operator.
+
+            # Write operator data.
+            write(f"I_NULL")
+        elif current_operator.operand == Intrinsic.MEMORY_WRITE:
+            # Intrinsic memory write operator.
+
+            # Write operator data.
+            # TODO: More checks at compiled script.
+            write("I_MEM_WRITE")
+        elif current_operator.operand == Intrinsic.MEMORY_READ:
+            # Intrinsic memory read operator.
+
+            # Write bytearray block.
+            current_bytearray_should_written = True
+
+            # Write operator data.
+            write("I_MEM_READ")
+        elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
+            # Intristic memory write 4 bytes operator.
+
+            # Write operator data.
+            write("I_MEM_WRITE_4B")
+        elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
+            # Intristic memory read 4 bytes operator.
+
+            # Write bytearray block.
+            current_bytearray_should_written = True
+
+            # Write operator data.
+            write("I_MEM_READ_4B")
+        elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
+            # Intrinsic memory show as characters operator.
+
+            # Write bytearray block.
+            current_bytearray_should_written = True
+
+            # Write operator data.
+            write("I_MEM_SHOW_CHARS")
+        else:
+            # If unknown instrinsic type.
+
+            # Write node data.
+            cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
+                                       f"Intrinsic `{INTRINSIC_TYPES_TO_NAME[current_operator.operand]}` "
+                                       f"is not implemented for python generation!", True)
+
+    def __write_operator(operator: Operator):
+        """ Writes default operator (non-intrinsic). """
+
+        # Grab our operator
+        if operator.type == OperatorType.INTRINSIC:
+            assert False, "Intrinsic operators should be written using __write_operator_intrinsic()!"
+        elif operator.type == OperatorType.PUSH_INTEGER:
+            assert isinstance(operator.operand, int), "Type error, parser level error?"
+
+            # Write operator data.
+            write(f"SP_I")
+            write(f"{operator.operand}")
+        elif operator.type == OperatorType.PUSH_STRING:
+            assert isinstance(operator.operand, str), "Type error, parser level error?"
+            cli_error_message(Stage.COMPILATOR, "Strings is not implemented yet in the bytecode!", True)
+        elif operator.type == OperatorType.IF:
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            # Write operator data.
+            write(f"C_IF")  # ASAP. PUSH LOCATION TO JUMP.
+        elif operator.type == OperatorType.WHILE:
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            # Write operator data.
+            write(f"C_WHILE")  # ASAP. PUSH LOCATION TO JUMP.
+        elif operator.type == OperatorType.DO:
+            # DO operator.
+
+            # Type check.
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            # Write operator data.
+            write(f"C_DO")  # ASAP. PUSH LOCATION TO JUMP.
+        elif operator.type == OperatorType.ELSE:
+            # ELSE operator.
+
+            # Type check.
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            # Write operator data.
+            write(f"C_ELSE")  # ASAP. PUSH LOCATION TO JUMP.
+        elif operator.type == OperatorType.END:
+            # END operator.
+            # Actually, there is no END in Python.
+
+            # Type check.
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            # Write operator data.
+            write(f"C_END")  # ASAP. PUSH LOCATION TO JUMP.
+        elif operator.type == OperatorType.DEFINE:
+            # DEFINE Operator.
+
+            # Error.
+            assert False, "Got definition operator at runner stage, parser level error?"
+        else:
+            # If unknown operator type.
+            assert False, f"Got unexpected / unknon operator type! (How?)"
+
+        # WIP.
+        current_lines.append("\n")
+
+    def write(text: str):
+        """ Writes text to file. """
+        current_lines.append(text + " ")
+
     # Get source operators count.
-    operators_count = len(operators)
+    operators_count = len(source.operators)
 
-    # Check that there is more than zero operators in source.
+    # Current operator index from the source.
+    current_operator_index = 0
+
+    # Lines.
+    current_lines: List[str] = []
+
+    # Check that there is more than zero operators in context.
     if operators_count == 0:
-        # Error.
-        cli_error_message("Error", "Compilation even dont get any operators to compile!", True)
+        # If there is no operators in the final parser context.
+        cli_error_message_verbosed(Stage.COMPILATOR, (basename(path), 1, 1), "Error",
+                                   "There is no operators found in given file after parsing, "
+                                   "are you given empty file or file without resulting operators?", True)
 
-    pass
+    # Open file.
+    try:
+        file = open(path + ".msbc", "w")
+    except FileNotFoundError:
+        cli_error_message("Error", f"File \"{path}\" not founded!", True)
+        return
+    except (OSError, IOError, PermissionError) as _error:
+        cli_error_message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
+        return
+
+    while current_operator_index < operators_count:
+        # While we not run out of the source operators list.
+
+        # Get current operator from the source.
+        current_operator: Operator = source.operators[current_operator_index]
+
+        if current_operator.type == OperatorType.INTRINSIC:
+            # If this is intrinsic.
+
+            # Write intrinsic operator.
+            __write_operator_intrinsic(current_operator)
+        else:
+            # If this is other operator.
+
+            # Write default operator.
+            __write_operator(current_operator)
+
+        # Increment current index.
+        current_operator_index += 1
+
+    # Write lines in final file.
+    for current_stack_line in current_lines:
+        file.write(current_stack_line)
+
+    # Close file.
+    file.close()
 
 
 # Dump.
@@ -3469,10 +3740,10 @@ def cli_entry_point():
         # If this is compile subcommand.
 
         # Get source from loaded file.
-        cli_source, _ = loaded_file
+        cli_source, cli_context = loaded_file
 
         # Compile.
-        compile_bytecode(cli_source.operators)
+        compile_bytecode(cli_source, cli_context, cli_source_path)
 
         # Message.
         if not cli_silent:
