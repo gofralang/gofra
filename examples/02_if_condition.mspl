@@ -1,9 +1,9 @@
-// Shows 11 as conditions confgured to jump there (not 10)
+// Shows "1 && 1" as conditions confgured to jump there (not "1 && 0")
 
 1 if
     0 if
-        10 show
+        "1 && 0" mshowc
     else
-        11 show
+        "1 && 1" mshowc
     end
 end

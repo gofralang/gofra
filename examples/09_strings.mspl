@@ -1,0 +1,10 @@
+// Prints string "Lorem ipsum" and size on the screen.
+
+// Show string, using copy2 to left string on the stack (pointer, size)
+"Lorem ipsum" copy2 mshowc
+
+// Show prefix.
+"\nThat string length is - " mshowc
+
+// Drop pointer, show size.
+swap free show

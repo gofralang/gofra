@@ -39,6 +39,16 @@ NAME // Will expand.
 # Characters
 #### `'a'` - Pushes 97 (Code) of the  character into the stack.
 
+# Strings
+#### `"Hello world"` - Pushes string pointer into the stack, and also it size.
+#### After defining string you may use data to show the string, using `mshowc`,
+#### Or do some checks, based on string size.
+#### You also may grab strings from I/O using io_read_str (Same as defining string, but string is from I/O instead of source).
+
+# Input / Output (I/O)
+#### `io_read_str` - Pushes string, that user is input at the stack. (Pointer, Size)
+#### `io_read_int` - Pushes integer, or -1 if incorrect value, that user is input.
+
 # Constants
 #### `NULL` - Returns 0.
 #### `MPTR` - Returns null-pointer (Should be 0 for non-compiled (even if python)).

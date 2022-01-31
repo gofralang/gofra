@@ -13,8 +13,8 @@
 - Conditional IFs ([bool_from_stack] if [code] else [code] end).
 - WHILE loops (while [expression] do [code] end)
 - Bytearray Memory (mbwrite, mbread, mbshowc, mbptr etc...)
-- Character literals, string literals (WIP, Not implemented YET).
-- A lot more features...
+- Characters, Strings.
+- Basic I/O.
 
 ## Simple example
 ```
@@ -23,5 +23,11 @@
 + // Pop both 35 and 5, and push their sum in the stack.
 show // Pop value from the stack and show it on the screen.
 ```
+## Hello World example
+```
+"Hello, World!" mshowc // Show string "Hello, World!" on the screen.
+```
+
+"Hello, World!" mshowc
 
 ## Documentation: `DOCUMENTATION.MD`, Examples: `./examples/README.MD`.

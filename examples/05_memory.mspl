@@ -1,4 +1,5 @@
 // Writes 97;98;99 to the memory (abc) and then prints in as "abc".
+// Writes "hello world" to the memory and then prints it.
 
 MPTR 0 + 'a' mwrite // 0 97 mwrite
 MPTR 1 + 'b' mwrite // 1 98 mwrite
@@ -6,3 +7,6 @@ MPTR 2 + 'c' mwrite // 2 99 mwrite
 
 // Shows 3 characters.
 MPTR 3 mshowc
+
+// Hello world.
+"hello world" mshowc

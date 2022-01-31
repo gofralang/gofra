@@ -1,8 +1,6 @@
 // Prints pyramid of given characters, with SIZE elements.
 
-// Size.
 define SIZE 15 end
-// Char to show.
 define CHAR '*' end
 
 1 while copy SIZE < do

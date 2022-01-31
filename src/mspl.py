@@ -114,6 +114,11 @@ class Intrinsic(Enum):
     MEMORY_SHOW_CHARACTERS = auto()
     MEMORY_POINTER = auto()
 
+    # I/O.
+    IO_READ_INTEGER = auto()
+    IO_READ_STRING = auto()
+    # IO_WRITE = auto() -- Same as `show` / `mshowc`.
+
     # Utils.
     NULL = auto()
     SHOW = auto()
@@ -123,6 +128,7 @@ class TokenType(Enum):
     """ Enumeration for token types. """
     INTEGER = auto()
     CHARACTER = auto()
+    STRING = auto()
     WORD = auto()
     KEYWORD = auto()
 
@@ -130,6 +136,7 @@ class TokenType(Enum):
 class OperatorType(Enum):
     """ Enumeration for operaror types. """
     PUSH_INTEGER = auto()
+    PUSH_STRING = auto()
     INTRINSIC = auto()
 
     # Conditions, loops and other.
@@ -144,7 +151,7 @@ class OperatorType(Enum):
 # Types.
 
 # Operand.
-OPERAND = Optional[Union[int, Intrinsic]]
+OPERAND = Optional[Union[int, str, Intrinsic]]
 
 # Location.
 LOCATION = Tuple[str, int, int]
@@ -162,7 +169,7 @@ TYPE_POINTER = int
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 26, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 28, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     # Math.
     "+": Intrinsic.PLUS,
@@ -193,6 +200,10 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
     "mread4b": Intrinsic.MEMORY_READ4BYTES,
     "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
+
+    # I/O.
+    "io_read_str": Intrinsic.IO_READ_STRING,
+    "io_read_int": Intrinsic.IO_READ_INTEGER,
 
     # Constants*.
     "MPTR": Intrinsic.MEMORY_POINTER,
@@ -227,6 +238,7 @@ KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
 }
 
 # Extra `tokens`.
+EXTRA_ESCAPE = "\\"
 EXTRA_COMMENT = "//"
 EXTRA_DIRECTIVE = "#"
 EXTRA_CHAR = "'"
@@ -325,11 +337,46 @@ def lexer_find_collumn(line: str, start: int, predicate_function: Callable[[str]
     return start
 
 
+def lexer_find_string_end(string_line: str, start_index: int) -> int:
+    """ Search for end of string in the line. """
+
+    # Previous - first.
+    character_previous = string_line[start_index]
+
+    while start_index < len(string_line):
+        # While we not reach end of the string.
+
+        # Get current character.
+        character_current = string_line[start_index]
+
+        if character_current == EXTRA_STRING and character_previous != EXTRA_ESCAPE:
+            # If we reach end of the string, and it is not escaped.
+
+            # We found end.
+            break
+
+        # Set previous to current (update).
+        character_previous = character_current
+
+        # Increase start index.
+        start_index += 1
+
+    # Return end.
+    return start_index
+
+
+def lexer_unescape_string(string: str) -> str:
+    """ Unescapes lexer string, used for string initialization. """
+
+    # Unescape.
+    return string.encode("UTF-8").decode("unicode_escape").encode("latin-1").decode("UTF-8")
+
+
 def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None, None]:
     """ Tokenizes lines into list of the Tokens. """
 
     # Check that there is no changes in token type.
-    assert len(TokenType) == 4, "Please update implementation after adding new TokenType!"
+    assert len(TokenType) == 5, "Please update implementation after adding new TokenType!"
 
     # Get the basename.
     file_parent = basename(file_parent)
@@ -361,6 +408,9 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
         # Get current line length.
         current_line_length = len(current_line)
 
+        # ?.
+        current_collumn_end_index = 0
+
         while current_collumn_index < current_line_length:
             # Iterate over line.
 
@@ -387,8 +437,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 current_token_text = current_line[current_collumn_index + 1: current_collumn_end_index]
 
                 # Get current char value.
-                current_char_value = current_token_text.encode("UTF-8").\
-                    decode("unicode_escape").encode("latin-1").decode("UTF-8").encode("UTF-8")
+                current_char_value = lexer_unescape_string(current_token_text).encode("UTF-8")
 
                 if len(current_char_value) != 1:
                     # If there is 0 or more than 1 characters*.
@@ -411,10 +460,76 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
             elif current_line[current_collumn_index] == EXTRA_STRING:
                 # If this is string.
 
-                # Error.
-                cli_error_message_verbosed(Stage.LEXER, current_location, "Error",
-                                           "Strings is not implemented in the language lexer and next steps!"
-                                           " Only characters is implemented for now!", True)
+                # String buffer for strings.
+                current_string_buffer = ""
+
+                while current_line_index < len(lines):
+                    # While we don`t reach end of the lines.
+
+                    # Get string start.
+                    string_start_collumn_index = current_collumn_index
+
+                    if current_string_buffer == "":
+                        # If we not start writing string buffer.
+
+                        # Increment by one for quote.
+                        string_start_collumn_index += len(EXTRA_STRING)
+                    else:
+                        # If we started.
+
+                        # Just grab line.
+                        current_line = lines[current_line_index]
+
+                    # Get string end.
+                    string_end_collumn_index = lexer_find_string_end(current_line, string_start_collumn_index)
+
+                    if string_end_collumn_index >= len(current_line) or \
+                            current_line[string_end_collumn_index] != EXTRA_STRING:
+                        # If got end of current line, or not found closing string.
+
+                        # Add current line.
+                        current_string_buffer += current_line[string_start_collumn_index:]
+
+                        # Reset and move next line.
+                        current_line_index += 1
+                        current_collumn_index = 0
+                    else:
+                        # If current line.
+
+                        # Add final buffer.
+                        current_string_buffer += current_line[string_start_collumn_index:string_end_collumn_index]
+                        current_collumn_end_index = string_end_collumn_index
+
+                        # End lexing string.
+                        break
+
+                if current_line_index >= len(lines):
+                    # If we exceed current lines length.
+
+                    # Error.
+                    cli_error_message_verbosed(Stage.LEXER, current_location, "Error",
+                                               "There is unclosed string literal. "
+                                               f"Do you forgot to place `{EXTRA_STRING}`?", True)
+                # Error?.
+                assert current_line[current_collumn_index] == EXTRA_STRING, "Got non string closing character!"
+
+                # Increase end index.
+                current_collumn_end_index += 1
+
+                # Get current token text.
+                current_token_text = current_string_buffer
+
+                # Return string token.
+                yield Token(
+                    type=TokenType.STRING,
+                    text=current_token_text,
+                    location=current_location,
+                    value=lexer_unescape_string(current_token_text)
+                )
+
+                # Find first non space char.
+                current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
+                                                           lambda char: not char.isspace())
             else:
                 # Index of the column end.
                 current_collumn_end_index = lexer_find_collumn(current_line, current_collumn_index,
@@ -479,13 +594,13 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 8, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 9, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
     assert len(Keyword) == 6, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
-    assert len(TokenType) == 4, "Please update implementation after adding new TokenType!"
+    assert len(TokenType) == 5, "Please update implementation after adding new TokenType!"
 
     # Reverse tokens.
     reversed_tokens: List[Token] = list(reversed(tokens))
@@ -613,6 +728,21 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
             # Increment operator index.
             context.operator_index += 1
+        elif current_token.type == TokenType.STRING:
+            # If we got a string.
+
+            # Type check.
+            assert isinstance(current_token.value, str), "Type error, lexer level error?"
+
+            # Add operator to the context.
+            context.operators.append(Operator(
+                type=OperatorType.PUSH_STRING,
+                token=current_token,
+                operand=current_token.value
+            ))
+
+            # Increment operator index.
+            context.operator_index += 1
         elif current_token.type == TokenType.CHARACTER:
             # If we got a character.
 
@@ -666,7 +796,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # If there is nothing on the memory stack.
 
                     # Error.
-                    cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                "`do` should used after the `while` block!", True)
 
                 # Push operator to the context.
@@ -683,7 +813,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # If this is not while.
 
                     # Error.
-                    cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                "`do` should used after the `while` block!", True)
 
                 # Say that we crossreference WHILE block.
@@ -701,7 +831,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     # If there is nothing on the memory stack.
 
                     # Error.
-                    cli_error_message_verbosed(Stage.PARSER,  current_token.location, "Error",
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                "`else` should used after the `if` block!", True)
 
                 # Get `IF` operator from the memory stack.
@@ -844,19 +974,60 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                 # Add definition.
                 definitions[definition_name.text] = definition
 
+                # How much we require ends.
+                required_end_count = 0
+
                 while len(reversed_tokens) > 0:
                     # If there is still tokens.
 
                     # Get new token.
                     current_token = reversed_tokens.pop()
 
-                    if current_token.type == TokenType.KEYWORD and \
-                            current_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]:
-                        # If this is end.
-                        break
+                    if current_token.type == TokenType.KEYWORD:
+                        # If got keyword.
+
+                        if current_token.text in KEYWORD_NAMES_TO_TYPE:
+                            # If this is correct keyword.
+
+                            if current_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]:
+                                # If this is end.
+
+                                if required_end_count <= 0:
+                                    # If we no more require end.
+
+                                    # Stop definition.
+                                    break
+
+                                # Decrease required end counter.
+                                required_end_count -= 1
+
+                            if KEYWORD_NAMES_TO_TYPE[current_token.text] in \
+                                    (Keyword.IF, Keyword.DEFINE, Keyword.DO):
+                                # If this is keyword that requires end.
+
+                                # Increase required end count.
+                                required_end_count += 1
+
+                            if KEYWORD_NAMES_TO_TYPE[current_token.text] == Keyword.ELSE:
+                                # If got else.
+
+                                # Just pass as else not requires end.
+                                pass
+                        else:
+                            # Invalid keyword.
+                            assert False, "Got invalid keyword!"
 
                     # Append token.
                     definition.tokens.append(current_token)
+
+                if required_end_count != 0:
+                    # If there is still required end.
+
+                    # Error message.
+                    cli_error_message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                               f"There is {required_end_count} unclosed blocks, "
+                                               "that requires cloing `end` keyword inside `define` definition. ", True)
+
                 if not (current_token.type == TokenType.KEYWORD and
                         current_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]):
                     # If got not end at end of definition.
@@ -899,16 +1070,21 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     """ Interpretates the source. """
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 8, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 9, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 26, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 28, "Please update implementation after adding new Intrinsic!"
 
     # Create empty stack.
     memory_execution_stack: Stack = Stack()
 
+    # String pointers.
+    memory_string_pointers: Dict[OPERATOR_ADDRESS, TYPE_POINTER] = dict()
+    memory_string_size = bytearray_size
+    memory_string_size_ponter = 0
+
     # Allocate sized bytearray.
-    memory_bytearray: bytearray = bytearray(bytearray_size)
+    memory_bytearray: bytearray = bytearray(bytearray_size + memory_string_size)
 
     # Get source operators count.
     operators_count = len(source.operators)
@@ -938,10 +1114,51 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                 # Push integer operator.
 
                 # Type check.
-                assert isinstance(current_operator.operand, int), "Type error, lexer level error?"
+                assert isinstance(current_operator.operand, int), "Type error, parser level error?"
 
                 # Push operand to the stack.
                 memory_execution_stack.push(current_operator.operand)
+
+                # Increase operator index.
+                current_operator_index += 1
+            elif current_operator.type == OperatorType.PUSH_STRING:
+                # Push string operator.
+
+                # Type check.
+                assert isinstance(current_operator.operand, str), "Type error, parser level error?"
+
+                # Get string data.
+                string_value = current_operator.operand.encode("UTF-8")
+                string_length = len(string_value)
+
+                if current_operator_index not in memory_string_pointers:
+                    # If we not found string in allocated string pointers.
+
+                    # Get pointer, and push in to the pointers.
+                    string_pointer: TYPE_POINTER = memory_string_size + 1 + memory_string_size_ponter
+                    memory_string_pointers[current_operator_index] = string_pointer
+
+                    # Write string right into the bytearray memory.
+                    memory_bytearray[string_pointer: string_pointer + string_length] = string_value
+
+                    # Increase next pointer by current string length.
+                    memory_string_size_ponter += string_length
+
+                    # Check that there is no overflow.
+                    if string_length > memory_string_size:
+                        # If overflow.
+
+                        # Error.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   "Trying to push string, when there is memory string buffer overflow!"
+                                                   " Try use memory size directive, to increase size!", True)
+
+                # Push found string pointer to the stack.
+                found_string_pointer = memory_string_pointers[current_operator_index]
+                memory_execution_stack.push(found_string_pointer)
+
+                # Push string length to the stack.
+                memory_execution_stack.push(string_length)
 
                 # Increase operator index.
                 current_operator_index += 1
@@ -1305,8 +1522,8 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                     operand_a = memory_execution_stack.pop()
                     operand_b = memory_execution_stack.pop()
 
-                    # Start byte index.
-                    memory_byte_index = 0
+                    # String to show.
+                    memory_string: bytes = b""
 
                     if operand_b + operand_a > len(memory_bytearray):
                         # If this is gonna be memory overflow.
@@ -1327,29 +1544,21 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                                    f"that underflows memory buffer size {(len(memory_bytearray))}"
                                                    " bytes (MemoryBufferUnderflow)", True)
 
-                    while memory_byte_index < operand_a:
-                        # Iterate over length.
+                    # Read memory string.
+                    try:
+                        memory_string = memory_bytearray[operand_b: operand_b + operand_a]
+                    except IndexError:
+                        # Memory* error.
 
-                        # Get pointer to the memory byte.
-                        memory_pointer = operand_b + memory_byte_index
+                        # Error message.
+                        cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                   f"Memory buffer (over|under)flow "
+                                                   f"(Read from {operand_b} to {operand_b + operand_a} "
+                                                   f"when there is memory "
+                                                   f"buffer with size {len(memory_bytearray)} bytes)!", True)
 
-                        # Read memory byte.
-                        try:
-                            memory_byte = memory_bytearray[memory_pointer]
-                        except IndexError:
-                            # Memory* error.
-
-                            # Error message.
-                            cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
-                                                       f"Memory buffer (over|under)flow "
-                                                       f"(Read from pointer {memory_pointer} when there is memory "
-                                                       f"buffer with size {len(memory_bytearray)} bytes)!", True)
-                        else:
-                            # Print decoded memory byte as char.
-                            print(chr(memory_byte), end="")
-
-                        # Increment byte index.
-                        memory_byte_index += 1
+                    # Print decoded memory bytes.
+                    print(memory_string.decode("UTF-8"), end="")
                 elif current_operator.operand == Intrinsic.MEMORY_POINTER:
                     # Intristic memory pointer operator.
 
@@ -1360,6 +1569,53 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
 
                     # Push pointer to the stack.
                     memory_execution_stack.push(0)
+                elif current_operator.operand == Intrinsic.IO_READ_STRING:
+                    # Intrinsic I/O read string operator.
+
+                    # Get string data.
+                    string_value = input().encode("UTF-8")
+                    string_length = len(string_value)
+
+                    if current_operator_index not in memory_string_pointers:
+                        # If we not found string in allocated string pointers.
+
+                        # Get pointer, and push in to the pointers.
+                        string_pointer: TYPE_POINTER = 1 + memory_string_size_ponter
+                        memory_string_pointers[current_operator_index] = string_pointer
+
+                        # Write string right into the bytearray memory.
+                        memory_bytearray[string_pointer: string_pointer + string_length] = string_value
+
+                        # Increase next pointer by current string length.
+                        memory_string_size_ponter += string_length
+
+                        # Check that there is no overflow.
+                        if string_length > memory_string_size:
+                            # If overflow.
+
+                            # Error.
+                            cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                                       "Trying to push I/O string, "
+                                                       "when there is memory string buffer overflow! "
+                                                       "Try use memory size directive, to increase size!", True)
+
+                    # Push found string pointer to the stack.
+                    found_string_pointer = memory_string_pointers[current_operator_index]
+                    memory_execution_stack.push(found_string_pointer)
+
+                    # Push string length to the stack.
+                    memory_execution_stack.push(string_length)
+                elif current_operator.operand == Intrinsic.IO_READ_INTEGER:
+                    # Intrinsic I/O read integer operator.
+
+                    # Get integer data.
+                    try:
+                        integer_value = int(input())
+                    except ValueError:
+                        integer_value = -1
+
+                    # Push integer to the stack.
+                    memory_execution_stack.push(integer_value)
                 else:
                     # If unknown instrinsic type.
                     assert False, "Unknown instrinsic! (How?)"
@@ -1463,6 +1719,12 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
                                        f"Stack error! This is may caused by popping from empty stack!"
                                        f"Do you used {EXTRA_DIRECTIVE}LINTER_SKIP directive? IndexError, (From: "
                                        f"{current_operator.token.text})", True)
+        except KeyboardInterrupt:
+            # If stopped.
+
+            # Error message.
+            cli_error_message_verbosed(Stage.RUNNER, current_operator.token.location, "Error",
+                                       "Interpretation was stopped by keyboard interrupt!", True)
 
     if len(memory_execution_stack) > 0:
         # If there is any in the stack.
@@ -1480,10 +1742,10 @@ def linter_type_check(source: Source):
     # TODO: IF/WHILE anylyse fixes.
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 8, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 9, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 26, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 28, "Please update implementation after adding new Intrinsic!"
 
     # Create empty linter stack.
     memory_linter_stack = Stack()
@@ -1518,6 +1780,18 @@ def linter_type_check(source: Source):
 
             # Push operand type to the stack.
             memory_linter_stack.push(int)
+
+            # Increase operator index.
+            current_operator_index += 1
+        elif current_operator.type == OperatorType.PUSH_STRING:
+            # PUSH STRING operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, str), "Type error, lexer level error?"
+
+            # Push operand types to the stack.
+            memory_linter_stack.push(int)  # String size.
+            memory_linter_stack.push(TYPE_POINTER)  # String pointer.
 
             # Increase operator index.
             current_operator_index += 1
@@ -1948,6 +2222,17 @@ def linter_type_check(source: Source):
 
                 # Push pointer to the stack.
                 memory_linter_stack.push(int)
+            elif current_operator.operand == Intrinsic.IO_READ_STRING:
+                # I/O read string operator.
+
+                # Push operand types to the stack.
+                memory_linter_stack.push(int)  # String size.
+                memory_linter_stack.push(TYPE_POINTER)  # String pointer.
+            elif current_operator.operand == Intrinsic.IO_READ_INTEGER:
+                # I/O read integer operator.
+
+                # Push operand types to the stack.
+                memory_linter_stack.push(int)  # Integer.
             else:
                 # If unknown instrinsic type.
                 assert False, "Got unexpected / unknon intrinsic type! (How?)"
@@ -2097,7 +2382,7 @@ def graph_generate(source: Source, path: str):
     """ Generates graph from the source. """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 8, "Please update implementation for graph generation after adding new OperatorType!"
+    assert len(OperatorType) == 9, "Please update implementation for graph generation after adding new OperatorType!"
 
     def __write_header():
         """ Writes header block and start. """
@@ -2163,6 +2448,16 @@ def graph_generate(source: Source, path: str):
             # Write operator data.
             # Description: PUSH INTEGER actually just refers to the next operation.
             file.write(f"   Operator_{current_operator_index} [label=INT {current_operator.operand}];\n")
+            file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
+        elif current_operator.type == OperatorType.PUSH_STRING:
+            # PUSH STRING operator.
+
+            # Type check.
+            assert isinstance(current_operator.operand, str), "Type error, parser level error?"
+
+            # Write operator data.
+            # Description: PUSH INTEGER actually just refers to the next operation.
+            file.write(f"   Operator_{current_operator_index} [label={repr(repr(current_operator.operand))}];\n")
             file.write(f"   Operator_{current_operator_index} -> Operator_{current_operator_index + 1};\n")
         elif current_operator.type == OperatorType.INTRINSIC:
             # INTRINSIC operator.
@@ -2262,8 +2557,8 @@ def python_generate(source: Source, context: ParserContext, path: str):
     """ Generates graph from the source. """
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 8, "Please update implementation for python generation after adding new OperatorType!"
-    assert len(Intrinsic) == 26, "Please update implementation for python generationg after adding new Intrinsic!"
+    assert len(OperatorType) == 9, "Please update implementation for python generation after adding new OperatorType!"
+    assert len(Intrinsic) == 28, "Please update implementation for python generationg after adding new Intrinsic!"
 
     def __update_indent(value: int):
         """ Updates indent by given value. """
@@ -2279,23 +2574,62 @@ def python_generate(source: Source, context: ParserContext, path: str):
     def __write_footer():
         """ Write footer. """
 
+        # Trick.
+        nonlocal current_bytearray_should_written, current_string_buffer_should_written
+        if current_bytearray_should_written or current_string_buffer_should_written:
+            current_string_buffer_should_written = True
+            current_bytearray_should_written = True
+
         if current_bytearray_should_written:
             # If we should write bytearray block.
 
             # Allocate bytearray.
             current_lines.insert(current_bytearray_insert_position,
-                                 f"memory = bytearray({context.memory_bytearray_size})")
+                                 f"memory = bytearray("
+                                 f"{context.memory_bytearray_size} + strings_size"
+                                 f")")
 
             # Comment allocation.
             if not directive_skip_comments:
                 current_lines.insert(current_bytearray_insert_position,
-                                     "# Allocate memory buffer "
+                                     "# Allocate memory buffer (memory + strings)"
                                      "(As you called MSPL memory work operators): \n")
-
             # Warn user about using byte operations in python compilation.
             cli_error_message("Warning", "YOU ARE USING MEMORY OPERATIONS, THAT MAY HAVE EXPLICIT BEHAVIOUR! "
                                          "IT IS MAY HARDER TO CATCH ERROR IF YOU RUN COMPILED VERSION "
                                          "(NOT INTERPRETATED)")
+
+        if current_string_buffer_should_written:
+            # If we should write string buffer block.
+
+            # Push string function.
+            current_lines.insert(current_string_buffer_insert_position,
+                                 "\ndef stack_push_string(stack_str, op_index): \n"
+                                 "\tstr_len = len(stack_str)\n"
+                                 "\tif op_index not in strings_pointers:\n"
+                                 "\t\tglobal strings_size_pointer\n"
+                                 "\t\tptr = strings_size + 1 + strings_size_pointer\n"
+                                 "\t\tstrings_pointers[op_index] = ptr\n"
+                                 "\t\tmemory[ptr: ptr + str_len] = stack_str\n"
+                                 "\t\tstrings_size_pointer += str_len\n"
+                                 "\t\tif str_len > strings_size:\n"
+                                 "\t\t\tprint(\"ERROR! Trying to push string, when there is memory string buffer overflow! Try use memory size directive, to increase size!\")\n"
+                                 "\t\t\texit(1)\n"
+                                 "\tfsp = strings_pointers[op_index]\n"
+                                 "\treturn fsp, str_len\n"
+                                 )
+
+            # Allocate string buffer.
+            current_lines.insert(current_string_buffer_insert_position,
+                                 f"strings_pointers = dict()\n"
+                                 f"strings_size = {context.memory_bytearray_size}\n"
+                                 f"strings_size_pointer = 0")
+
+            # Comment allocation.
+            if not directive_skip_comments:
+                current_lines.insert(current_string_buffer_insert_position,
+                                     "# Allocate strings buffer "
+                                     "(As you used MSPL strings): \n")
 
     def __write_header():
         """ Writes header. """
@@ -2312,6 +2646,10 @@ def python_generate(source: Source, context: ParserContext, path: str):
         # Update bytearray insert position.
         nonlocal current_bytearray_insert_position
         current_bytearray_insert_position = len(current_lines)
+
+        # Update string buffer insert position.
+        nonlocal current_string_buffer_insert_position
+        current_string_buffer_insert_position = len(current_lines)
 
         # Write file and expression comments.
         if not directive_skip_comments:
@@ -2572,25 +2910,44 @@ def python_generate(source: Source, context: ParserContext, path: str):
             assert isinstance(operator.operand, int), "Type error, parser level error?"
 
             # Write operator data.
-            write(f"stack.append({current_operator.operand})")
-        elif current_operator.type == OperatorType.IF:
+            write(f"stack.append({operator.operand})")
+        elif operator.type == OperatorType.PUSH_STRING:
+            # PUSH STRING operator.
+
+            # Type check.
+            assert isinstance(operator.operand, str), "Type error, parser level error?"
+
+            # Write operator data.
+            # TODO: Warn using `current_operator_index`
+            write(f"s_str, s_len = stack_push_string({operator.operand.encode('UTF-8')}, {current_operator_index})")
+            write(f"stack.append(s_str)")
+            write(f"stack.append(s_len)")
+
+            # Write strings buffer block.
+            nonlocal current_string_buffer_should_written
+            current_string_buffer_should_written = True
+            # And memory.
+            nonlocal current_bytearray_should_written
+            current_bytearray_should_written = True
+
+        elif operator.type == OperatorType.IF:
             # IF operator.
 
             # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
 
             # Write operator data.
             write("if stack.pop() != 0:")
 
             # Increase indent level.
             __update_indent(1)
-        elif current_operator.type == OperatorType.WHILE:
+        elif operator.type == OperatorType.WHILE:
             # WHILE operator.
 
             # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
 
-            # Remember name so we can write "def" at the top of the source in current_while_insert_position.
+            # Remember name, so we can write "def" at the top of the source in current_while_insert_position.
             current_while_defined_name = f"while_expression_ip{current_operator_index}"
 
             # Remember comment for while function block.
@@ -2602,11 +2959,11 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Set that we in while expression.
             current_while_block = True
-        elif current_operator.type == OperatorType.DO:
+        elif operator.type == OperatorType.DO:
             # DO operator.
 
             # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
 
             if current_while_block:
                 # If we close while.
@@ -2637,7 +2994,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
                 # If this is not while.
 
                 # Error.
-                cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
+                cli_error_message_verbosed(Stage.COMPILATOR, operator.token.location, "Error",
                                            "Got `do`, when there is no `while` block started! "
                                            "(Parsing error?)", True)
 
@@ -2652,11 +3009,11 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Increase indent level.
             __update_indent(1)
-        elif current_operator.type == OperatorType.ELSE:
+        elif operator.type == OperatorType.ELSE:
             # ELSE operator.
 
             # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
             # Write operator data.
             pass_comment = "" if directive_skip_comments else f"  # -- Be sure that there is no empty body."
@@ -2670,12 +3027,12 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Increase indent level.
             __update_indent(1)
-        elif current_operator.type == OperatorType.END:
+        elif operator.type == OperatorType.END:
             # END operator.
             # Actually, there is no END in Python.
 
             # Type check.
-            assert isinstance(current_operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+            assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
             # Write operator data.
             pass_comment = "" if directive_skip_comments else f"  # -- Be sure that there is no empty body."
@@ -2683,7 +3040,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
             # Decrease indent level.
             __update_indent(-1)
-        elif current_operator.type == OperatorType.DEFINE:
+        elif operator.type == OperatorType.DEFINE:
             # DEFINE Operator.
 
             # Error.
@@ -2718,6 +3075,15 @@ def python_generate(source: Source, context: ParserContext, path: str):
     # Bytearray.
     current_bytearray_insert_position = 0  # Position to insert bytearray block if bytearray_should_written is true.
     current_bytearray_should_written = False  # If true, will warn about memory usage and write bytearray block.
+
+    # TODO: Remove, as redundant, there is bytearray insert position above, which is same.
+    # Strings.
+
+    # Position to insert string bufer allocation block,
+    # if current_string_buffer_should_written is true.
+    current_string_buffer_insert_position = 0
+
+    current_string_buffer_should_written = False  # If true, will write string buffer allocation block.
 
     # Should we skip comments.
     directive_skip_comments = context.directive_python_comments_skip
@@ -2801,15 +3167,14 @@ def python_generate(source: Source, context: ParserContext, path: str):
 
 # Dump.
 
-def dump_print(source: Source):
+def dump_print(operators: List[Operator]):
     """ Dumps source using print. """
 
     # Get source operators count.
-    operators_count = len(source.operators)
+    operators_count = len(operators)
 
     # Check that there is more than zero operators in source.
     if operators_count == 0:
-
         # Error.
         cli_error_message("Error", "Dump print even dont get any operators to print!", True)
 
@@ -2820,7 +3185,7 @@ def dump_print(source: Source):
         # While we not run out of the source operators list.
 
         # Get current operator from the source.
-        current_operator: Operator = source.operators[current_operator_index]
+        current_operator: Operator = operators[current_operator_index]
 
         # Operator in readable string.
         if current_operator.type == OperatorType.INTRINSIC:
@@ -3077,7 +3442,7 @@ def cli_entry_point():
         cli_source, _ = loaded_file
 
         # Dump print.
-        dump_print(cli_source)
+        dump_print(cli_source.operators)
 
         # Message.
         if not cli_silent:

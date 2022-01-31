@@ -1,22 +1,3 @@
 // Prints "Hello, World!" on the screen.
 
-MPTR // Get start memory pointer.
-
-// Write chars in the memory[0:14]
-copy 0  + 'H' mwrite
-copy 1  + 'e' mwrite
-copy 2  + 'l' mwrite
-copy 3  + 'l' mwrite
-copy 4  + 'o' mwrite
-copy 5  + ',' mwrite
-copy 6  + ' ' mwrite
-copy 7  + 'W' mwrite
-copy 8  + 'o' mwrite
-copy 9  + 'r' mwrite
-copy 10 + 'l' mwrite
-copy 11 + 'd' mwrite
-copy 12 + '!' mwrite
-copy 13 + '\n' mwrite
-
-// Show all chacters.
-copy 14 + mshowc
+"Hello, World!" mshowc

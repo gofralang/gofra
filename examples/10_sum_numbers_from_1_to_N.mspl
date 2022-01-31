@@ -1,6 +1,5 @@
 // Shows sum of the numbers from 1 to N.
 
-// N.
 define N 1000 end
 
 // Write 0 as start sum.
