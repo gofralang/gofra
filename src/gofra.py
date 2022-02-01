@@ -3079,8 +3079,9 @@ def compile_bytecode(source: Source, _, path: str):
                                    "are you given empty file or file without resulting operators?", True)
 
     # Open file.
+    bytecode_path = path + ".gofbc"
     try:
-        file = open(path + ".gofbc", "w")
+        file = open(path, "w")
     except FileNotFoundError:
         cli_error_message("Error", f"File \"{path}\" not founded!", True)
         return
@@ -3114,6 +3115,7 @@ def compile_bytecode(source: Source, _, path: str):
 
     # Close file.
     file.close()
+    return bytecode_path
 
 
 def execute_bytecode(path: str):
@@ -3477,11 +3479,11 @@ def cli_entry_point():
         cli_source, cli_context = loaded_file
 
         # Compile.
-        compile_bytecode(cli_source, cli_context, cli_source_path)
+        bytecode_path = compile_bytecode(cli_source, cli_context, cli_source_path)
 
         # Message.
         if not cli_silent:
-            print(f"[Info] File \"{basename(cli_source_path)}.gofbc\" was compiled!")
+            print(f"[Info] File \"{basename(cli_source_path)}\" was compiled to \"{basename(bytecode_path)}\"!")
     elif cli_subcommand == "execute":
         # If this is execute subcommand.
 
@@ -3490,7 +3492,7 @@ def cli_entry_point():
 
         # Message.
         if not cli_silent:
-            print(f"[Info] File \"{basename(cli_source_path)}.gofbc\" was executed!")
+            print(f"[Info] File \"{basename(cli_source_path)}\" was executed!")
     else:
         # If unknown subcommand.
 
