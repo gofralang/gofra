@@ -10,25 +10,9 @@ from os.path import basename
 from sys import argv
 
 from mspl_types import *
-
+from mspl import lexer
 
 # Lexer.
-
-def lexer_find_collumn(line: str, start: int, predicate_function: Callable[[str], bool]) -> int:
-    """ Finds column in the line from start that not triggers filter. """
-
-    # Get end position.
-    end = len(line)
-
-    while start < end and not predicate_function(line[start]):
-        # While we don't reach end or not trigger predicate function.
-
-        # Increment start.
-        start += 1
-
-    # Return counter.
-    return start
-
 
 def lexer_find_string_end(string_line: str, start_index: int) -> int:
     """ Search for end of string in the line. """
@@ -56,13 +40,6 @@ def lexer_find_string_end(string_line: str, start_index: int) -> int:
 
     # Return end.
     return start_index
-
-
-def lexer_unescape_string(string: str) -> str:
-    """ Unescapes lexer string, used for string initialization. """
-
-    # Unescape.
-    return string.encode("UTF-8").decode("unicode_escape").encode("latin-1").decode("UTF-8")
 
 
 def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None, None]:
@@ -96,7 +73,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
         current_line = lines[current_line_index]
 
         # Find first non-space char.
-        current_collumn_index = lexer_find_collumn(current_line, 0, lambda char: not char.isspace())
+        current_collumn_index = lexer.find_collumn(current_line, 0, lambda char: not char.isspace())
 
         # Get current line length.
         current_line_length = len(current_line)
@@ -114,7 +91,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 # If we got character quote*.
                 # Index of the column end.
                 # (Trying to find closing quote*
-                current_collumn_end_index = lexer_find_collumn(current_line, current_collumn_index + 1,
+                current_collumn_end_index = lexer.find_collumn(current_line, current_collumn_index + 1,
                                                                lambda char: char == EXTRA_CHAR)
 
                 if current_collumn_end_index >= len(current_line) or \
@@ -130,7 +107,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 current_token_text = current_line[current_collumn_index + 1: current_collumn_end_index]
 
                 # Get current char value.
-                current_char_value = lexer_unescape_string(current_token_text).encode("UTF-8")
+                current_char_value = lexer.unescape(current_token_text).encode("UTF-8")
 
                 if len(current_char_value) != 1:
                     # If there is 0 or more than 1 characters*.
@@ -148,7 +125,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 )
 
                 # Find first non-space char.
-                current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index + 1,
+                current_collumn_index = lexer.find_collumn(current_line, current_collumn_end_index + 1,
                                                            lambda char: not char.isspace())
             elif current_line[current_collumn_index] == EXTRA_STRING:
                 # If this is string.
@@ -217,15 +194,15 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                     type=TokenType.STRING,
                     text=current_token_text,
                     location=current_location,
-                    value=lexer_unescape_string(current_token_text)
+                    value=lexer.unescape(current_token_text)
                 )
 
                 # Find first non-space char.
-                current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
+                current_collumn_index = lexer.find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
             else:
                 # Index of the column end.
-                current_collumn_end_index = lexer_find_collumn(current_line, current_collumn_index,
+                current_collumn_end_index = lexer.find_collumn(current_line, current_collumn_index,
                                                                lambda char: char.isspace())
 
                 # Get current token text.
@@ -274,7 +251,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                     )
 
                 # Find first non-space char.
-                current_collumn_index = lexer_find_collumn(current_line, current_collumn_end_index,
+                current_collumn_index = lexer.find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
 
         # Increment current line.
