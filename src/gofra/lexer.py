@@ -1,10 +1,13 @@
 """
-    Gofra Lexer module.
-
-    Contains all stuff releated to lexer.
+    'Gofra' Lexer module.
+    Contains all stuff releated to the lexer part.
 """
 
 from typing import Callable
+
+# Constants.
+__CHAR_ESCAPE = "\\"
+__CHAR_STRING = "\""
 
 
 def unescape(string: str) -> str:
@@ -29,3 +32,26 @@ def find_collumn(string: str, start: int, predicate: Callable[[str], bool]) -> i
         # While we don't reach end or not triggered predicate.
         start += 1
     return start
+
+
+def find_string_end(string: str, start: int) -> int:
+    """
+    :param: string
+    :param: start Index of the start to search.
+    """
+    """ Search for end of string in the line. """
+
+    current_index = start
+    character_previous = string[current_index]
+
+    while current_index < len(string):
+        # While we not reach end of the string.
+
+        character_current = string[current_index]
+        if character_current == __CHAR_STRING and character_previous != __CHAR_ESCAPE:
+            break   # Reached unescaped string literal.
+
+        character_previous = character_current
+        current_index += 1
+
+    return current_index

@@ -1,10 +1,10 @@
 """
-    Gofra Language Module.
-
-    Contains all submodules and stuff releated to Gofra.
+    'Gofra' programming language module.
+    Contains all submodules and stuff releated to 'Gofra'.
 """
 
-# Lexer.
-# Parser.
-# Interpretator.
-# [Bytecode (BC, VM)].
+__version__ = "0.1"
+__license__ = "MIT"
+__author__ = "Kirill Zhosul @kirillzhosul"
+
+import lexer

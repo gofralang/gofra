@@ -12,37 +12,11 @@ from os.path import basename
 from sys import argv
 
 from gofra_types import *
-from gofra import lexer
+import gofra
 
 
 # Lexer.
 
-def lexer_find_string_end(string_line: str, start_index: int) -> int:
-    """ Search for end of string in the line. """
-
-    # Previous - first.
-    character_previous = string_line[start_index]
-
-    while start_index < len(string_line):
-        # While we not reach end of the string.
-
-        # Get current character.
-        character_current = string_line[start_index]
-
-        if character_current == EXTRA_STRING and character_previous != EXTRA_ESCAPE:
-            # If we reach end of the string, and it is not escaped.
-
-            # We found end.
-            break
-
-        # Set previous to current (update).
-        character_previous = character_current
-
-        # Increase start index.
-        start_index += 1
-
-    # Return end.
-    return start_index
 
 
 def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None, None]:
@@ -76,7 +50,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
         current_line = lines[current_line_index]
 
         # Find first non-space char.
-        current_collumn_index = lexer.find_collumn(current_line, 0, lambda char: not char.isspace())
+        current_collumn_index = gofra.lexer.find_collumn(current_line, 0, lambda char: not char.isspace())
 
         # Get current line length.
         current_line_length = len(current_line)
@@ -94,7 +68,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 # If we got character quote*.
                 # Index of the column end.
                 # (Trying to find closing quote*
-                current_collumn_end_index = lexer.find_collumn(current_line, current_collumn_index + 1,
+                current_collumn_end_index = gofra.lexer.find_collumn(current_line, current_collumn_index + 1,
                                                                lambda char: char == EXTRA_CHAR)
 
                 if current_collumn_end_index >= len(current_line) or \
@@ -110,7 +84,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 current_token_text = current_line[current_collumn_index + 1: current_collumn_end_index]
 
                 # Get current char value.
-                current_char_value = lexer.unescape(current_token_text).encode("UTF-8")
+                current_char_value = gofra.lexer.unescape(current_token_text).encode("UTF-8")
 
                 if len(current_char_value) != 1:
                     # If there is 0 or more than 1 characters*.
@@ -128,7 +102,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 )
 
                 # Find first non-space char.
-                current_collumn_index = lexer.find_collumn(current_line, current_collumn_end_index + 1,
+                current_collumn_index = gofra.lexer.find_collumn(current_line, current_collumn_end_index + 1,
                                                            lambda char: not char.isspace())
             elif current_line[current_collumn_index] == EXTRA_STRING:
                 # If this is string.
@@ -154,7 +128,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                         current_line = lines[current_line_index]
 
                     # Get string end.
-                    string_end_collumn_index = lexer_find_string_end(current_line, string_start_collumn_index)
+                    string_end_collumn_index = gofra.lexer.find_string_end(current_line, string_start_collumn_index)
 
                     if string_end_collumn_index >= len(current_line) or \
                             current_line[string_end_collumn_index] != EXTRA_STRING:
@@ -197,15 +171,15 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                     type=TokenType.STRING,
                     text=current_token_text,
                     location=current_location,
-                    value=lexer.unescape(current_token_text)
+                    value=gofra.lexer.unescape(current_token_text)
                 )
 
                 # Find first non-space char.
-                current_collumn_index = lexer.find_collumn(current_line, current_collumn_end_index,
+                current_collumn_index = gofra.lexer.find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
             else:
                 # Index of the column end.
-                current_collumn_end_index = lexer.find_collumn(current_line, current_collumn_index,
+                current_collumn_end_index = gofra.lexer.find_collumn(current_line, current_collumn_index,
                                                                lambda char: char.isspace())
 
                 # Get current token text.
@@ -254,7 +228,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                     )
 
                 # Find first non-space char.
-                current_collumn_index = lexer.find_collumn(current_line, current_collumn_end_index,
+                current_collumn_index = gofra.lexer.find_collumn(current_line, current_collumn_end_index,
                                                            lambda char: not char.isspace())
 
         # Increment current line.
