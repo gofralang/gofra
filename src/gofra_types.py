@@ -1,5 +1,5 @@
 """
-    MSPL Types.
+    Gofra Language Types.
     Contains classes, values and stuff like that.
 """
 

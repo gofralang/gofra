@@ -1,5 +1,5 @@
 """
-    MSPL Lexer module.
+    Gofra Lexer module.
 
     Contains all stuff releated to lexer.
 """
