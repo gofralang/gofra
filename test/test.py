@@ -25,7 +25,7 @@ LANG_PATH = "../src/gofra.py"
 MYPY_RUN = True
 
 # If we should record new, and not test.
-RECORD_NEW = True
+RECORD_NEW = False
 
 # If true, stop processing if there is failure at one of the tests.
 STOP_AT_FAILURE = False
