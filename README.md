@@ -1,12 +1,12 @@
-# Most Simple|Stupid Programming language. (MSPL) 
+# Gofra Programming Language
  ***Stack - Based programming language "written in Python"***
 
-
 ## Features
-- Interpretate code (Run it).
-- Generate graph for the code (`.dot` graphviz).
-- Compile (Generate) python code (MSPL -> Python).
+- Interpretate code (Will removed with isolated VM/Bytecode interpretation).
+- Generate graph for the code (`.dot` graphviz)(May be removed later as redundancy).
+- Compile (Generate) python code (GOFRA -> Python) (May be also removed later as redundancy or part of Bytecode2Python).
 - Lint (Type check) [WIP].
+- Bytecode (Compile, Interpretate) [WIP]
 
 ## Language features
 - Stack implementation (push, pop)
