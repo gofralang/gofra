@@ -7,4 +7,6 @@ __version__ = "0.1"
 __license__ = "MIT"
 __author__ = "Kirill Zhosul @kirillzhosul"
 
-import lexer
+from . import errors
+
+from . import lexer

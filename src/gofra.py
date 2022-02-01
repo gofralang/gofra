@@ -14,9 +14,7 @@ from sys import argv
 from gofra_types import *
 import gofra
 
-
 # Lexer.
-
 
 
 def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None, None]:
@@ -69,7 +67,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
                 # Index of the column end.
                 # (Trying to find closing quote*
                 current_collumn_end_index = gofra.lexer.find_collumn(current_line, current_collumn_index + 1,
-                                                               lambda char: char == EXTRA_CHAR)
+                                                                     lambda char: char == EXTRA_CHAR)
 
                 if current_collumn_end_index >= len(current_line) or \
                         current_line[current_collumn_end_index] != EXTRA_CHAR:
@@ -103,7 +101,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
 
                 # Find first non-space char.
                 current_collumn_index = gofra.lexer.find_collumn(current_line, current_collumn_end_index + 1,
-                                                           lambda char: not char.isspace())
+                                                                 lambda char: not char.isspace())
             elif current_line[current_collumn_index] == EXTRA_STRING:
                 # If this is string.
 
@@ -176,11 +174,11 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
 
                 # Find first non-space char.
                 current_collumn_index = gofra.lexer.find_collumn(current_line, current_collumn_end_index,
-                                                           lambda char: not char.isspace())
+                                                                 lambda char: not char.isspace())
             else:
                 # Index of the column end.
                 current_collumn_end_index = gofra.lexer.find_collumn(current_line, current_collumn_index,
-                                                               lambda char: char.isspace())
+                                                                     lambda char: char.isspace())
 
                 # Get current token text.
                 current_token_text = current_line[current_collumn_index: current_collumn_end_index]
@@ -229,7 +227,7 @@ def lexer_tokenize(lines: List[str], file_parent: str) -> Generator[Token, None,
 
                 # Find first non-space char.
                 current_collumn_index = gofra.lexer.find_collumn(current_line, current_collumn_end_index,
-                                                           lambda char: not char.isspace())
+                                                                 lambda char: not char.isspace())
 
         # Increment current line.
         current_line_index += 1
@@ -1990,10 +1988,10 @@ def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
             source_lines = source_file.readlines()
     except FileNotFoundError:
         # Error.
-        cli_error_message("Error", f"File \"{file_path}\" not founded!", True)
+        gofra.errors.message("Error", f"File \"{file_path}\" not founded!", True)
     except (OSError, IOError, PermissionError) as _error:
         # Error.
-        cli_error_message("Error", f"File \"{file_path}\" raised unknown error while reading! Error: {_error}", True)
+        gofra.errors.message("Error", f"File \"{file_path}\" raised unknown error while reading! Error: {_error}", True)
 
     # Parser context.
     parser_context = ParserContext()
@@ -2055,11 +2053,11 @@ def graph_generate(source: Source, path: str):
         file = open(path + ".dot", "w")
     except FileNotFoundError:
         # Error.
-        cli_error_message("Error", f"File \"{path}\" not founded!", True)
+        gofra.errors.message("Error", f"File \"{path}\" not founded!", True)
         return
     except (OSError, IOError, PermissionError) as _error:
         # Error.
-        cli_error_message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
+        gofra.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
         return
 
     # Get source operators count.
@@ -2242,9 +2240,9 @@ def python_generate(source: Source, context: ParserContext, path: str):
                                      "# Allocate memory buffer (memory + strings)"
                                      "(As you called memory operators): \n")
             # Warn user about using byte operations in python compilation.
-            cli_error_message("Warning", "YOU ARE USING MEMORY OPERATIONS, THAT MAY HAVE EXPLICIT BEHAVIOUR! "
-                                         "IT IS MAY HARDER TO CATCH ERROR IF YOU RUN COMPILED VERSION "
-                                         "(NOT INTERPRETATED)")
+            gofra.errors.message("Warning", "YOU ARE USING MEMORY OPERATIONS, THAT MAY HAVE EXPLICIT BEHAVIOUR! "
+                                            "IT IS MAY HARDER TO CATCH ERROR IF YOU RUN COMPILED VERSION "
+                                            "(NOT INTERPRETATED)")
 
         if current_string_buffer_should_written:
             # If we should write string buffer block.
@@ -2260,7 +2258,11 @@ def python_generate(source: Source, context: ParserContext, path: str):
                                  "\t\tmemory[ptr: ptr + str_len] = stack_str\n"
                                  "\t\tstrings_size_pointer += str_len\n"
                                  "\t\tif str_len > strings_size:\n"
-                                 "\t\t\tprint(\"ERROR! Trying to push string, when there is memory string buffer overflow! Try use memory size directive, to increase size!\")\n"
+                                 "\t\t\tprint(\""
+                                 "ERROR! Trying to push string, "
+                                 "when there is memory string buffer overflow! "
+                                 "Try use memory size directive, to increase size!"
+                                 "\")\n"
                                  "\t\t\texit(1)\n"
                                  "\tfsp = strings_pointers[op_index]\n"
                                  "\treturn fsp, str_len\n"
@@ -2758,11 +2760,11 @@ def python_generate(source: Source, context: ParserContext, path: str):
         file = open(path + ".py", "w")
     except FileNotFoundError:
         # Error.
-        cli_error_message("Error", f"File \"{path}\" not founded!", True)
+        gofra.errors.message("Error", f"File \"{path}\" not founded!", True)
         return
     except (OSError, IOError, PermissionError) as _error:
         # Error.
-        cli_error_message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
+        gofra.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
         return
 
     # Write header.
@@ -2818,7 +2820,8 @@ def compile_bytecode(source: Source, _, path: str):
     """ Compiles operators to bytecode. """
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 9, "Please update implementation for bytecode compilation after adding new OperatorType!"
+    assert len(OperatorType) == 9, \
+        "Please update implementation for bytecode compilation after adding new OperatorType!"
     assert len(Intrinsic) == 28, "Please update implementation for bytecode compilation after adding new Intrinsic!"
 
     def __write_operator_intrinsic(operator: Operator):
@@ -2984,15 +2987,15 @@ def compile_bytecode(source: Source, _, path: str):
             write(f"{operator.operand}")
         elif operator.type == OperatorType.PUSH_STRING:
             assert isinstance(operator.operand, str), "Type error, parser level error?"
-            cli_error_message(Stage.COMPILATOR, "Strings is not implemented yet in the bytecode!", True)
+            gofra.errors.message("Error", "Strings is not implemented yet in the bytecode!", True)
         elif operator.type == OperatorType.IF:
             assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
-            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
             # Write operator data.
             write(f"C_IF")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.WHILE:
             assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
-            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
             # Write operator data.
             write(f"C_WHILE")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.DO:
@@ -3000,7 +3003,7 @@ def compile_bytecode(source: Source, _, path: str):
 
             # Type check.
             assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
-            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
             # Write operator data.
             write(f"C_DO")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.ELSE:
@@ -3008,7 +3011,7 @@ def compile_bytecode(source: Source, _, path: str):
 
             # Type check.
             assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
-            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
             # Write operator data.
             write(f"C_ELSE")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.END:
@@ -3017,7 +3020,7 @@ def compile_bytecode(source: Source, _, path: str):
 
             # Type check.
             assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
-            cli_error_message(Stage.COMPILATOR, "Conditional is not implemented yet in the bytecode!", True)
+            gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
             # Write operator data.
             write(f"C_END")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.DEFINE:
@@ -3057,10 +3060,10 @@ def compile_bytecode(source: Source, _, path: str):
     try:
         file = open(bytecode_path, "w")
     except FileNotFoundError:
-        cli_error_message("Error", f"File \"{path}\" not founded!", True)
+        gofra.errors.message("Error", f"File \"{path}\" not founded!", True)
         return
     except (OSError, IOError, PermissionError) as _error:
-        cli_error_message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
+        gofra.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
         return
 
     while current_operator_index < operators_count:
@@ -3100,17 +3103,17 @@ def execute_bytecode(path: str):
     assert len(Intrinsic) == 28, "Please update implementation for bytecode execution after adding new Intrinsic!"
 
     if not path.endswith(".gofbc"):
-        cli_error_message("Error", f"File \"{path}\" should have extension `.gofbc` for being executed!", True)
+        gofra.errors.message("Error", f"File \"{path}\" should have extension `.gofbc` for being executed!", True)
         return
 
     # Open file.
     try:
         file = open(path, "r")
     except FileNotFoundError:
-        cli_error_message("Error", f"File \"{path}\" not founded!", True)
+        gofra.errors.message("Error", f"File \"{path}\" not founded!", True)
         return
     except (OSError, IOError, PermissionError) as _error:
-        cli_error_message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
+        gofra.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
         return
 
     # Tokenize operator tokens.
@@ -3148,7 +3151,8 @@ def execute_bytecode(path: str):
                 ))
             else:
                 cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",
-                                           f"Got unexpected bytecode intrinsic instruction - {repr(bc_operator)}!", True)
+                                           f"Got unexpected bytecode intrinsic instruction - {repr(bc_operator)}!",
+                                           True)
         else:
             cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",
                                        f"Got unexpected bytecode instruction - {repr(bc_operator)}!", True)
@@ -3172,7 +3176,7 @@ def dump_print(operators: List[Operator]):
     # Check that there is more than zero operators in source.
     if operators_count == 0:
         # Error.
-        cli_error_message("Error", "Dump print even dont get any operators to print!", True)
+        gofra.errors.message("Error", "Dump print even dont get any operators to print!", True)
 
     # Current operator index from the source.
     current_operator_index = 0
@@ -3207,17 +3211,6 @@ def cli_error_message_verbosed(stage: Stage, location: LOCATION, level: str, tex
     # Message.
     print(f"[{level} at `{STAGE_TYPES_TO_NAME[stage]}` stage] ({location[0]}) on {location[1]}:{location[2]} - {text}",
           file=stderr)
-
-    # If we should force exit.
-    if force_exit:
-        exit(1)
-
-
-def cli_error_message(level: str, text: str, force_exit: bool = False):
-    """ Shows error message to the CLI. """
-
-    # Message.
-    print(f"[{level}] {text}", file=stderr)
 
     # If we should force exit.
     if force_exit:
@@ -3312,7 +3305,7 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
 
         # Message.
         cli_usage_message(argument_runner_filename)
-        cli_error_message("Error", "Please pass file path to work with (.gof or .gofbc ~)", True)
+        gofra.errors.message("Error", "Please pass file path to work with (.gof or .gofbc ~)", True)
     elif len(argument_vector) == 1:
         # Just one argument.
 
@@ -3321,7 +3314,7 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
 
             # Message.
             cli_usage_message(argument_runner_filename)
-            cli_error_message("Error", "Please pass subcommand after the file path!", True)
+            gofra.errors.message("Error", "Please pass subcommand after the file path!", True)
 
         # Show usage.
         cli_usage_message(argument_runner_filename)
@@ -3344,7 +3337,7 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
 
             # Message.
             cli_usage_message(argument_runner_filename)
-            cli_error_message("Error", "Unexpected arguments!", True)
+            gofra.errors.message("Error", "Unexpected arguments!", True)
 
     # Return final ARGV.
     return argument_vector
@@ -3394,6 +3387,7 @@ def cli_entry_point():
         cli_welcome_message()
 
     # Load source and check size of it.
+    loaded_file = None
     if cli_subcommand != "execute":
         loaded_file = load_source_from_file(cli_source_path)
         assert len(loaded_file) == 2, "Got unexpected data from loaded file."
@@ -3472,7 +3466,7 @@ def cli_entry_point():
 
         # Message.
         cli_usage_message(__file__)
-        cli_error_message("Error", f"Unknown subcommand `{cli_subcommand}`!")
+        gofra.errors.message("Error", f"Unknown subcommand `{cli_subcommand}`!")
 
 
 if __name__ == "__main__":

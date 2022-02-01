@@ -1,5 +1,5 @@
 """
-    'Gofra' Lexer module.
+    'Gofra' lexer module.
     Contains all stuff releated to the lexer part.
 """
 
