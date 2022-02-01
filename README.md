@@ -1,8 +1,7 @@
 # Gofra Programming Language
 ### ***Stack - Based programming language "written in Python"***
 
-### Note:
-##### WIP Gorfa Bytecode Virtual Machine in C++ [<link>](https://github.com/gofra-lang/vm)
+#### [WIP Gorfa Bytecode Virtual Machine in C++](https://github.com/gofra-lang/vm)
 
 ## Features
 - Interpretate code (Will removed with isolated VM/Bytecode interpretation).
