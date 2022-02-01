@@ -1,3 +1,8 @@
+# IDE.
 .idea
-*.msbc
+
+# Python.
 *.pyc
+
+# Gofra Bytecode
+*.gofbc
