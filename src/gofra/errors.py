@@ -8,6 +8,7 @@ from sys import stderr
 
 def message(level: str, text: str, force_exit: bool = False):
     """
+    Show error to the console.
     :param: level String with message level.
     :param: text str,
     :param: force_exit If true, will force exiting application.

@@ -7,6 +7,9 @@ __version__ = "0.1"
 __license__ = "MIT"
 __author__ = "Kirill Zhosul @kirillzhosul"
 
+# Utils.
 from . import errors
 
+# Main.
 from . import lexer
+from . import cli

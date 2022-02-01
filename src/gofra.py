@@ -7,7 +7,7 @@ __author__ = "Kirill Zhosul @kirillzhosul"
 __license__ = "MIT"
 
 from typing import Generator
-from sys import stderr, stdout
+from sys import stderr
 from os.path import basename
 from sys import argv
 
@@ -3304,7 +3304,7 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
         # If there is no arguments.
 
         # Message.
-        cli_usage_message(argument_runner_filename)
+        gofra.cli.usage_message(argument_runner_filename)
         gofra.errors.message("Error", "Please pass file path to work with (.gof or .gofbc ~)", True)
     elif len(argument_vector) == 1:
         # Just one argument.
@@ -3313,11 +3313,11 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
             # If this is not help.
 
             # Message.
-            cli_usage_message(argument_runner_filename)
+            gofra.cli.usage_message(argument_runner_filename)
             gofra.errors.message("Error", "Please pass subcommand after the file path!", True)
 
         # Show usage.
-        cli_usage_message(argument_runner_filename)
+        gofra.cli.usage_message(argument_runner_filename)
 
         # Exit.
         exit(0)
@@ -3336,39 +3336,11 @@ def cli_validate_argument_vector(argument_vector: List[str]) -> List[str]:
             # If silent.
 
             # Message.
-            cli_usage_message(argument_runner_filename)
+            gofra.cli.usage_message(argument_runner_filename)
             gofra.errors.message("Error", "Unexpected arguments!", True)
 
     # Return final ARGV.
     return argument_vector
-
-
-def cli_welcome_message():
-    """ Shows CLI welcome message. """
-
-    # Show.
-    print(f"[Gofra CLI] Welcome there!", file=stdout)
-
-
-def cli_usage_message(runner_filename: str = None):
-    """ Shows CLI usage message. """
-
-    # Set runner as __file__ if is not given.
-    if runner_filename is None:
-        runner_filename = __file__
-
-    # Type check.
-    assert isinstance(runner_filename, str), "Got non-string runner filename."
-
-    # Show.
-    print(f"Usage: {basename(runner_filename)} [source] [subcommand]\nSubcommands:\n"
-          f"\thelp; Show this message.\n"
-          f"\trun; Intrerpretates source in Python.\n"
-          f"\tpython; Generates python file from the source in output file [source*.gof].py\n"
-          f"\tcompile; Compiles source file to bytecode [source*.gof].gofbc\n"
-          f"\texecute; Executes source file from bytecode [source*.gofbc] from `compile` command\n"
-          f"\tdump; Dumps operators from the source in output file [source*.gof].py\n"
-          f"\tgraph; Generates graphviz file from the source in output file [source*.gof].dot", file=stdout)
 
 
 def cli_entry_point():
@@ -3384,11 +3356,11 @@ def cli_entry_point():
 
     # Welcome message.
     if not cli_silent:
-        cli_welcome_message()
+        gofra.cli.welcome_message()
 
     # Load source and check size of it.
     loaded_file = None
-    if cli_subcommand != "execute":
+    if cli_subcommand in ("run", "graph", "python", "dump", "compile"):
         loaded_file = load_source_from_file(cli_source_path)
         assert len(loaded_file) == 2, "Got unexpected data from loaded file."
 
@@ -3465,12 +3437,9 @@ def cli_entry_point():
         # If unknown subcommand.
 
         # Message.
-        cli_usage_message(__file__)
+        gofra.cli.usage_message(__file__)
         gofra.errors.message("Error", f"Unknown subcommand `{cli_subcommand}`!")
 
 
 if __name__ == "__main__":
-    # Entry point.
-
-    # CLI entry point.
     cli_entry_point()
