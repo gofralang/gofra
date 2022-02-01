@@ -1,5 +1,5 @@
 # Gofra Programming Language
- ***Stack - Based programming language "written in Python"***
+### ***Stack - Based programming language "written in Python"***
 
 ## Features
 - Interpretate code (Will removed with isolated VM/Bytecode interpretation).
@@ -27,7 +27,5 @@ show // Pop value from the stack and show it on the screen.
 ```
 "Hello, World!" mshowc // Show string "Hello, World!" on the screen.
 ```
-
-"Hello, World!" mshowc
 
 ## Documentation: `DOCUMENTATION.MD`, Examples: `./examples/README.MD`.
