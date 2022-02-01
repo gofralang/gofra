@@ -3081,7 +3081,7 @@ def compile_bytecode(source: Source, _, path: str):
     # Open file.
     bytecode_path = path + ".gofbc"
     try:
-        file = open(path, "w")
+        file = open(bytecode_path, "w")
     except FileNotFoundError:
         cli_error_message("Error", f"File \"{path}\" not founded!", True)
         return
