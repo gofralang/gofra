@@ -1,4 +1,4 @@
-# MSPL test source.
+# Gofra test source.
 # Tests all the examples/source/test.
 
 # Importing.
@@ -12,8 +12,6 @@ import sys
 
 def cli_execute(commands: typing.List[str]) -> subprocess.CompletedProcess:
     """ Executes CLI command. """
-
-    # Execute.
     return subprocess.run(" ".join(map(shlex.quote, commands)), capture_output=True)
 
 
@@ -21,9 +19,9 @@ def cli_execute(commands: typing.List[str]) -> subprocess.CompletedProcess:
 test_start_time = time.time()
 
 # Path to the language core.
-LANG_PATH = "../src/mspl.py"
+LANG_PATH = "../src/gofra.py"
 
-# Should we run MyPy.
+# Should we run MyPy?
 MYPY_RUN = True
 
 # If we should record new, and not test.
@@ -42,7 +40,7 @@ CLEAR_AFTER = True
 TEST_RECORDS_DIRECTORY = "./records/"
 
 # Test extension.
-TEST_EXTENSION = ".mspl"
+TEST_EXTENSION = ".gof"
 
 # Directories to run test on.
 TEST_DIRECTORIS = [

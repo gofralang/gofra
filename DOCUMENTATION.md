@@ -1,4 +1,4 @@
-# MSPL Documentation
+# Gofra Language Documentation
 
 # Operations
 ## Simple
