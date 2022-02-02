@@ -2854,7 +2854,7 @@ def compile_bytecode(source: Source, _, path: str):
             assert isinstance(operator.operand, int), "Type error, parser level error?"
 
             # Write operator data.
-            write(f"SP_I")
+            write(OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.PUSH_INTEGER])
             write(f"{operator.operand}")
         elif operator.type == OperatorType.PUSH_STRING:
             assert isinstance(operator.operand, str), "Type error, parser level error?"
@@ -2862,42 +2862,19 @@ def compile_bytecode(source: Source, _, path: str):
         elif operator.type == OperatorType.IF:
             assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
             gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
-            # Write operator data.
-            write(f"C_IF")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.WHILE:
             assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
             gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
-            # Write operator data.
-            write(f"C_WHILE")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.DO:
-            # DO operator.
-
-            # Type check.
             assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
             gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
-            # Write operator data.
-            write(f"C_DO")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.ELSE:
-            # ELSE operator.
-
-            # Type check.
             assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
             gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
-            # Write operator data.
-            write(f"C_ELSE")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.END:
-            # END operator.
-            # Actually, there is no END in Python.
-
-            # Type check.
             assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
             gofra.errors.message("Error", "Conditional is not implemented yet in the bytecode!", True)
-            # Write operator data.
-            write(f"C_END")  # ASAP. PUSH LOCATION TO JUMP.
         elif operator.type == OperatorType.DEFINE:
-            # DEFINE Operator.
-
-            # Error.
             assert False, "Got definition operator at runner stage, parser level error?"
         else:
             # If unknown operator type.
@@ -3003,7 +2980,7 @@ def execute_bytecode(path: str):
     current_bc_operator_index = 0
     while current_bc_operator_index < len(bc_op_tokens):
         bc_operator = bc_op_tokens[current_bc_operator_index]
-        if bc_operator == "SP_I":
+        if bc_operator == OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.PUSH_INTEGER]:
             parser_context.operators.append(Operator(
                 OperatorType.PUSH_INTEGER,
                 Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
@@ -3011,9 +2988,7 @@ def execute_bytecode(path: str):
             ))
             current_bc_operator_index += 2
             continue
-        elif bc_operator.startswith("I"):
-            current_bc_operator_index += 1
-
+        else:
             if bc_operator in BYTECODE_OPERATOR_NAMES_TO_INTRINSIC:
                 parser_context.operators.append(Operator(
                     OperatorType.INTRINSIC,
@@ -3022,11 +2997,10 @@ def execute_bytecode(path: str):
                 ))
             else:
                 cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",
-                                           f"Got unexpected bytecode intrinsic instruction - {repr(bc_operator)}!",
-                                           True)
-        else:
-            cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",
-                                       f"Got unexpected bytecode instruction - {repr(bc_operator)}!", True)
+                                           f"Got unexpected bytecode instruction - {repr(bc_operator)}!", True)
+        current_bc_operator_index += 1
+        continue
+
 
     # Run.
     parser_context_source = Source(parser_context.operators)

@@ -299,45 +299,51 @@ KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
 assert len(Intrinsic) == 28, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
 BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     # Math.
-    "I+": Intrinsic.PLUS,
-    "I-": Intrinsic.MINUS,
-    "I*": Intrinsic.MULTIPLY,
-    "I/": Intrinsic.DIVIDE,
-    "I==": Intrinsic.EQUAL,
-    "I!=": Intrinsic.NOT_EQUAL,
-    "I<": Intrinsic.LESS_THAN,
-    "I>": Intrinsic.GREATER_THAN,
-    "I>=": Intrinsic.LESS_EQUAL_THAN,
-    "I<=": Intrinsic.GREATER_EQUAL_THAN,
-    "I%": Intrinsic.MODULUS,
-    "I--": Intrinsic.DECREMENT,
-    "I++": Intrinsic.INCREMENT,
+    "+": Intrinsic.PLUS,
+    "-": Intrinsic.MINUS,
+    "*": Intrinsic.MULTIPLY,
+    "/": Intrinsic.DIVIDE,
+    "==": Intrinsic.EQUAL,
+    "!=": Intrinsic.NOT_EQUAL,
+    "<": Intrinsic.LESS_THAN,
+    ">": Intrinsic.GREATER_THAN,
+    ">=": Intrinsic.LESS_EQUAL_THAN,
+    "<=": Intrinsic.GREATER_EQUAL_THAN,
+    "%": Intrinsic.MODULUS,
+    "--": Intrinsic.DECREMENT,
+    "++": Intrinsic.INCREMENT,
 
     # Stack.
-    "S_SWAP": Intrinsic.SWAP,
-    "S_SHOW": Intrinsic.SHOW,
-    "S_COPY": Intrinsic.COPY,
-    "S_COPY_2": Intrinsic.COPY2,
-    "S_COPY_OVER": Intrinsic.COPY_OVER,
-    "S_FREE": Intrinsic.FREE,
+    "SW": Intrinsic.SWAP,
+    "SH": Intrinsic.SHOW,
+    "CP": Intrinsic.COPY,
+    "CP2": Intrinsic.COPY2,
+    "CPO": Intrinsic.COPY_OVER,
+    "FR": Intrinsic.FREE,
 
     # Memory.
-    "M_WRITE": Intrinsic.MEMORY_WRITE,
-    "M_READ": Intrinsic.MEMORY_READ,
-    "M_WRITE_4": Intrinsic.MEMORY_WRITE4BYTES,
-    "M_READ_4": Intrinsic.MEMORY_READ4BYTES,
-    "M_SHOW_C": Intrinsic.MEMORY_SHOW_CHARACTERS,
+    "MW": Intrinsic.MEMORY_WRITE,
+    "MR": Intrinsic.MEMORY_READ,
+    "MW4": Intrinsic.MEMORY_WRITE4BYTES,
+    "MR4": Intrinsic.MEMORY_READ4BYTES,
+    "MSC": Intrinsic.MEMORY_SHOW_CHARACTERS,
 
     # I/O.
-    "IO_READ_S": Intrinsic.IO_READ_STRING,
-    "IO_READ_I": Intrinsic.IO_READ_INTEGER,
+    "IORS": Intrinsic.IO_READ_STRING,
+    "IORI": Intrinsic.IO_READ_INTEGER,
 
     # Constants*.
-    "P_MPTR": Intrinsic.MEMORY_POINTER,
-    "P_NULL": Intrinsic.NULL
+    "MPTR": Intrinsic.MEMORY_POINTER,
+    "NULL": Intrinsic.NULL
 }
 INTRINSIC_TO_BYTECODE_OPERATOR: Dict[Intrinsic, str] = {
     value: key for key, value in BYTECODE_OPERATOR_NAMES_TO_INTRINSIC.items()
+}
+BYTECODE_OPERATOR_NAMES_TO_OPERATOR_TYPE: Dict[str, OperatorType] = {
+    "I": OperatorType.PUSH_INTEGER,
+}
+OPERATOR_TYPE_TO_BYTECODE_OPERATOR: Dict[OperatorType, str] = {
+    value: key for key, value in BYTECODE_OPERATOR_NAMES_TO_OPERATOR_TYPE.items()
 }
 
 # Extra `tokens`.
