@@ -2834,144 +2834,15 @@ def compile_bytecode(source: Source, _, path: str):
         # Type check.
         assert isinstance(current_operator.operand, Intrinsic), f"Type error, parser level error?"
 
-        if current_operator.operand == Intrinsic.PLUS:
-            # Intristic plus operator.
+        if current_operator.operand in INTRINSIC_TO_BYTECODE_OPERATOR:
+            # Intristic operator.
 
             # Write operator data.
-            write("I+")
-        elif current_operator.operand == Intrinsic.MINUS:
-            # Intristic minus operator.
-
-            # Write operator data.
-            write("I-")
-        elif current_operator.operand == Intrinsic.INCREMENT:
-            # Intristic increment operator.
-
-            # Write operator data.
-            write("I++")
-        elif current_operator.operand == Intrinsic.DECREMENT:
-            # Intristic decrement operator.
-
-            # Write operator data.
-            write("I--")
-        elif current_operator.operand == Intrinsic.MULTIPLY:
-            # Intristic multiply operator.
-
-            # Write operator data.
-            write("I*")
-        elif current_operator.operand == Intrinsic.DIVIDE:
-            # Intristic divide operator.
-
-            # Write operator data.
-            write("I//")
-        elif current_operator.operand == Intrinsic.MODULUS:
-            # Intristic modulus operator.
-
-            # Write operator data.
-            write("I%")
-        elif current_operator.operand == Intrinsic.EQUAL:
-            # Intristic equal operator.
-
-            # Write operator data.
-            write("I==")
-        elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
-            # Intristic greater equal than operator.
-
-            # Write operator data.
-            write("I>=")
-        elif current_operator.operand == Intrinsic.GREATER_THAN:
-            # Intristic greater than operator.
-
-            # Write operator data.
-            write("I>")
-        elif current_operator.operand == Intrinsic.LESS_THAN:
-            # Intristic less than operator.
-
-            # Write operator data.
-            write("I<")
-        elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
-            # Intristic less equal than operator.
-
-            # Write operator data.
-            write("I<=")
-        elif current_operator.operand == Intrinsic.SWAP:
-            # Intristic swap operator.
-
-            # Write operator data.
-            write("I_SWAP")
-        elif current_operator.operand == Intrinsic.COPY:
-            # Intristic copy operator.
-
-            # Write operator data.
-            write("I_COPY")
-        elif current_operator.operand == Intrinsic.SHOW:
-            # Intristic show operator.
-
-            # Write operator data.
-            write("I_SHOW")
-        elif current_operator.operand == Intrinsic.FREE:
-            # Intristic free operator.
-
-            # Write operator data.
-            write("I_FREE")
-        elif current_operator.operand == Intrinsic.NOT_EQUAL:
-            # Intristic not equal operator.
-
-            # Write operator data.
-            write("I!=")
-        elif current_operator.operand == Intrinsic.COPY2:
-            # Intristic copy2 operator.
-
-            # Write operator data.
-            write("I_COPY2")
-        elif current_operator.operand == Intrinsic.COPY_OVER:
-            # Intristic copy over operator.
-
-            # Write operator data.
-            write("I_COPY_OVER")
-        elif current_operator.operand == Intrinsic.MEMORY_POINTER:
-            # Intrinsic null pointer operator.
-
-            # Write operator data.
-            write(f"I_MPTR")
-        elif current_operator.operand == Intrinsic.NULL:
-            # Intrinsic null operator.
-
-            # Write operator data.
-            write(f"I_NULL")
-        elif current_operator.operand == Intrinsic.MEMORY_WRITE:
-            # Intrinsic memory write operator.
-
-            # Write operator data.
-            # TODO: More checks at compiled script.
-            write("I_MEM_WRITE")
-        elif current_operator.operand == Intrinsic.MEMORY_READ:
-            # Intrinsic memory read operator.
-
-            # Write operator data.
-            write("I_MEM_READ")
-        elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
-            # Intristic memory write 4 bytes operator.
-
-            # Write operator data.
-            write("I_MEM_WRITE_4B")
-        elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
-            # Intristic memory read 4 bytes operator.
-
-            # Write operator data.
-            write("I_MEM_READ_4B")
-        elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
-            # Intrinsic memory show as characters operator.
-
-            # Write operator data.
-            write("I_MEM_SHOW_CHARS")
+            write(INTRINSIC_TO_BYTECODE_OPERATOR[current_operator.operand])
         else:
-            # If unknown instrinsic type.
-
-            # Write node data.
             cli_error_message_verbosed(Stage.COMPILATOR, current_operator.token.location, "Error",
                                        f"Intrinsic `{INTRINSIC_TYPES_TO_NAME[current_operator.operand]}` "
-                                       f"is not implemented for python generation!", True)
+                                       f"is not implemented for bytecode compilation!", True)
 
     def __write_operator(operator: Operator):
         """ Writes default operator (non-intrinsic). """
@@ -3143,11 +3014,11 @@ def execute_bytecode(path: str):
         elif bc_operator.startswith("I"):
             current_bc_operator_index += 1
 
-            if bc_operator in BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE:
+            if bc_operator in BYTECODE_OPERATOR_NAMES_TO_INTRINSIC:
                 parser_context.operators.append(Operator(
                     OperatorType.INTRINSIC,
                     Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
-                    BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE[bc_operator]
+                    BYTECODE_OPERATOR_NAMES_TO_INTRINSIC[bc_operator]
                 ))
             else:
                 cli_error_message_verbosed(Stage.PARSER, ("Bytecode", -1, -1), "Error",

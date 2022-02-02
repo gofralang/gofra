@@ -297,7 +297,7 @@ KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
 }
 
 assert len(Intrinsic) == 28, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
-BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE: Dict[str, Intrinsic] = {
+BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     # Math.
     "I+": Intrinsic.PLUS,
     "I-": Intrinsic.MINUS,
@@ -310,31 +310,34 @@ BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE: Dict[str, Intrinsic] = {
     "I>=": Intrinsic.LESS_EQUAL_THAN,
     "I<=": Intrinsic.GREATER_EQUAL_THAN,
     "I%": Intrinsic.MODULUS,
-
-    # Stack.
     "I--": Intrinsic.DECREMENT,
     "I++": Intrinsic.INCREMENT,
-    "I_SWAP": Intrinsic.SWAP,
-    "I_SHOW": Intrinsic.SHOW,
-    "I_COPY": Intrinsic.COPY,
-    "I_COPY_2": Intrinsic.COPY2,
-    "I_COPY_OVER": Intrinsic.COPY_OVER,
-    "I_FREE": Intrinsic.FREE,
+
+    # Stack.
+    "S_SWAP": Intrinsic.SWAP,
+    "S_SHOW": Intrinsic.SHOW,
+    "S_COPY": Intrinsic.COPY,
+    "S_COPY_2": Intrinsic.COPY2,
+    "S_COPY_OVER": Intrinsic.COPY_OVER,
+    "S_FREE": Intrinsic.FREE,
 
     # Memory.
-    "mwrite": Intrinsic.MEMORY_WRITE,
-    "mread": Intrinsic.MEMORY_READ,
-    "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
-    "mread4b": Intrinsic.MEMORY_READ4BYTES,
-    "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
+    "M_WRITE": Intrinsic.MEMORY_WRITE,
+    "M_READ": Intrinsic.MEMORY_READ,
+    "M_WRITE_4": Intrinsic.MEMORY_WRITE4BYTES,
+    "M_READ_4": Intrinsic.MEMORY_READ4BYTES,
+    "M_SHOW_C": Intrinsic.MEMORY_SHOW_CHARACTERS,
 
     # I/O.
-    "io_read_str": Intrinsic.IO_READ_STRING,
-    "io_read_int": Intrinsic.IO_READ_INTEGER,
+    "IO_READ_S": Intrinsic.IO_READ_STRING,
+    "IO_READ_I": Intrinsic.IO_READ_INTEGER,
 
     # Constants*.
-    "I_MPTR": Intrinsic.MEMORY_POINTER,
-    "I_NULL": Intrinsic.NULL
+    "P_MPTR": Intrinsic.MEMORY_POINTER,
+    "P_NULL": Intrinsic.NULL
+}
+INTRINSIC_TO_BYTECODE_OPERATOR: Dict[Intrinsic, str] = {
+    value: key for key, value in BYTECODE_OPERATOR_NAMES_TO_INTRINSIC.items()
 }
 
 # Extra `tokens`.
