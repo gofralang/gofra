@@ -11,37 +11,6 @@ from enum import Enum, auto
 from dataclasses import dataclass, field
 
 
-class Stack:
-    """ Stack implementation for the language (More optional than useful). """
-
-    # Empty list as stack.
-    __stack = None
-
-    def __init__(self):
-        """ Magic __init__(). """
-
-        # Set stack.
-        self.__stack = list()
-
-    def __len__(self):
-        """ Magic __len__(). """
-
-        # Check length.
-        return len(self.__stack)
-
-    def push(self, value):
-        """ Push any value on the stack. """
-
-        # Push.
-        self.__stack.append(value)
-
-    def pop(self):
-        """ Pop any value from the stack. """
-
-        # Pop.
-        return self.__stack.pop()
-
-
 class Stage(Enum):
     """ Enumeration for stage types. """
     LEXER = auto(),

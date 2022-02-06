@@ -12,7 +12,10 @@ from os.path import basename
 from sys import argv
 
 from gofra_types import *
+
 import gofra
+from gofra.stack import Stack
+
 
 # Lexer.
 
@@ -721,7 +724,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     assert len(Intrinsic) == 28, "Please update implementation after adding new Intrinsic!"
 
     # Create empty stack.
-    memory_execution_stack: Stack = Stack()
+    memory_execution_stack = Stack()
 
     # String pointers.
     memory_string_pointers: Dict[OPERATOR_ADDRESS, TYPE_POINTER] = dict()
