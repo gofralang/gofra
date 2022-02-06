@@ -1,14 +1,12 @@
 # Gofra Programming Language
 ### ***Stack - Based programming language "written in Python"***
 
-#### [WIP Gorfa Bytecode Virtual Machine in C++](https://github.com/gofra-lang/vm)
-
 ## Features
 - Interpretate code (Will removed with isolated VM/Bytecode interpretation).
 - Generate graph for the code (`.dot` graphviz)(May be removed later as redundancy).
 - Compile (Generate) python code (GOFRA -> Python) (May be also removed later as redundancy or part of Bytecode2Python).
 - Lint (Type check) [WIP].
-- Bytecode (Compile, Interpretate) [WIP]
+- Bytecode (Compile, Interpretate) [WIP] [Gorfa Bytecode Virtual Machine in C++](https://github.com/gofra-lang/vm)
 
 ## Language features
 - Stack implementation (push, pop)
