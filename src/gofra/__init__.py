@@ -10,6 +10,7 @@ __author__ = "Kirill Zhosul @kirillzhosul"
 # Utils.
 from . import stack
 from . import errors
+from . import dump
 
 # Main.
 from . import lexer

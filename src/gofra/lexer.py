@@ -36,10 +36,10 @@ def find_collumn(string: str, start: int, predicate: Callable[[str], bool]) -> i
 
 def find_string_end(string: str, start: int) -> int:
     """
+    Search for end of string in the line
     :param: string
     :param: start Index of the start to search.
     """
-    """ Search for end of string in the line. """
 
     current_index = start
     character_previous = string[current_index]

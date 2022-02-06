@@ -11,9 +11,8 @@ from sys import stderr
 from os.path import basename
 from sys import argv
 
-from gofra.danger import *
-
 import gofra
+from gofra.danger import *
 from gofra.stack import Stack
 
 
@@ -3013,43 +3012,6 @@ def execute_bytecode(path: str):
     file.close()
 
 
-# Dump.
-
-def dump_print(operators: List[Operator]):
-    """ Dumps source using print. """
-
-    # Get source operators count.
-    operators_count = len(operators)
-
-    # Check that there is more than zero operators in source.
-    if operators_count == 0:
-        # Error.
-        gofra.errors.message("Error", "Dump print even dont get any operators to print!", True)
-
-    # Current operator index from the source.
-    current_operator_index = 0
-
-    while current_operator_index < operators_count:
-        # While we not run out of the source operators list.
-
-        # Get current operator from the source.
-        current_operator: Operator = operators[current_operator_index]
-
-        # Operator in readable string.
-        if current_operator.type == OperatorType.INTRINSIC:
-            readable_operator = f"({current_operator_index}) {current_operator.operand}"
-        else:
-            readable_operator_type = str(current_operator.type)[len("OperatorType."):]
-            readable_operator = f"[{current_operator_index}] {readable_operator_type}, {current_operator.operand}"
-
-        # Dump print.
-        print(f"|Line{current_operator.token.location[1]}|", end=" ")
-        print(readable_operator)
-
-        # Increment current index.
-        current_operator_index += 1
-
-
 # CLI.
 
 
@@ -3255,7 +3217,7 @@ def cli_entry_point():
         cli_source, _ = loaded_file
 
         # Dump print.
-        dump_print(cli_source.operators)
+        gofra.dump.dump(cli_source.operators)
 
         # Message.
         if not cli_silent:
