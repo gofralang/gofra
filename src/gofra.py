@@ -11,7 +11,7 @@ from sys import stderr
 from os.path import basename
 from sys import argv
 
-from gofra_types import *
+from gofra.danger import *
 
 import gofra
 from gofra.stack import Stack
