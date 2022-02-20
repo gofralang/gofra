@@ -6,7 +6,7 @@
 - Generate graph for the code (`.dot` graphviz)(May be removed later as redundancy).
 - Compile (Generate) python code (GOFRA -> Python) (May be also removed later as redundancy or part of Bytecode2Python).
 - Lint (Type check) [WIP].
-- Bytecode (Compile, Interpretate) [WIP] [Gorfa Bytecode Virtual Machine in C++](https://github.com/gofra-lang/vm)
+- Bytecode (Compile, Interpretate) [WIP] [Gorfa Bytecode Virtual Machine in C++](https://github.com/gofralang/vm)
 
 ## Language features
 - Stack implementation (push, pop)
