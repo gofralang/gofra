@@ -35,60 +35,64 @@ def __write_footer(file: IO, exit_operator_index: int):
 
 
 def __write_operator(file: IO, source: Source, operator: Operator, index: int):
+    """
+    Writes operator to the given graph file I/O.
+    :param file: IO to write in.
+    :param source: Source to write from (for some operations).
+    :param operator: Operator to write.
+    :param index: Index of the operator.
+    """
     if operator.type == OperatorType.PUSH_INTEGER:
         assert isinstance(operator.operand, int), "Type error, parser level error?"
-
         file.write(f"   Operator_{index} [label=INT {operator.operand}];\n")
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
-    elif operator.type == OperatorType.PUSH_STRING:
+        return
+    if operator.type == OperatorType.PUSH_STRING:
         assert isinstance(operator.operand, str), "Type error, parser level error?"
-
         file.write(f"   Operator_{index} [label={repr(repr(operator.operand))}];\n")
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
-    elif operator.type == OperatorType.INTRINSIC:
+        return
+    if operator.type == OperatorType.INTRINSIC:
         assert isinstance(operator.operand, Intrinsic), f"Type error, parser level error?"
-
         label = repr(repr(INTRINSIC_TYPES_TO_NAME[operator.operand]))
         file.write(f"   Operator_{index} [label={label}];\n")
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
-    elif operator.type == OperatorType.IF:
+        return
+    if operator.type == OperatorType.IF:
         assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
-
         file.write(f"   Operator_{index} [shape=record label=if];\n")
-
-        file.write(f"    Operator_{index} -> Operator_{index + 1} "
-                   f"[label=true];\n")
-        file.write(f"    Operator_{index} -> Operator_{operator.operand} "
-                   f"[label=false];\n")
-    elif operator.type == OperatorType.ELSE:
+        file.write(f"    Operator_{index} -> Operator_{index + 1} [label=true];\n")
+        file.write(f"    Operator_{index} -> Operator_{operator.operand} [label=false];\n")
+        return
+    if operator.type == OperatorType.ELSE:
         assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
-
         file.write(f"   Operator_{index} [shape=record label=else];\n")
         file.write(f"   Operator_{index} -> Operator_{operator.operand};\n")
-    elif operator.type == OperatorType.WHILE:
+        return
+    if operator.type == OperatorType.WHILE:
         file.write(f"    Operator_{index} [shape=record label=while];\n")
         file.write(f"    Operator_{index} -> Operator_{index + 1};\n")
-    elif operator.type == OperatorType.DO:
+        return
+    if operator.type == OperatorType.DO:
         assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
 
         end_operator_index = source.operators[operator.operand].operand
         assert isinstance(end_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
 
         file.write(f"    Operator_{index} [shape=record label=do];\n")
-
-        file.write(f"    Operator_{index} -> Operator_{index + 1} "
-                   f"[label=true];\n")
-        file.write(f"    Operator_{index} -> Operator_{end_operator_index - 1} "
-                   f"[label=false];\n")
-    elif operator.type == OperatorType.END:
+        file.write(f"    Operator_{index} -> Operator_{index + 1} [label=true];\n")
+        file.write(f"    Operator_{index} -> Operator_{end_operator_index - 1} [label=false];\n")
+        return
+    if operator.type == OperatorType.END:
         assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
-
         file.write(f"   Operator_{index} [shape=record label=end];\n")
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
-    elif operator.type == OperatorType.DEFINE:
+        return
+
+    if operator.type == OperatorType.DEFINE:
         assert False, "Got definition operator at runner stage, parser level error?"
-    else:
-        assert False, "Unknown operator type! "
+
+    assert False, "Unknown operator type! "
 
 
 def write(source: Source, path: str):

@@ -8,7 +8,7 @@ from typing import Tuple, Optional, IO
 from src.gofra.core import errors
 
 
-def try_open_file(path: str, mode: str, force_exit: bool = False) -> Tuple[Optional[IO], bool]:
+def try_open_file(path: str, mode: str, force_exit: bool = False, **kwargs) -> Tuple[Optional[IO], bool]:
     """
     Tries to open file.
     :param path: File path.
@@ -17,7 +17,7 @@ def try_open_file(path: str, mode: str, force_exit: bool = False) -> Tuple[Optio
     :returns: Tuple with (IO, status) where first element is the file, and second - status.
     """
     try:
-        file = open(path, mode)
+        file = open(path, mode, **kwargs)
         return file, True
     except FileNotFoundError:
         errors.message("Error", f"File \"{path}\" failed to open because it was not founded!", force_exit)

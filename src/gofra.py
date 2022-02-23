@@ -1984,28 +1984,18 @@ def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
     """ Load file, then return ready source and context for it. (Tokenized, Parsed, Linted). """
 
     # Read source lines.
-    try:
-        with open(file_path, "r", encoding="UTF-8") as source_file:
-            source_lines = source_file.readlines()
-    except FileNotFoundError:
-        # Error.
-        gofra.core.errors.message("Error", f"File \"{file_path}\" not founded!", True)
-    except (OSError, IOError, PermissionError) as _error:
-        # Error.
-        gofra.core.errors.message("Error", f"File \"{file_path}\" raised unknown error while reading! Error: {_error}", True)
+    source_file, _ = gofra.core.other.try_open_file(file_path, "r", True, encoding="UTF-8")
+    source_lines = source_file.readlines()
+    source_file.close()
 
-    # Parser context.
     parser_context = ParserContext()
 
     # Tokenize.
     lexer_tokens = list(lexer_tokenize(source_lines, file_path))
 
     if len(lexer_tokens) == 0:
-        # If there is no tokens.
-
-        # Error.
         gofra.core.errors.message_verbosed(Stage.LEXER, (basename(file_path), 1, 1), "Error",
-                                      "There is no tokens found in given file, are you given empty file?", True)
+                                           "There is no tokens found in given file, are you given empty file?", True)
 
     # Parse.
     parser_parse(lexer_tokens, parser_context, file_path)
@@ -2018,7 +2008,6 @@ def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
     if not parser_context.directive_linter_skip:
         linter_type_check(parser_context_source)
 
-    # Return source and parser context.
     return parser_context_source, parser_context
 
 
@@ -2582,16 +2571,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
                                       "are you given empty file or file without resulting operators?", True)
 
     # Open file.
-    try:
-        file = open(path + ".py", "w")
-    except FileNotFoundError:
-        # Error.
-        gofra.core.errors.message("Error", f"File \"{path}\" not founded!", True)
-        return
-    except (OSError, IOError, PermissionError) as _error:
-        # Error.
-        gofra.core.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
-        return
+    file, _ = gofra.core.other.try_open_file(path + ".py", "w", True)
 
     # Write header.
     __write_header()
@@ -2726,19 +2706,12 @@ def compile_bytecode(source: Source, _, path: str):
     if operators_count == 0:
         # If there is no operators in the final parser context.
         gofra.core.errors.message_verbosed(Stage.COMPILATOR, (basename(path), 1, 1), "Error",
-                                      "There is no operators found in given file after parsing, "
-                                      "are you given empty file or file without resulting operators?", True)
+                                           "There is no operators found in given file after parsing, "
+                                           "are you given empty file or file without resulting operators?", True)
 
     # Open file.
     bytecode_path = path + ".gofbc"
-    try:
-        file = open(bytecode_path, "w")
-    except FileNotFoundError:
-        gofra.core.errors.message("Error", f"File \"{path}\" not founded!", True)
-        return
-    except (OSError, IOError, PermissionError) as _error:
-        gofra.core.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
-        return
+    file, _ = gofra.core.other.try_open_file(bytecode_path, "w", True)
 
     while current_operator_index < operators_count:
         # While we not run out of the source operators list.
@@ -2781,14 +2754,7 @@ def execute_bytecode(path: str):
         return
 
     # Open file.
-    try:
-        file = open(path, "r")
-    except FileNotFoundError:
-        gofra.core.errors.message("Error", f"File \"{path}\" not founded!", True)
-        return
-    except (OSError, IOError, PermissionError) as _error:
-        gofra.core.errors.message("Error", f"File \"{path}\" raised unknown error while opening! Error: {_error}", True)
-        return
+    file, _ = gofra.core.other.try_open_file(path, "r", True)
 
     # Tokenize operator tokens.
     bc_op_tokens = []
