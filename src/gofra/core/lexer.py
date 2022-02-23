@@ -13,7 +13,7 @@ __CHAR_STRING = "\""
 def unescape(string: str) -> str:
     """
     Unescapes string.
-    :param: string Value to unescape.
+    :param string: Value to unescape.
     :return: Unescaped string
     """
     return string.encode("UTF-8").decode("unicode_escape").encode("latin-1").decode("UTF-8")
@@ -22,9 +22,9 @@ def unescape(string: str) -> str:
 def find_collumn(string: str, start: int, predicate: Callable[[str], bool]) -> int:
     """
     Finds column in the line from start that not triggers filter predicate.
-    :param: strint Value to search inside.
-    :param: start Index of the first character to start search from.
-    :param: predicate Function that accepts charater and returns bool if it is end or not.
+    :param string: Value to search inside.
+    :param start: Index of the first character to start search from.
+    :param predicate: Function that accepts charater and returns bool if it is end or not.
     :return: Index of the end.
     """
     end = len(string)
@@ -37,8 +37,8 @@ def find_collumn(string: str, start: int, predicate: Callable[[str], bool]) -> i
 def find_string_end(string: str, start: int) -> int:
     """
     Search for end of string in the line
-    :param: string
-    :param: start Index of the start to search.
+    :param string: String in which to search.
+    :param start: Index of the start to search.
     """
 
     current_index = start

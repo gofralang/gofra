@@ -16,8 +16,8 @@ __GRAPH_EXTENSION = ".dot"
 def __write_header(file: IO, name: str):
     """
     Writes directed graph header that starts graph to the file.
-    :param: file IO to write in.
-    :param: name String of the header (graph) name.
+    :param file: IO to write in.
+    :param name: String of the header (graph) name.
     """
     file.write(f"digraph {name}" + "{\n")
     file.write(f"\tEntry [label=\"Entry Point\"];\n")
@@ -27,8 +27,8 @@ def __write_header(file: IO, name: str):
 def __write_footer(file: IO, exit_operator_index: int):
     """
     Writes graph footer that closes graph to the file.
-    :param: file IO to write in.
-    :param: exit_operator_index Index of the last operator index, should be equals to the length of the source operators.
+    :param file: IO to write in.
+    :param exit_operator_index: Index of the last operator index, should be equals to the length of the source operators.
     """
     file.write(f"\tOperator_{exit_operator_index} [label=\"Exit Point\"];\n")
     file.write("}\n")
@@ -94,9 +94,9 @@ def __write_operator(file: IO, source: Source, operator: Operator, index: int):
 def write(source: Source, path: str):
     """
     Generates graph `.dot` file from given source
-    :
+    :param source: Final source object to write file from.
+    :param path: File system path to the
     """
-
     assert len(OperatorType) == 9, "Graph converting does not supports current operator types!"
     assert len(source.operators), "Source operators list should be not empty!"
 

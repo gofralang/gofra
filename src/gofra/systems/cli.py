@@ -23,7 +23,7 @@ def welcome_message():
 def usage_message(runner_filename: Optional[str] = None):
     """
     Shows CLI usage message.
-    :param: runner_filename Should be '__file__'.
+    :param runner_filename: Should be '__file__'.
     """
     if runner_filename is None:
         runner_filename = __file__

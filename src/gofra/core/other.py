@@ -11,9 +11,9 @@ from src.gofra.core import errors
 def try_open_file(path: str, mode: str, force_exit: bool = False) -> Tuple[Optional[IO], bool]:
     """
     Tries to open file.
-    :param: path File path.
-    :param: mode File open mode.
-    :param: force_exit If true, will raise exit on error.
+    :param path: File path.
+    :param mode: File open mode.
+    :param force_exit: If true, will raise exit on error.
     :returns: Tuple with (IO, status) where first element is the file, and second - status.
     """
     try:

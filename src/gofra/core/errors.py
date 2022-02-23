@@ -10,9 +10,9 @@ from src.gofra.core.danger import *
 def message(level: str, text: str, force_exit: bool = False):
     """
     Show error to the console.
-    :param: level String with message level.
-    :param: text str,
-    :param: force_exit If true, will force exiting application.
+    :param level: String with message level.
+    :param text: Text to display,
+    :param force_exit: If true, will force exiting application.
     """
 
     print(f"[{level}] {text}", file=stderr)
@@ -24,11 +24,11 @@ def message(level: str, text: str, force_exit: bool = False):
 def message_verbosed(stage: Stage, location: LOCATION, level: str, text: str, force_exit: bool = False):
     """
     Show verbosed error to the console.
-    :param: stage TODO.
-    :param: location TODO.
-    :param: level String with message level.
-    :param: text str,
-    :param: force_exit If true, will force exiting application.
+    :param stage: TODO.
+    :param location: TODO.
+    :param level: String with message level.
+    :param text: str,
+    :param force_exit: If true, will force exiting application.
     """
 
     print(f"[{level} at `{stage}` stage] " # STAGE_TYPES_TO_NAME[
