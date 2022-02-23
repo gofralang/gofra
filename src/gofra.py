@@ -15,6 +15,17 @@ from gofra.core.danger import *
 from gofra.core.stack import Stack
 
 
+# MAJOR WARNING FOR ALL READERS.
+# This code is not refactored,
+# currently I am working on refactoring and splitting into the gofra module,
+# there is a lot of stuff, that will be reworked.
+
+# Also, want to say that bytecode is not finished, and interpretation will be
+# converted to gofra.core.vm that will be run bytecode for own,
+# as internal interpretation method (if you want to use C++ VM which is may not be finished also yet,
+# see that https://github.com/gofralang/vm/)
+
+
 # Lexer.
 
 
