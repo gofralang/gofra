@@ -4,5 +4,14 @@
 # Python.
 *.pyc
 
-# Gofra Bytecode
+# Gofra releated.
+# Bytecode.
 *.gofbc
+# Graph files.
+*.dot
+
+# Ignore all compiled files in examples.
+/examples/*.py
+
+# Ignore sandbox folder.
+/sandbox/

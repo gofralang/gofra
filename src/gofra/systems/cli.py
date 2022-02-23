@@ -17,7 +17,7 @@ def welcome_message():
      Shows CLI welcome message.
     """
 
-    print(f"{__PREFIX} Welcome the Gofra CLI!", file=stdout)
+    print(f"{__PREFIX} Welcome to the Gofra CLI!", file=stdout)
 
 
 def usage_message(runner_filename: Optional[str] = None):

@@ -128,7 +128,8 @@ for test_directory in TEST_DIRECTORIS:
                 except FileNotFoundError:
                     pass
         except FileNotFoundError:
-            print(f"[Test][OK] File {cli_execute_path} does not have record file! Please run with RECORD_NEW!", file=sys.stderr)
+            print(f"[Test][OK] File {cli_execute_path} does not have record file! "
+                  f"Please run with RECORD_NEW!", file=sys.stderr)
 
 # Run MyPy on the core.
 if MYPY_RUN:

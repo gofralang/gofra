@@ -1,10 +1,8 @@
 """
-    Gofra Language Types.
+    'Gofra' danger module.
     Contains classes, values and stuff like that.
+    Should be refactored and totally removed later after refactoring.
 """
-
-__author__ = "Kirill Zhosul @kirillzhosul"
-__license__ = "MIT"
 
 from typing import Optional, Union, Tuple, List, Dict
 from enum import Enum, auto
@@ -316,7 +314,6 @@ OPERATOR_TYPE_TO_BYTECODE_OPERATOR: Dict[OperatorType, str] = {
 }
 
 # Extra `tokens`.
-EXTRA_ESCAPE = "\\"
 EXTRA_COMMENT = "//"
 EXTRA_DIRECTIVE = "#"
 EXTRA_CHAR = "'"

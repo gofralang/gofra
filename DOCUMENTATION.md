@@ -22,7 +22,7 @@
 #### List of the directives:
 #### `#LINTER_SKIP` - *Unsafe* mode, disable linter check.
 #### `#MEM_BUF_BYTE_SIZE=N` - Says that there is only `N` bytes in the memory buffer.
-#### `#PYTHON_COMMENTS_SKIP` - Disable writing comments in the Python when generating it (Should don`t break anything), you may use this if you dont want system comments in your generated python scripts.
+#### `#PYTHON_COMMENTS_SKIP` - Disable writing comments in the Python when generating it (Should don`t break anything), you may use this if you don't want system comments in your generated python scripts.
 
 # Comments
 #### Comment starts with `//`, like: `// Comment`.
@@ -40,7 +40,7 @@ NAME // Will expand.
 #### `'a'` - Pushes 97 (Code) of the  character into the stack.
 
 # Strings
-#### `"Hello world"` - Pushes string pointer into the stack, and also it size.
+#### `"Hello world"` - Pushes string pointer into the stack, and also size.
 #### After defining string you may use data to show the string, using `mshowc`,
 #### Or do some checks, based on string size.
 #### You also may grab strings from I/O using io_read_str (Same as defining string, but string is from I/O instead of source).

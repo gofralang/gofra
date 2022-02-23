@@ -7,11 +7,8 @@ __version__ = "0.1"
 __license__ = "MIT"
 __author__ = "Kirill Zhosul @kirillzhosul"
 
-# Utils.
-from . import stack
-from . import errors
-from . import dump
+# Core.
+from . import core
 
-# Main.
-from . import lexer
-from . import cli
+# Systems.
+from . import systems
