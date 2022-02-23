@@ -28,4 +28,6 @@ show // Pop value from the stack and show it on the screen.
 "Hello, World!" mshowc // Show string "Hello, World!" on the screen.
 ```
 
+## Add syntax for your own PyCharm (or JetBrains IDE): [JB Docs](https://www.jetbrains.com/help/pycharm/creating-and-registering-file-types.html#create-new-file-type)
+
 ## Documentation: `DOCUMENTATION.MD`, Examples: `./examples/README.MD`.
