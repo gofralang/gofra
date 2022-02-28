@@ -28,7 +28,7 @@ class Keyword(Enum):
     ELSE = auto()
     END = auto()
     # Other.
-    VARIABLE = auto()
+    MEMORY = auto()
     DEFINE = auto()
 
 
@@ -91,6 +91,8 @@ class TokenType(Enum):
     STRING = auto()
     WORD = auto()
     KEYWORD = auto()
+
+    # Exoteric.
     BYTECODE = auto()
 
 
@@ -107,7 +109,7 @@ class OperatorType(Enum):
     ELSE = auto()
     END = auto()
     DEFINE = auto()
-    VARIABLE = auto()
+    MEMORY = auto()
 
 
 # Types.
@@ -121,9 +123,9 @@ TYPE_INTEGER = int
 TYPE_POINTER = int
 
 # Memory.
-MEMORY_VARIABLES_SIZE = 0
+MEMORY_MEMORIES_SIZE = 1024
 MEMORY_BYTEARRAY_SIZE = 1024  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
-MEMORY_VARIABLES_POINTER = MEMORY_BYTEARRAY_SIZE
+MEMORY_MEMORIES_POINTER = MEMORY_BYTEARRAY_SIZE
 MEMORY_BYTEARRAY_NULL_POINTER = 0
 
 
@@ -169,6 +171,14 @@ class Definition:
 
 
 @dataclass
+class Variable:
+    """ Variable dataclass implementation. """
+    name: str
+    size: int
+    ptr_offset: int
+
+
+@dataclass
 class Source:
     """ Source dataclass implementation. """
 
@@ -187,7 +197,7 @@ class ParserContext:
     memory_stack: List[OPERATOR_ADDRESS] = field(default_factory=list)
 
     # Default bytearray size.
-    memory_bytearray_size = MEMORY_BYTEARRAY_SIZE + MEMORY_VARIABLES_SIZE
+    memory_bytearray_size = MEMORY_BYTEARRAY_SIZE
 
     # Current parsing operator index.
     operator_index: OPERATOR_ADDRESS = 0
@@ -263,7 +273,7 @@ KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "do": Keyword.DO,
     "end": Keyword.END,
     "define": Keyword.DEFINE,
-    "var": Keyword.VARIABLE
+    "memory": Keyword.MEMORY
 }
 KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
     value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()

@@ -264,11 +264,10 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
     # Definitions.
     definitions: Dict[str, Definition] = dict()
+    memories: Dict[str, Memory] = dict()
+    memories_offset = 0
 
     if len(reversed_tokens) == 0:
-        # If there is no tokens.
-
-        # Error.
         gofra.core.errors.message_verbosed(Stage.PARSER, (basename(path), 1, 1), "Error",
                                            "There is no tokens found, are you given empty file?", True)
 
@@ -279,97 +278,71 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
         current_token: Token = reversed_tokens.pop()
 
         if current_token.type == TokenType.WORD:
-            # If we got a word.
-
-            # Type check.
             assert isinstance(current_token.value, str), "Type error, lexer level error?"
 
             if current_token.value in INTRINSIC_NAMES_TO_TYPE:
-                # If this is intrinsic.
-
-                # Add operator to the context.
                 context.operators.append(Operator(
                     type=OperatorType.INTRINSIC,
                     token=current_token,
                     operand=INTRINSIC_NAMES_TO_TYPE[current_token.value]
                 ))
-
-                # Increment operator index.
                 context.operator_index += 1
-            else:
-                # If not intrinsic.
+                continue
 
-                if current_token.text in definitions:
-                    # If this is definition.
+            if current_token.text in definitions:
+                # Expand definition tokens.
+                reversed_tokens += reversed(definitions[current_token.text].tokens)
+                continue
 
-                    # Expand definition tokens.
-                    reversed_tokens += reversed(definitions[current_token.text].tokens)
-                    continue
+            if current_token.text in memories:
+                memory = memories[current_token.text]
+                context.operators.append(Operator(
+                    type=OperatorType.PUSH_INTEGER,
+                    token=current_token,
+                    operand=memory.ptr_offset
+                ))
+                context.operator_index += 1
+                continue
+
+            if current_token.text.startswith(EXTRA_DIRECTIVE):
+                directive = current_token.text[len(EXTRA_DIRECTIVE):]
+                if directive == "LINTER_SKIP":
+                    if context.directive_linter_skip:
+                        gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!", True)
+                    context.directive_linter_skip = True
+                elif directive == "PYTHON_COMMENTS_SKIP":
+                    if context.directive_python_comments_skip:
+                        gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                           f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!",
+                                                           True)
+                    context.directive_python_comments_skip = True
                 else:
-                    # If this is not definition.
-                    if current_token.text.startswith(EXTRA_DIRECTIVE):
-                        # If this is directive.
+                    if directive.startswith("MEM_BUF_BYTE_SIZE="):
+                        # If this is starts with memory buffer byte size definition name.
 
-                        # Grab the directive.
-                        directive = current_token.text[len(EXTRA_DIRECTIVE):]
+                        # Get directive value from all directive text.
+                        directive_value = directive[len("MEM_BUF_BYTE_SIZE="):]
 
-                        if directive == "LINTER_SKIP":
-                            # If this linter skip directive.
-
-                            if context.directive_linter_skip:
-                                # If already enabled.
-
-                                # Message.
-                                gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                              f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!",
-                                                                       True)
-
-                            # Skip linter.
-                            context.directive_linter_skip = True
-                        elif directive == "PYTHON_COMMENTS_SKIP":
-                            # If this python skip comments directive.
-
-                            if context.directive_python_comments_skip:
-                                # If already enabled.
-
-                                # Message.
-                                gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                              f"Directive `{EXTRA_DIRECTIVE}{directive}` defined twice!",
-                                                                       True)
-
-                            # Skip comments.
-                            context.directive_python_comments_skip = True
+                        # Get new memory size
+                        try:
+                            new_memory_bytearray_size = int(directive_value)
+                        except ValueError:
+                            gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                               f"Directive `{EXTRA_DIRECTIVE}{directive}` "
+                                                               f"passed invalid size `{directive_value}`!", True)
                         else:
-                            # If this is unknown direcitve.
-
-                            if directive.startswith("MEM_BUF_BYTE_SIZE="):
-                                # If this is starts with memory buffer byte size definition name.
-
-                                # Get directive value from all directive text.
-                                directive_value = directive[len("MEM_BUF_BYTE_SIZE="):]
-
-                                # Get new memory size
-                                try:
-                                    new_memory_bytearray_size = int(directive_value)
-                                except ValueError:
-                                    # If error.
-
-                                    # Message.
-                                    gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                                  f"Directive `{EXTRA_DIRECTIVE}{directive}` "
-                                                                  f"passed invalid size `{directive_value}`!", True)
-                                else:
-                                    # Change size of the bytearray.
-                                    context.memory_bytearray_size = new_memory_bytearray_size
-                            else:
-                                # Message.
-                                gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                              f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
+                            # Change size of the bytearray.
+                            context.memory_bytearray_size = new_memory_bytearray_size
                     else:
                         # Message.
                         gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                      f"Unknown WORD `{current_token.text}`, "
-                                                      f"are you misspelled something?", True)
+                                                           f"Unknown directive `{EXTRA_DIRECTIVE}{directive}`", True)
+                continue
+
+            gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                               f"Unknown WORD `{current_token.text}`, "
+                                               f"are you misspelled something?", True)
         elif current_token.type == TokenType.INTEGER:
             # If we got an integer.
 
@@ -651,10 +624,64 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                     # Error message.
                     gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
-                                                  "`define` should have `end` at the end of definition, "
-                                                  "but it was not founded!", True)
-            elif current_token.value == Keyword.VARIABLE:
-                assert False, "Not implemented yet!"
+                                                       "`define` should have `end` at the end of definition, "
+                                                       "but it was not founded!", True)
+            elif current_token.value == Keyword.MEMORY:
+                if len(reversed_tokens) == 0:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                       "`memory` should have name after the keyword, "
+                                                       "do you has unfinished memory definition?", True)
+
+                name_token = reversed_tokens.pop()
+
+                if name_token.type != TokenType.WORD:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       "`memory` name, should be of type WORD, sorry, but "
+                                                       "you can`t use something that you give as name "
+                                                       "for the memory!", True)
+
+                if name_token.text in memories or name_token.text in definitions:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       f"Definition or memory with name {name_token.text} "
+                                                       f"was already defined!", False)
+                    if name_token.text in definitions:
+                        gofra.core.errors.message_verbosed(Stage.PARSER, definitions[name_token.text].location,
+                                                           "Error", "Original definition was here...", True)
+                    # TODO: Memory location report.
+
+                if name_token.text in INTRINSIC_NAMES_TO_TYPE or name_token.text in KEYWORD_NAMES_TO_TYPE:
+                    # If default item.
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       "Can`t define memories with language defined name!", True)
+
+                if len(reversed_tokens) <= 0:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       "`memory` requires size for memory definition, "
+                                                       "which was not given!", True)
+                memory_size_token = reversed_tokens.pop()
+
+                if memory_size_token.type != TokenType.INTEGER:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       "`var` size, should be of type INTEGER, sorry, but "
+                                                       "you can`t use something that you give as size "
+                                                       "for the memory!", True)
+                # TODO: Proper evaluation.
+
+                # Create blank new memory.
+                memory_name = name_token.text
+                memories[memory_name] = Variable(memory_name, memory_size_token.value, memories_offset)
+                memories_offset += memory_size_token.value
+
+                if len(reversed_tokens) >= 0:
+                    end_token = reversed_tokens.pop()
+                    if end_token.type == TokenType.KEYWORD and \
+                            end_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]:
+                        continue
+
+                # If got not end at end of definition.
+                gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                   "`memory` should have `end` at the end of memory definition, "
+                                                   "but it was not founded!", True)
             else:
                 # If unknown keyword type.
                 assert False, "Unknown keyword type! (How?)"
@@ -688,11 +715,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 def interpretator_run(source: Source,
                       bytearray_size: int = MEMORY_BYTEARRAY_SIZE):
     """ Interpretates the source. """
-
-    # Check that there is no new operator type.
     assert len(OperatorType) == 10, "Please update implementation after adding new OperatorType!"
-
-    # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 28, "Please update implementation after adding new Intrinsic!"
 
     # Create empty stack.
@@ -704,22 +727,17 @@ def interpretator_run(source: Source,
     memory_string_size_ponter = 0
 
     # Allocate sized bytearray.
-    memory_bytearray: bytearray = bytearray(bytearray_size + memory_string_size)
+    memory_bytearray = bytearray(bytearray_size + memory_string_size + MEMORY_MEMORIES_SIZE)
 
     # Get source operators count.
     operators_count = len(source.operators)
 
-    # Current operator index from the source.
     current_operator_index = 0
 
-    # Check that there is more than zero operators in context.
     if operators_count == 0:
-        # If there is no operators in the final parser context.
-
-        # Error.
-        gofra.core.errors.message_verbosed(Stage.RUNNER, ("_RUNNER__", 1, 1), "Error",
-                                      "There is no operators found in given file after parsing, "
-                                      "are you given empty file or file without resulting operators?", True)
+        gofra.core.errors.message_verbosed(Stage.RUNNER, ("__RUNNER__", 1, 1), "Error",
+                                           "There is no operators found in given file after parsing, "
+                                           "are you given empty file or file without resulting operators?", True)
 
     while current_operator_index < operators_count:
         current_operator: Operator = source.operators[current_operator_index]
@@ -1194,8 +1212,8 @@ def interpretator_run(source: Source,
                 current_operator_index = current_operator.operand
             elif current_operator.type == OperatorType.DEFINE:
                 assert False, "Got definition operator at runner stage, parser level error?"
-            elif current_operator.type == OperatorType.VARIABLE:
-                assert False, "Not implemented yet."
+            elif current_operator.type == OperatorType.MEMORY:
+                assert False, "Got memory operator at runner stage, parser level error?"
             else:
                 assert False, "Unknown operator type! (How?)"
         except IndexError:
@@ -1273,8 +1291,8 @@ def linter_type_check(source: Source):
 
             # Increase operator index.
             current_operator_index += 1
-        elif current_operator.type == OperatorType.VARIABLE:
-            pass
+        elif current_operator.type == OperatorType.MEMORY:
+            assert False, "Got memory operator at linter stage, parser level error?"
         elif current_operator.type == OperatorType.INTRINSIC:
             # Intrinsic operator.
 
@@ -1791,12 +1809,8 @@ def linter_type_check(source: Source):
             # As this is END operator, we should have index + 1, index!
             current_operator_index = current_operator.operand
         elif current_operator.type == OperatorType.DEFINE:
-            # DEFINE Operator.
-
-            # Error.
             assert False, "Got definition operator at linter stage, parser level error?"
         else:
-            # If unknown operator type.
             assert False, "Got unexpected / unknon operator type! (How?)"
 
     if len(memory_linter_stack) != 0:
