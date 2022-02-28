@@ -254,7 +254,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     assert len(OperatorType) == 10, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
-    assert len(Keyword) == 7, "Please update implementation after adding new Keyword!"
+    assert len(Keyword) == 8, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
     assert len(TokenType) == 6, "Please update implementation after adding new TokenType!"
@@ -265,6 +265,8 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     # Definitions.
     definitions: Dict[str, Definition] = dict()
     memories: Dict[str, Memory] = dict()
+    variables: Dict[str, Variable] = dict()
+    variables_offset = 0
     memories_offset = 0
 
     if len(reversed_tokens) == 0:
@@ -300,6 +302,16 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                     type=OperatorType.PUSH_INTEGER,
                     token=current_token,
                     operand=memory.ptr_offset
+                ))
+                context.operator_index += 1
+                continue
+
+            if current_token.text in variables:
+                variable = variables[current_token.text]
+                context.operators.append(Operator(
+                    type=OperatorType.PUSH_INTEGER,
+                    token=current_token,
+                    operand=variable.ptr_offset
                 ))
                 context.operator_index += 1
                 continue
@@ -669,7 +681,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
                 # Create blank new memory.
                 memory_name = name_token.text
-                memories[memory_name] = Variable(memory_name, memory_size_token.value, memories_offset)
+                memories[memory_name] = Memory(memory_name, memory_size_token.value, memories_offset)
                 memories_offset += memory_size_token.value
 
                 if len(reversed_tokens) >= 0:
@@ -682,6 +694,37 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                 gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
                                                    "`memory` should have `end` at the end of memory definition, "
                                                    "but it was not founded!", True)
+            elif current_token.value == Keyword.VARIABLE:
+                if len(reversed_tokens) == 0:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, current_token.location, "Error",
+                                                       "`var` should have name after the keyword, "
+                                                       "do you has unfinished variable definition?", True)
+
+                name_token = reversed_tokens.pop()
+
+                if name_token.type != TokenType.WORD:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       "`var` name, should be of type WORD, sorry, but "
+                                                       "you can`t use something that you give as name "
+                                                       "for the variable!", True)
+
+                if name_token.text in variables or name_token.text in definitions or name_token.text in memories:
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       f"Definition or variable with name {name_token.text} "
+                                                       f"was already defined!", False)
+                    if name_token.text in definitions:
+                        gofra.core.errors.message_verbosed(Stage.PARSER, definitions[name_token.text].location,
+                                                           "Error", "Original definition was here...", True)
+                    # TODO: Memory / variable location report.
+
+                if name_token.text in INTRINSIC_NAMES_TO_TYPE or name_token.text in KEYWORD_NAMES_TO_TYPE:
+                    # If default item.
+                    gofra.core.errors.message_verbosed(Stage.PARSER, name_token.location, "Error",
+                                                       "Can`t define variable with language defined name!", True)
+                # Create blank new memory.
+                variable_name = name_token.text
+                variables[variable_name] = Variable(variable_name, variables_offset)
+                variables_offset += VARIABLE_SIZE
             else:
                 # If unknown keyword type.
                 assert False, "Unknown keyword type! (How?)"
@@ -716,7 +759,7 @@ def interpretator_run(source: Source,
                       bytearray_size: int = MEMORY_BYTEARRAY_SIZE):
     """ Interpretates the source. """
     assert len(OperatorType) == 10, "Please update implementation after adding new OperatorType!"
-    assert len(Intrinsic) == 28, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 30, "Please update implementation after adding new Intrinsic!"
 
     # Create empty stack.
     memory_execution_stack = Stack()
@@ -727,7 +770,7 @@ def interpretator_run(source: Source,
     memory_string_size_ponter = 0
 
     # Allocate sized bytearray.
-    memory_bytearray = bytearray(bytearray_size + memory_string_size + MEMORY_MEMORIES_SIZE)
+    memory_bytearray = bytearray(bytearray_size + memory_string_size + MEMORY_MEMORIES_SIZE + MEMORY_VARIABLES_SIZE)
 
     # Get source operators count.
     operators_count = len(source.operators)
@@ -1241,7 +1284,7 @@ def linter_type_check(source: Source):
     assert len(OperatorType) == 10, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
-    assert len(Intrinsic) == 28, "Please update implementation after adding new Intrinsic!"
+    assert len(Intrinsic) == 30, "Please update implementation after adding new Intrinsic!"
 
     # Create empty linter stack.
     memory_linter_stack = Stack()
