@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 
 class Stage(Enum):
     """ Enumeration for stage types. """
-    LEXER = auto(),
-    PARSER = auto(),
+    LEXER = auto()
+    PARSER = auto()
     LINTER = auto()
     RUNNER = auto()
     COMPILATOR = auto()
@@ -20,13 +20,15 @@ class Stage(Enum):
 
 class Keyword(Enum):
     """ Enumeration for keyword types. """
-
-    # Keywords.
+    # Control flow.
     IF = auto()
     WHILE = auto()
+    # Blocks.
     DO = auto()
     ELSE = auto()
     END = auto()
+    # Other.
+    VARIABLE = auto()
     DEFINE = auto()
 
 
@@ -98,13 +100,14 @@ class OperatorType(Enum):
     PUSH_STRING = auto()
     INTRINSIC = auto()
 
-    # Conditions, loops and other.
+    # Keyword.
     IF = auto()
     WHILE = auto()
     DO = auto()
     ELSE = auto()
     END = auto()
     DEFINE = auto()
+    VARIABLE = auto()
 
 
 # Types.
@@ -114,11 +117,13 @@ LOCATION = Tuple[str, int, int]
 VALUE = Union[int, str, Keyword]
 
 OPERATOR_ADDRESS = int
-
 TYPE_INTEGER = int
 TYPE_POINTER = int
 
-MEMORY_BYTEARRAY_SIZE = 1000  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
+# Memory.
+MEMORY_VARIABLES_SIZE = 0
+MEMORY_BYTEARRAY_SIZE = 1024  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
+MEMORY_VARIABLES_POINTER = MEMORY_BYTEARRAY_SIZE
 MEMORY_BYTEARRAY_NULL_POINTER = 0
 
 
@@ -182,7 +187,7 @@ class ParserContext:
     memory_stack: List[OPERATOR_ADDRESS] = field(default_factory=list)
 
     # Default bytearray size.
-    memory_bytearray_size = MEMORY_BYTEARRAY_SIZE
+    memory_bytearray_size = MEMORY_BYTEARRAY_SIZE + MEMORY_VARIABLES_SIZE
 
     # Current parsing operator index.
     operator_index: OPERATOR_ADDRESS = 0
@@ -250,14 +255,15 @@ STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
 }
 
 # Keyword names / types.
-assert len(Keyword) == 6, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
+assert len(Keyword) == 7, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "else": Keyword.ELSE,
     "while": Keyword.WHILE,
     "do": Keyword.DO,
     "end": Keyword.END,
-    "define": Keyword.DEFINE
+    "define": Keyword.DEFINE,
+    "var": Keyword.VARIABLE
 }
 KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
     value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()
