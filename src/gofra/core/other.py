@@ -5,7 +5,7 @@
 
 from typing import Tuple, Optional, IO
 
-from src.gofra.core import errors
+from . import errors
 
 
 def try_open_file(path: str, mode: str, force_exit: bool = False, **kwargs) -> Tuple[Optional[IO], bool]:

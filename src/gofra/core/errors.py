@@ -4,7 +4,7 @@
 """
 
 from sys import stderr
-from src.gofra.core.danger import *
+from .danger import *
 
 
 def message(level: str, text: str, force_exit: bool = False):

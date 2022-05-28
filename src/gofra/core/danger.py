@@ -27,6 +27,9 @@ class Keyword(Enum):
     DO = auto()
     ELSE = auto()
     END = auto()
+    # Other.
+    MEMORY = auto()
+    VARIABLE = auto()
     DEFINE = auto()
 
 
@@ -72,6 +75,10 @@ class Intrinsic(Enum):
     MEMORY_SHOW_CHARACTERS = auto()
     MEMORY_POINTER = auto()
 
+    # Variables.
+    VARIABLE_WRITE = auto()
+    VARIABLE_READ = auto()
+
     # I/O.
     IO_READ_INTEGER = auto()
     IO_READ_STRING = auto()
@@ -89,6 +96,8 @@ class TokenType(Enum):
     STRING = auto()
     WORD = auto()
     KEYWORD = auto()
+
+    # Exoteric.
     BYTECODE = auto()
 
 
@@ -105,6 +114,7 @@ class OperatorType(Enum):
     ELSE = auto()
     END = auto()
     DEFINE = auto()
+    MEMORY = auto()
 
 
 # Types.
@@ -118,8 +128,18 @@ OPERATOR_ADDRESS = int
 TYPE_INTEGER = int
 TYPE_POINTER = int
 
-MEMORY_BYTEARRAY_SIZE = 1000  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
+# Memory.
+MEMORY_MEMORIES_SIZE = 1024
+MEMORY_VARIABLES_SIZE = 1024
+MEMORY_BYTEARRAY_SIZE = 1024  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
+
+# Variables.
+VARIABLE_SIZE = 4
+
+# Memory layout: [user, memories, variables].
 MEMORY_BYTEARRAY_NULL_POINTER = 0
+MEMORY_MEMORIES_POINTER = MEMORY_BYTEARRAY_NULL_POINTER + MEMORY_BYTEARRAY_SIZE
+MEMORY_VARIABLES_POINTER = MEMORY_MEMORIES_POINTER + MEMORY_MEMORIES_SIZE
 
 
 @dataclass
@@ -164,6 +184,21 @@ class Definition:
 
 
 @dataclass
+class Variable:
+    """ Variable dataclass implementation. """
+    name: str
+    ptr_offset: int
+
+
+@dataclass
+class Memory:
+    """ Memory dataclass implementation. """
+    name: str
+    size: int
+    ptr_offset: int
+
+
+@dataclass
 class Source:
     """ Source dataclass implementation. """
 
@@ -195,7 +230,7 @@ class ParserContext:
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 28, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 30, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     # Math.
     "+": Intrinsic.PLUS,
@@ -227,6 +262,12 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "mread4b": Intrinsic.MEMORY_READ4BYTES,
     "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
 
+    # Variables.
+    #  "@": Intrinsic.VARIABLE_READ,
+    #  "=": Intrinsic.VARIABLE_WRITE,
+    "@": Intrinsic.MEMORY_READ4BYTES,
+    "=": Intrinsic.MEMORY_WRITE4BYTES,
+
     # I/O.
     "io_read_str": Intrinsic.IO_READ_STRING,
     "io_read_int": Intrinsic.IO_READ_INTEGER,
@@ -250,20 +291,22 @@ STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
 }
 
 # Keyword names / types.
-assert len(Keyword) == 6, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
+assert len(Keyword) == 8, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "else": Keyword.ELSE,
     "while": Keyword.WHILE,
     "do": Keyword.DO,
     "end": Keyword.END,
-    "define": Keyword.DEFINE
+    "define": Keyword.DEFINE,
+    "memory": Keyword.MEMORY,
+    "var": Keyword.VARIABLE
 }
 KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
     value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()
 }
 
-assert len(Intrinsic) == 28, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
+assert len(Intrinsic) == 30, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
 BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     # Math.
     "+": Intrinsic.PLUS,
@@ -294,6 +337,10 @@ BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     "MW4": Intrinsic.MEMORY_WRITE4BYTES,
     "MR4": Intrinsic.MEMORY_READ4BYTES,
     "MSC": Intrinsic.MEMORY_SHOW_CHARACTERS,
+
+    # Variables.
+    "VW": Intrinsic.VARIABLE_WRITE,
+    "VR": Intrinsic.VARIABLE_READ,
 
     # I/O.
     "IORS": Intrinsic.IO_READ_STRING,
