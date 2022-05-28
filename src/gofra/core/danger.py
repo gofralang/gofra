@@ -11,8 +11,8 @@ from dataclasses import dataclass, field
 
 class Stage(Enum):
     """ Enumeration for stage types. """
-    LEXER = auto()
-    PARSER = auto()
+    LEXER = auto(),
+    PARSER = auto(),
     LINTER = auto()
     RUNNER = auto()
     COMPILATOR = auto()
@@ -20,10 +20,10 @@ class Stage(Enum):
 
 class Keyword(Enum):
     """ Enumeration for keyword types. """
-    # Control flow.
+
+    # Keywords.
     IF = auto()
     WHILE = auto()
-    # Blocks.
     DO = auto()
     ELSE = auto()
     END = auto()
@@ -107,7 +107,7 @@ class OperatorType(Enum):
     PUSH_STRING = auto()
     INTRINSIC = auto()
 
-    # Keyword.
+    # Conditions, loops and other.
     IF = auto()
     WHILE = auto()
     DO = auto()
@@ -124,6 +124,7 @@ LOCATION = Tuple[str, int, int]
 VALUE = Union[int, str, Keyword]
 
 OPERATOR_ADDRESS = int
+
 TYPE_INTEGER = int
 TYPE_POINTER = int
 
