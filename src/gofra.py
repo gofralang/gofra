@@ -251,7 +251,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     """ Parses token from lexer* (lexer_tokenize()) """
 
     # Check that there is no changes in operator type.
-    assert len(OperatorType) == 9, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 10, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
     assert len(Keyword) == 8, "Please update implementation after adding new Keyword!"
@@ -1464,7 +1464,7 @@ def linter_type_check(source: Source):
     # TODO: IF/WHILE anylyse fixes.
 
     # Check that there is no new operator type.
-    assert len(OperatorType) == 9, "Please update implementation after adding new OperatorType!"
+    assert len(OperatorType) == 10, "Please update implementation after adding new OperatorType!"
 
     # Check that there is no new instrinsic type.
     assert len(Intrinsic) == 30, "Please update implementation after adding new Intrinsic!"
@@ -2091,7 +2091,7 @@ def python_generate(source: Source, context: ParserContext, path: str):
     """ Generates graph from the source. """
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 9, "Please update implementation for python generation after adding new OperatorType!"
+    assert len(OperatorType) == 10, "Please update implementation for python generation after adding new OperatorType!"
     assert len(Intrinsic) == 28, "Please update implementation for python generationg after adding new Intrinsic!"
 
     def __update_indent(value: int):
@@ -2700,7 +2700,7 @@ def compile_bytecode(source: Source, _, path: str):
     """ Compiles operators to bytecode. """
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 9, \
+    assert len(OperatorType) == 10, \
         "Please update implementation for bytecode compilation after adding new OperatorType!"
     assert len(Intrinsic) == 28, "Please update implementation for bytecode compilation after adding new Intrinsic!"
 
@@ -2820,7 +2820,7 @@ def execute_bytecode(path: str):
     """ Executes bytecode file. """
 
     # Check that there is no changes in operator type or intrinsic.
-    assert len(OperatorType) == 9, "Please update implementation for bytecode execution after adding new OperatorType!"
+    assert len(OperatorType) == 10, "Please update implementation for bytecode execution after adding new OperatorType!"
     assert len(Intrinsic) == 28, "Please update implementation for bytecode execution after adding new Intrinsic!"
 
     if not path.endswith(".gofbc"):
