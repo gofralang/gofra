@@ -2021,7 +2021,7 @@ def cli_entry_point():
 
     # Load source and check size of it.
     loaded_file = None
-    if cli_subcommand in ("run", "dump", "compile"):
+    if cli_subcommand in ("run", "dump", "compile", "runc"):
         loaded_file = load_source_from_file(cli_source_path)
         assert len(loaded_file) == 2, "Got unexpected data from loaded file."
 
@@ -2035,6 +2035,18 @@ def cli_entry_point():
         # Message.
         if not cli_silent:
             print(f'[Info] File "{basename(cli_source_path)}" was interpreted!')
+    elif cli_subcommand == "runc":
+        # If this is compile and run command.
+        cli_source, cli_context = loaded_file
+        bytecode_path = compile_bytecode(cli_source, cli_context, cli_source_path)
+        if not cli_silent:
+            print(
+                f'[Info] File "{basename(cli_source_path)}" was compiled to "{basename(bytecode_path)}"!'
+            )
+
+        execute_bytecode(bytecode_path)
+        if not cli_silent:
+            print(f'[Info] File "{basename(bytecode_path)}" was executed!')
     elif cli_subcommand == "dump":
         # If this is dump subcommand.
 
