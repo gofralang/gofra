@@ -11,7 +11,7 @@ import sys
 
 
 def cli_execute(commands: typing.List[str]) -> subprocess.CompletedProcess:
-    """ Executes CLI command. """
+    """Executes CLI command."""
     return subprocess.run(" ".join(map(shlex.quote, commands)), capture_output=True)
 
 
@@ -43,10 +43,7 @@ TEST_RECORDS_DIRECTORY = "./records/"
 TEST_EXTENSION = ".gof"
 
 # Directories to run test on.
-TEST_DIRECTORIS = [
-    ("../examples/", "/examples/"),
-    ("../tests/", "/tests/")
-]
+TEST_DIRECTORIS = [("../examples/", "/examples/"), ("../tests/", "/tests/")]
 
 for test_directory in TEST_DIRECTORIS:
     # Iterate over test directories.
@@ -71,8 +68,11 @@ for test_directory in TEST_DIRECTORIS:
             for result in (graph_result, python_result, dump_result):
                 if result.returncode != 0:
                     # Print.
-                    print(f"[Test][Failed][OTHER] File {cli_execute_path} returned error code {run_result.returncode}, "
-                          f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
+                    print(
+                        f"[Test][Failed][OTHER] File {cli_execute_path} returned error code {run_result.returncode}, "
+                        f"with error output: {run_result.stderr.decode('utf-8')}!",
+                        file=sys.stderr,
+                    )
 
                     # Exit.
                     if STOP_AT_FAILURE:
@@ -82,7 +82,12 @@ for test_directory in TEST_DIRECTORIS:
         run_result_current = run_result_current.encode("unicode_escape").decode("utf-8")
 
         # Get record path.
-        record_file_path = TEST_RECORDS_DIRECTORY + test_directory[1] + os.path.basename(cli_execute_path) + ".txt"
+        record_file_path = (
+            TEST_RECORDS_DIRECTORY
+            + test_directory[1]
+            + os.path.basename(cli_execute_path)
+            + ".txt"
+        )
 
         if RECORD_NEW:
             # If we record.
@@ -97,8 +102,11 @@ for test_directory in TEST_DIRECTORIS:
 
                 if run_result.returncode != 0:
                     # Print.
-                    print(f"[Test][Failed] File {cli_execute_path} returned error code {run_result.returncode}, "
-                          f"with error output: {run_result.stderr.decode('utf-8')}!", file=sys.stderr)
+                    print(
+                        f"[Test][Failed] File {cli_execute_path} returned error code {run_result.returncode}, "
+                        f"with error output: {run_result.stderr.decode('utf-8')}!",
+                        file=sys.stderr,
+                    )
 
                     # Exit.
                     if STOP_AT_FAILURE:
@@ -110,8 +118,11 @@ for test_directory in TEST_DIRECTORIS:
                     # If no same result.
 
                     # Print.
-                    print(f"[Test][Failed] File {cli_execute_path} expected result \"{run_result_expected}\", "
-                          f"but got \"{run_result_current}\"!", file=sys.stderr)
+                    print(
+                        f'[Test][Failed] File {cli_execute_path} expected result "{run_result_expected}", '
+                        f'but got "{run_result_current}"!',
+                        file=sys.stderr,
+                    )
 
                     # Exit.
                     if STOP_AT_FAILURE:
@@ -128,8 +139,11 @@ for test_directory in TEST_DIRECTORIS:
                 except FileNotFoundError:
                     pass
         except FileNotFoundError:
-            print(f"[Test][OK] File {cli_execute_path} does not have record file! "
-                  f"Please run with RECORD_NEW!", file=sys.stderr)
+            print(
+                f"[Test][OK] File {cli_execute_path} does not have record file! "
+                f"Please run with RECORD_NEW!",
+                file=sys.stderr,
+            )
 
 # Run MyPy on the core.
 if MYPY_RUN:

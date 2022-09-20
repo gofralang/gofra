@@ -20,7 +20,7 @@ def __write_header(file: IO, name: str):
     :param name: String of the header (graph) name.
     """
     file.write(f"digraph {name}" + "{\n")
-    file.write(f"\tEntry [label=\"Entry Point\"];\n")
+    file.write(f'\tEntry [label="Entry Point"];\n')
     file.write(f"\tEntry -> Operator_0;\n")
 
 
@@ -30,7 +30,7 @@ def __write_footer(file: IO, exit_operator_index: int):
     :param file: IO to write in.
     :param exit_operator_index: Index of the last operator index, should be equals to the length of the source operators.
     """
-    file.write(f"\tOperator_{exit_operator_index} [label=\"Exit Point\"];\n")
+    file.write(f'\tOperator_{exit_operator_index} [label="Exit Point"];\n')
     file.write("}\n")
 
 
@@ -53,19 +53,27 @@ def __write_operator(file: IO, source: Source, operator: Operator, index: int):
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
         return
     if operator.type == OperatorType.INTRINSIC:
-        assert isinstance(operator.operand, Intrinsic), f"Type error, parser level error?"
+        assert isinstance(
+            operator.operand, Intrinsic
+        ), f"Type error, parser level error?"
         label = repr(repr(INTRINSIC_TYPES_TO_NAME[operator.operand]))
         file.write(f"   Operator_{index} [label={label}];\n")
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
         return
     if operator.type == OperatorType.IF:
-        assert isinstance(operator.operand, OPERATOR_ADDRESS), f"Type error, parser level error?"
+        assert isinstance(
+            operator.operand, OPERATOR_ADDRESS
+        ), f"Type error, parser level error?"
         file.write(f"   Operator_{index} [shape=record label=if];\n")
         file.write(f"    Operator_{index} -> Operator_{index + 1} [label=true];\n")
-        file.write(f"    Operator_{index} -> Operator_{operator.operand} [label=false];\n")
+        file.write(
+            f"    Operator_{index} -> Operator_{operator.operand} [label=false];\n"
+        )
         return
     if operator.type == OperatorType.ELSE:
-        assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+        assert isinstance(
+            operator.operand, OPERATOR_ADDRESS
+        ), "Type error, parser level error?"
         file.write(f"   Operator_{index} [shape=record label=else];\n")
         file.write(f"   Operator_{index} -> Operator_{operator.operand};\n")
         return
@@ -74,17 +82,25 @@ def __write_operator(file: IO, source: Source, operator: Operator, index: int):
         file.write(f"    Operator_{index} -> Operator_{index + 1};\n")
         return
     if operator.type == OperatorType.DO:
-        assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+        assert isinstance(
+            operator.operand, OPERATOR_ADDRESS
+        ), "Type error, parser level error?"
 
         end_operator_index = source.operators[operator.operand].operand
-        assert isinstance(end_operator_index, OPERATOR_ADDRESS), "Type error, parser level error?"
+        assert isinstance(
+            end_operator_index, OPERATOR_ADDRESS
+        ), "Type error, parser level error?"
 
         file.write(f"    Operator_{index} [shape=record label=do];\n")
         file.write(f"    Operator_{index} -> Operator_{index + 1} [label=true];\n")
-        file.write(f"    Operator_{index} -> Operator_{end_operator_index - 1} [label=false];\n")
+        file.write(
+            f"    Operator_{index} -> Operator_{end_operator_index - 1} [label=false];\n"
+        )
         return
     if operator.type == OperatorType.END:
-        assert isinstance(operator.operand, OPERATOR_ADDRESS), "Type error, parser level error?"
+        assert isinstance(
+            operator.operand, OPERATOR_ADDRESS
+        ), "Type error, parser level error?"
         file.write(f"   Operator_{index} [shape=record label=end];\n")
         file.write(f"   Operator_{index} -> Operator_{index + 1};\n")
         return
@@ -101,7 +117,9 @@ def write(source: Source, path: str):
     :param source: Final source object to write file from.
     :param path: File system path to the
     """
-    assert len(OperatorType) == 9, "Graph converting does not supports current operator types!"
+    assert (
+        len(OperatorType) == 9
+    ), "Graph converting does not supports current operator types!"
     assert len(source.operators), "Source operators list should be not empty!"
 
     path = path + ("" if path.endswith(__GRAPH_EXTENSION) else __GRAPH_EXTENSION)
@@ -109,10 +127,7 @@ def write(source: Source, path: str):
     __write_header(file, basename(path))
 
     for index, operator in enumerate(source.operators):
-        __write_operator(
-            *(file, source),
-            *(operator, index)
-        )
+        __write_operator(*(file, source), *(operator, index))
 
     __write_footer(file, len(source.operators))
     file.close()

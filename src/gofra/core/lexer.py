@@ -7,7 +7,7 @@ from typing import Callable
 
 # Constants.
 __CHAR_ESCAPE = "\\"
-__CHAR_STRING = "\""
+__CHAR_STRING = '"'
 
 
 def unescape(string: str) -> str:
@@ -16,7 +16,12 @@ def unescape(string: str) -> str:
     :param string: Value to unescape.
     :return: Unescaped string
     """
-    return string.encode("UTF-8").decode("unicode_escape").encode("latin-1").decode("UTF-8")
+    return (
+        string.encode("UTF-8")
+        .decode("unicode_escape")
+        .encode("latin-1")
+        .decode("UTF-8")
+    )
 
 
 def find_collumn(string: str, start: int, predicate: Callable[[str], bool]) -> int:
@@ -49,7 +54,7 @@ def find_string_end(string: str, start: int) -> int:
 
         character_current = string[current_index]
         if character_current == __CHAR_STRING and character_previous != __CHAR_ESCAPE:
-            break   # Reached unescaped string literal.
+            break  # Reached unescaped string literal.
 
         character_previous = character_current
         current_index += 1

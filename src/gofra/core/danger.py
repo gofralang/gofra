@@ -10,16 +10,17 @@ from dataclasses import dataclass, field
 
 
 class Stage(Enum):
-    """ Enumeration for stage types. """
-    LEXER = auto(),
-    PARSER = auto(),
+    """Enumeration for stage types."""
+
+    LEXER = (auto(),)
+    PARSER = (auto(),)
     LINTER = auto()
     RUNNER = auto()
     COMPILATOR = auto()
 
 
 class Keyword(Enum):
-    """ Enumeration for keyword types. """
+    """Enumeration for keyword types."""
 
     # Keywords.
     IF = auto()
@@ -34,7 +35,7 @@ class Keyword(Enum):
 
 
 class Intrinsic(Enum):
-    """ Enumeration for intrinsic types. """
+    """Enumeration for intrinsic types."""
 
     # Int (loops).
     # Increment (Undols to: 1 -) like x--.
@@ -90,7 +91,8 @@ class Intrinsic(Enum):
 
 
 class TokenType(Enum):
-    """ Enumeration for token types. """
+    """Enumeration for token types."""
+
     INTEGER = auto()
     CHARACTER = auto()
     STRING = auto()
@@ -102,7 +104,8 @@ class TokenType(Enum):
 
 
 class OperatorType(Enum):
-    """ Enumeration for operaror types. """
+    """Enumeration for operaror types."""
+
     PUSH_INTEGER = auto()
     PUSH_STRING = auto()
     INTRINSIC = auto()
@@ -131,7 +134,9 @@ TYPE_POINTER = int
 # Memory.
 MEMORY_MEMORIES_SIZE = 1024
 MEMORY_VARIABLES_SIZE = 1024
-MEMORY_BYTEARRAY_SIZE = 1024  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
+MEMORY_BYTEARRAY_SIZE = (
+    1024  # May be overwritten from directive #MEM_BUF_BYTE_SIZE={Size}!
+)
 
 # Variables.
 VARIABLE_SIZE = 4
@@ -144,7 +149,7 @@ MEMORY_VARIABLES_POINTER = MEMORY_MEMORIES_POINTER + MEMORY_MEMORIES_SIZE
 
 @dataclass
 class Token:
-    """ Token dataclass implementation """
+    """Token dataclass implementation"""
 
     # Type of the token.
     type: TokenType
@@ -161,7 +166,7 @@ class Token:
 
 @dataclass
 class Operator:
-    """ Operator dataclass implementation. """
+    """Operator dataclass implementation."""
 
     # Type of the operator.
     type: OperatorType
@@ -175,7 +180,8 @@ class Operator:
 
 @dataclass
 class Definition:
-    """ Definition dataclass implementation. """
+    """Definition dataclass implementation."""
+
     # Location of the definition.
     location: LOCATION
 
@@ -185,14 +191,16 @@ class Definition:
 
 @dataclass
 class Variable:
-    """ Variable dataclass implementation. """
+    """Variable dataclass implementation."""
+
     name: str
     ptr_offset: int
 
 
 @dataclass
 class Memory:
-    """ Memory dataclass implementation. """
+    """Memory dataclass implementation."""
+
     name: str
     size: int
     ptr_offset: int
@@ -200,7 +208,7 @@ class Memory:
 
 @dataclass
 class Source:
-    """ Source dataclass implementation. """
+    """Source dataclass implementation."""
 
     # List of source operators.
     operators: List[Operator] = field(default_factory=list)
@@ -208,7 +216,7 @@ class Source:
 
 @dataclass
 class ParserContext:
-    """ Parser context dataclass implementation. """
+    """Parser context dataclass implementation."""
 
     # Operators list.
     operators: List[Operator] = field(default_factory=list)
@@ -230,7 +238,9 @@ class ParserContext:
 # Other.
 
 # Intrinsic names / types.
-assert len(Intrinsic) == 30, "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
+assert (
+    len(Intrinsic) == 30
+), "Please update INTRINSIC_NAMES_TO_TYPE after adding new Intrinsic!"
 INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     # Math.
     "+": Intrinsic.PLUS,
@@ -244,7 +254,6 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     ">=": Intrinsic.LESS_EQUAL_THAN,
     "<=": Intrinsic.GREATER_EQUAL_THAN,
     "%": Intrinsic.MODULUS,
-
     # Stack.
     "dec": Intrinsic.DECREMENT,
     "inc": Intrinsic.INCREMENT,
@@ -254,27 +263,23 @@ INTRINSIC_NAMES_TO_TYPE: Dict[str, Intrinsic] = {
     "copy2": Intrinsic.COPY2,
     "copy_over": Intrinsic.COPY_OVER,
     "free": Intrinsic.FREE,
-
     # Memory.
     "mwrite": Intrinsic.MEMORY_WRITE,
     "mread": Intrinsic.MEMORY_READ,
     "mwrite4b": Intrinsic.MEMORY_WRITE4BYTES,
     "mread4b": Intrinsic.MEMORY_READ4BYTES,
     "mshowc": Intrinsic.MEMORY_SHOW_CHARACTERS,
-
     # Variables.
     #  "@": Intrinsic.VARIABLE_READ,
     #  "=": Intrinsic.VARIABLE_WRITE,
     "@": Intrinsic.MEMORY_READ4BYTES,
     "=": Intrinsic.MEMORY_WRITE4BYTES,
-
     # I/O.
     "io_read_str": Intrinsic.IO_READ_STRING,
     "io_read_int": Intrinsic.IO_READ_INTEGER,
-
     # Constants*.
     "MPTR": Intrinsic.MEMORY_POINTER,
-    "NULL": Intrinsic.NULL
+    "NULL": Intrinsic.NULL,
 }
 INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
     value: key for key, value in INTRINSIC_NAMES_TO_TYPE.items()
@@ -287,11 +292,13 @@ STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
     Stage.PARSER: "Parsing",
     Stage.LINTER: "Linter",
     Stage.RUNNER: "Running",
-    Stage.COMPILATOR: "Compilation"
+    Stage.COMPILATOR: "Compilation",
 }
 
 # Keyword names / types.
-assert len(Keyword) == 8, "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
+assert (
+    len(Keyword) == 8
+), "Please update KEYWORD_NAMES_TO_TYPE after adding new Keyword!"
 KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "if": Keyword.IF,
     "else": Keyword.ELSE,
@@ -300,13 +307,15 @@ KEYWORD_NAMES_TO_TYPE: Dict[str, Keyword] = {
     "end": Keyword.END,
     "define": Keyword.DEFINE,
     "memory": Keyword.MEMORY,
-    "var": Keyword.VARIABLE
+    "var": Keyword.VARIABLE,
 }
 KEYWORD_TYPES_TO_NAME: Dict[Keyword, str] = {
     value: key for key, value in KEYWORD_NAMES_TO_TYPE.items()
 }
 
-assert len(Intrinsic) == 30, "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
+assert (
+    len(Intrinsic) == 30
+), "Please update BYTECODE_INTRINSIC_NAMES_TO_OPERATOR_TYPE after adding new Intrinsic!"
 BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     # Math.
     "+": Intrinsic.PLUS,
@@ -322,7 +331,6 @@ BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     "%": Intrinsic.MODULUS,
     "--": Intrinsic.DECREMENT,
     "++": Intrinsic.INCREMENT,
-
     # Stack.
     "SW": Intrinsic.SWAP,
     "SH": Intrinsic.SHOW,
@@ -330,25 +338,21 @@ BYTECODE_OPERATOR_NAMES_TO_INTRINSIC: Dict[str, Intrinsic] = {
     "CP2": Intrinsic.COPY2,
     "CPO": Intrinsic.COPY_OVER,
     "FR": Intrinsic.FREE,
-
     # Memory.
     "MW": Intrinsic.MEMORY_WRITE,
     "MR": Intrinsic.MEMORY_READ,
     "MW4": Intrinsic.MEMORY_WRITE4BYTES,
     "MR4": Intrinsic.MEMORY_READ4BYTES,
     "MSC": Intrinsic.MEMORY_SHOW_CHARACTERS,
-
     # Variables.
     "VW": Intrinsic.VARIABLE_WRITE,
     "VR": Intrinsic.VARIABLE_READ,
-
     # I/O.
     "IORS": Intrinsic.IO_READ_STRING,
     "IORI": Intrinsic.IO_READ_INTEGER,
-
     # Constants*.
     "MPTR": Intrinsic.MEMORY_POINTER,
-    "NULL": Intrinsic.NULL
+    "NULL": Intrinsic.NULL,
 }
 INTRINSIC_TO_BYTECODE_OPERATOR: Dict[Intrinsic, str] = {
     value: key for key, value in BYTECODE_OPERATOR_NAMES_TO_INTRINSIC.items()
@@ -364,4 +368,4 @@ OPERATOR_TYPE_TO_BYTECODE_OPERATOR: Dict[OperatorType, str] = {
 EXTRA_COMMENT = "//"
 EXTRA_DIRECTIVE = "#"
 EXTRA_CHAR = "'"
-EXTRA_STRING = "\""
+EXTRA_STRING = '"'

@@ -21,7 +21,9 @@ def message(level: str, text: str, force_exit: bool = False):
         exit(1)
 
 
-def message_verbosed(stage: Stage, location: LOCATION, level: str, text: str, force_exit: bool = False):
+def message_verbosed(
+    stage: Stage, location: LOCATION, level: str, text: str, force_exit: bool = False
+):
     """
     Show verbosed error to the console.
     :param stage: TODO.
@@ -31,9 +33,11 @@ def message_verbosed(stage: Stage, location: LOCATION, level: str, text: str, fo
     :param force_exit: If true, will force exiting application.
     """
 
-    print(f"[{level} at `{stage}` stage] " # STAGE_TYPES_TO_NAME[
-          f"({location[0]}) on {location[1]}:{location[2]} - {text}",
-          file=stderr)
+    print(
+        f"[{level} at `{stage}` stage] "  # STAGE_TYPES_TO_NAME[
+        f"({location[0]}) on {location[1]}:{location[2]} - {text}",
+        file=stderr,
+    )
 
     if force_exit:
         exit(1)

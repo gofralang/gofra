@@ -24,8 +24,8 @@ def __dump_operator(operator: Operator, index: int):
 
 def dump(operators: List[Operator]):
     """
-        Prints all operators from given list in human-readable format.
-        :param operators: List of operators.
+    Prints all operators from given list in human-readable format.
+    :param operators: List of operators.
     """
     assert len(operators) > 0, "List of operators should be not empty!"
     for index, operator in enumerate(operators):

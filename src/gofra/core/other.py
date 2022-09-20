@@ -8,7 +8,9 @@ from typing import Tuple, Optional, IO
 from . import errors
 
 
-def try_open_file(path: str, mode: str, force_exit: bool = False, **kwargs) -> Tuple[Optional[IO], bool]:
+def try_open_file(
+    path: str, mode: str, force_exit: bool = False, **kwargs
+) -> Tuple[Optional[IO], bool]:
     """
     Tries to open file.
     :param path: File path.
@@ -20,7 +22,15 @@ def try_open_file(path: str, mode: str, force_exit: bool = False, **kwargs) -> T
         file = open(path, mode, **kwargs)
         return file, True
     except FileNotFoundError:
-        errors.message("Error", f"File \"{path}\" failed to open because it was not founded!", force_exit)
+        errors.message(
+            "Error",
+            f'File "{path}" failed to open because it was not founded!',
+            force_exit,
+        )
     except (OSError, IOError, PermissionError) as error:
-        errors.message("Error", f"File \"{path}\" failed to open because unexpected error: {error}", force_exit)
+        errors.message(
+            "Error",
+            f'File "{path}" failed to open because unexpected error: {error}',
+            force_exit,
+        )
     return None, False
