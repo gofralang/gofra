@@ -315,7 +315,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
     ), "Please update implementation after adding new OperatorType!"
 
     # Check that there is no changes in keyword type.
-    assert len(Keyword) == 8, "Please update implementation after adding new Keyword!"
+    assert len(Keyword) == 6, "Please update implementation after adding new Keyword!"
 
     # Check that there is no changes in token type.
     assert (
@@ -327,10 +327,6 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 
     # Definitions.
     definitions: Dict[str, Definition] = dict()
-    memories: Dict[str, Memory] = dict()
-    variables: Dict[str, Variable] = dict()
-    variables_offset = 0
-    memories_offset = 0
 
     if len(reversed_tokens) == 0:
         gofra.core.errors.message_verbosed(
@@ -366,30 +362,6 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
             if current_token.text in definitions:
                 # Expand definition tokens.
                 reversed_tokens += reversed(definitions[current_token.text].tokens)
-                continue
-
-            if current_token.text in memories:
-                memory = memories[current_token.text]
-                context.operators.append(
-                    Operator(
-                        type=OperatorType.PUSH_INTEGER,
-                        token=current_token,
-                        operand=memory.ptr_offset,
-                    )
-                )
-                context.operator_index += 1
-                continue
-
-            if current_token.text in variables:
-                variable = variables[current_token.text]
-                context.operators.append(
-                    Operator(
-                        type=OperatorType.PUSH_INTEGER,
-                        token=current_token,
-                        operand=variable.ptr_offset,
-                    )
-                )
-                context.operator_index += 1
                 continue
 
             if current_token.text.startswith(EXTRA_DIRECTIVE):
@@ -849,172 +821,6 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
                         "but it was not founded!",
                         True,
                     )
-            elif current_token.value == Keyword.MEMORY:
-                if len(reversed_tokens) == 0:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        current_token.location,
-                        "Error",
-                        "`memory` should have name after the keyword, "
-                        "do you has unfinished memory definition?",
-                        True,
-                    )
-
-                name_token = reversed_tokens.pop()
-
-                if name_token.type != TokenType.WORD:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        "`memory` name, should be of type WORD, sorry, but "
-                        "you can`t use something that you give as name "
-                        "for the memory!",
-                        True,
-                    )
-
-                if name_token.text in memories or name_token.text in definitions:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        f"Definition or memory with name {name_token.text} "
-                        f"was already defined!",
-                        False,
-                    )
-                    if name_token.text in definitions:
-                        gofra.core.errors.message_verbosed(
-                            Stage.PARSER,
-                            definitions[name_token.text].location,
-                            "Error",
-                            "Original definition was here...",
-                            True,
-                        )
-                    # TODO: Memory location report.
-
-                if (
-                    name_token.text in INTRINSIC_NAMES_TO_TYPE
-                    or name_token.text in KEYWORD_NAMES_TO_TYPE
-                ):
-                    # If default item.
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        "Can`t define memories with language defined name!",
-                        True,
-                    )
-
-                if len(reversed_tokens) <= 0:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        "`memory` requires size for memory definition, "
-                        "which was not given!",
-                        True,
-                    )
-                memory_size_token = reversed_tokens.pop()
-
-                if memory_size_token.type != TokenType.INTEGER:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        "`var` size, should be of type INTEGER, sorry, but "
-                        "you can`t use something that you give as size "
-                        "for the memory!",
-                        True,
-                    )
-                # TODO: Proper evaluation.
-
-                # Create blank new memory.
-                memory_name = name_token.text
-                memories[memory_name] = Memory(
-                    memory_name, memory_size_token.value, memories_offset
-                )
-                memories_offset += memory_size_token.value
-
-                if len(reversed_tokens) >= 0:
-                    end_token = reversed_tokens.pop()
-                    if (
-                        end_token.type == TokenType.KEYWORD
-                        and end_token.text == KEYWORD_TYPES_TO_NAME[Keyword.END]
-                    ):
-                        continue
-
-                # If got not end at end of definition.
-                gofra.core.errors.message_verbosed(
-                    Stage.PARSER,
-                    current_token.location,
-                    "Error",
-                    "`memory` should have `end` at the end of memory definition, "
-                    "but it was not founded!",
-                    True,
-                )
-            elif current_token.value == Keyword.VARIABLE:
-                if len(reversed_tokens) == 0:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        current_token.location,
-                        "Error",
-                        "`var` should have name after the keyword, "
-                        "do you has unfinished variable definition?",
-                        True,
-                    )
-
-                name_token = reversed_tokens.pop()
-
-                if name_token.type != TokenType.WORD:
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        "`var` name, should be of type WORD, sorry, but "
-                        "you can`t use something that you give as name "
-                        "for the variable!",
-                        True,
-                    )
-
-                if (
-                    name_token.text in variables
-                    or name_token.text in definitions
-                    or name_token.text in memories
-                ):
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        f"Definition or variable with name {name_token.text} "
-                        f"was already defined!",
-                        False,
-                    )
-                    if name_token.text in definitions:
-                        gofra.core.errors.message_verbosed(
-                            Stage.PARSER,
-                            definitions[name_token.text].location,
-                            "Error",
-                            "Original definition was here...",
-                            True,
-                        )
-                    # TODO: Memory / variable location report.
-
-                if (
-                    name_token.text in INTRINSIC_NAMES_TO_TYPE
-                    or name_token.text in KEYWORD_NAMES_TO_TYPE
-                ):
-                    # If default item.
-                    gofra.core.errors.message_verbosed(
-                        Stage.PARSER,
-                        name_token.location,
-                        "Error",
-                        "Can`t define variable with language defined name!",
-                        True,
-                    )
-                # Create blank new memory.
-                variable_name = name_token.text
-                variables[variable_name] = Variable(variable_name, variables_offset)
-                variables_offset += VARIABLE_SIZE
             else:
                 # If unknown keyword type.
                 assert False, "Unknown keyword type! (How?)"
@@ -1050,7 +856,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
         len(OperatorType) == 10
     ), "Please update implementation after adding new OperatorType!"
     assert (
-        len(Intrinsic) == 30
+        len(Intrinsic) == 28
     ), "Please update implementation after adding new Intrinsic!"
 
     # Create empty stack.
@@ -1062,12 +868,7 @@ def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZ
     memory_string_size_ponter = 0
 
     # Allocate sized bytearray.
-    memory_bytearray = bytearray(
-        bytearray_size
-        + memory_string_size
-        + MEMORY_MEMORIES_SIZE
-        + MEMORY_VARIABLES_SIZE
-    )
+    memory_bytearray = bytearray(bytearray_size + memory_string_size)
 
     # Get source operators count.
     operators_count = len(source.operators)
@@ -1898,6 +1699,7 @@ def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
 
     return parser_context_source, parser_context
 
+
 # Bytecode.
 
 
@@ -2211,7 +2013,7 @@ def cli_entry_point():
 
     # CLI Options.
     cli_source_path, cli_subcommand, cli_silent = cli_argument_vector
-    cli_silent: bool = bool(cli_silent == "-silent")
+    cli_silent = bool(cli_silent == "-silent")
 
     # Welcome message.
     if not cli_silent:
