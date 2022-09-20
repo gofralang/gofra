@@ -12,9 +12,8 @@ from dataclasses import dataclass, field
 class Stage(Enum):
     """Enumeration for stage types."""
 
-    LEXER = (auto(),)
-    PARSER = (auto(),)
-    LINTER = auto()
+    LEXER = auto()
+    PARSER = auto()
     RUNNER = auto()
     COMPILATOR = auto()
 
@@ -231,7 +230,6 @@ class ParserContext:
     operator_index: OPERATOR_ADDRESS = 0
 
     # Directives.
-    directive_linter_skip: bool = False
     directive_python_comments_skip: bool = False
 
 
@@ -290,7 +288,6 @@ assert len(Stage) == 5, "Please update STAGE_TYPES_TO_NAME after adding new Stag
 STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
     Stage.LEXER: "Lexing",
     Stage.PARSER: "Parsing",
-    Stage.LINTER: "Linter",
     Stage.RUNNER: "Running",
     Stage.COMPILATOR: "Compilation",
 }

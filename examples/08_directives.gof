@@ -1,8 +1,5 @@
 // Uses all of the directives.
 
-// Skip linter stage check.
-#LINTER_SKIP
-
 // Skip generating comments when generating Python source code.
 #PYTHON_COMMENTS_SKIP
 
