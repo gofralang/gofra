@@ -39,7 +39,6 @@ def usage_message(runner_filename: Optional[str] = None):
         f"\trun; Interpretates source.\n"
         f"\tcompile; Compiles source file to bytecode file\n"
         f"\texecute; Executes source file from bytecode [*.gofbc] (NOTE: use `compile` command)\n"
-        f"\tdump; Dumps operators from the source\n"
-        f"\tgraph; Generates graphviz file from the source",
+        f"\tdump; Dumps operators from the source\n",
         file=stdout,
     )

@@ -30,7 +30,7 @@ RECORD_NEW = False
 # If true, stop processing if there is failure at one of the tests.
 STOP_AT_FAILURE = False
 
-# Run Dump/Graph.
+# Run Dump.
 RUN_OTHER = True
 
 # Should we clear after?
@@ -61,11 +61,8 @@ for test_directory in TEST_DIRECTORIS:
         # Run commands.
         run_result = cli_execute(cli_base_command + ["run", "-silent"])
         if RUN_OTHER:
-
-            graph_result = cli_execute(cli_base_command + ["graph", "-silent"])
-            python_result = cli_execute(cli_base_command + ["python", "-silent"])
             dump_result = cli_execute(cli_base_command + ["dump", "-silent"])
-            for result in (graph_result, python_result, dump_result):
+            for result in [dump_result]:
                 if result.returncode != 0:
                     # Print.
                     print(

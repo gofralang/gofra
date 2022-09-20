@@ -5,8 +5,7 @@
 ## Features
 
 - Interpretate code (Will removed with isolated VM/Bytecode interpretation).
-- Generate graph for the code (`.dot` graphviz)(Maybe removed later because redundancy).
-- Bytecode (Compile, Interpretate) [WIP] [Gorfa Bytecode Virtual Machine in C++](https://github.com/gofralang/vm)
+- Bytecode (Compile, Interpretate) [WIP]
 
 ## Language features
 

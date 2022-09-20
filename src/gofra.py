@@ -2219,7 +2219,7 @@ def cli_entry_point():
 
     # Load source and check size of it.
     loaded_file = None
-    if cli_subcommand in ("run", "graph", "dump", "compile"):
+    if cli_subcommand in ("run", "dump", "compile"):
         loaded_file = load_source_from_file(cli_source_path)
         assert len(loaded_file) == 2, "Got unexpected data from loaded file."
 
@@ -2233,18 +2233,6 @@ def cli_entry_point():
         # Message.
         if not cli_silent:
             print(f'[Info] File "{basename(cli_source_path)}" was interpreted!')
-    elif cli_subcommand == "graph":
-        # If this is graph subcommand.
-
-        # Get source from loaded file.
-        cli_source, _ = loaded_file
-
-        # Generate graph file.
-        gofra.systems.graph.write(cli_source, cli_source_path)
-
-        # Message.
-        if not cli_silent:
-            print(f'[Info] .dot file "{basename(cli_source_path)}.dot" generated!')
     elif cli_subcommand == "dump":
         # If this is dump subcommand.
 
