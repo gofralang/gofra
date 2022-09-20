@@ -30,7 +30,7 @@ RECORD_NEW = False
 # If true, stop processing if there is failure at one of the tests.
 STOP_AT_FAILURE = False
 
-# Run Python/Dump/Graph.
+# Run Dump/Graph.
 RUN_OTHER = True
 
 # Should we clear after?

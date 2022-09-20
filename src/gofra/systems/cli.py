@@ -37,7 +37,6 @@ def usage_message(runner_filename: Optional[str] = None):
         f"Subcommands:\n"
         f"\thelp; This message.\n"
         f"\trun; Interpretates source.\n"
-        f"\tpython; Compiles source file to python source file\n"
         f"\tcompile; Compiles source file to bytecode file\n"
         f"\texecute; Executes source file from bytecode [*.gofbc] (NOTE: use `compile` command)\n"
         f"\tdump; Dumps operators from the source\n"

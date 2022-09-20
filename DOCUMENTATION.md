@@ -38,8 +38,6 @@
 
 #### `#MEM_BUF_BYTE_SIZE=N` - Says that there is only `N` bytes in the memory buffer.
 
-#### `#PYTHON_COMMENTS_SKIP` - Disable writing comments in the Python when generating it (Should don`t break anything), you may use this if you don't want system comments in your generated python scripts.
-
 # Comments
 
 #### Comment starts with `//`, like: `// Comment`.

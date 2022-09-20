@@ -6,7 +6,6 @@
 
 - Interpretate code (Will removed with isolated VM/Bytecode interpretation).
 - Generate graph for the code (`.dot` graphviz)(Maybe removed later because redundancy).
-- Compile (Generate) python code (GOFRA -> Python) (Maybe also removed later because redundancy or part of Bytecode2Python).
 - Bytecode (Compile, Interpretate) [WIP] [Gorfa Bytecode Virtual Machine in C++](https://github.com/gofralang/vm)
 
 ## Language features

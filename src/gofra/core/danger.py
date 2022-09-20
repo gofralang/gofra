@@ -229,9 +229,6 @@ class ParserContext:
     # Current parsing operator index.
     operator_index: OPERATOR_ADDRESS = 0
 
-    # Directives.
-    directive_python_comments_skip: bool = False
-
 
 # Other.
 
