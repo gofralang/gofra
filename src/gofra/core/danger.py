@@ -281,7 +281,7 @@ INTRINSIC_TYPES_TO_NAME: Dict[Intrinsic, str] = {
 }
 
 # Stage names.
-assert len(Stage) == 5, "Please update STAGE_TYPES_TO_NAME after adding new Stage!"
+assert len(Stage) == 4, "Please update STAGE_TYPES_TO_NAME after adding new Stage!"
 STAGE_TYPES_TO_NAME: Dict[Stage, str] = {
     Stage.LEXER: "Lexing",
     Stage.PARSER: "Parsing",
