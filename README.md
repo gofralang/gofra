@@ -1,3 +1,7 @@
+PROJECT FROZEN. CURRENTLY REWORKING WHOLE LANGUAGE!
+
+---
+
 # Gofra Programming Language
 
 ### **_Stack - Based programming language "written in Python"_**

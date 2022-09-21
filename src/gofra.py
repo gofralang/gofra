@@ -13,7 +13,7 @@ from sys import argv
 import gofra
 from gofra.core.danger import *
 from gofra.core.stack import Stack
-
+from gofra.core import vm
 
 # MAJOR WARNING FOR ALL READERS.
 # This code is not refactored,
@@ -847,823 +847,6 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
         )
 
 
-# Interpretator.
-
-
-def interpretator_run(source: Source, bytearray_size: int = MEMORY_BYTEARRAY_SIZE):
-    """Interpretates the source."""
-    assert (
-        len(OperatorType) == 10
-    ), "Please update implementation after adding new OperatorType!"
-    assert (
-        len(Intrinsic) == 28
-    ), "Please update implementation after adding new Intrinsic!"
-
-    # Create empty stack.
-    memory_execution_stack = Stack()
-
-    # String pointers.
-    memory_string_pointers: Dict[OPERATOR_ADDRESS, TYPE_POINTER] = dict()
-    memory_string_size = bytearray_size
-    memory_string_size_ponter = 0
-
-    # Allocate sized bytearray.
-    memory_bytearray = bytearray(bytearray_size + memory_string_size)
-
-    # Get source operators count.
-    operators_count = len(source.operators)
-
-    current_operator_index = 0
-
-    if operators_count == 0:
-        gofra.core.errors.message_verbosed(
-            Stage.RUNNER,
-            ("__RUNNER__", 1, 1),
-            "Error",
-            "There is no operators found in given file after parsing, "
-            "are you given empty file or file without resulting operators?",
-            True,
-        )
-
-    while current_operator_index < operators_count:
-        # While we not run out of the source operators list.
-
-        # Get current operator from the source.
-        current_operator: Operator = source.operators[current_operator_index]
-
-        try:
-            # Try / Catch to get unexpected Python errors.
-
-            if current_operator.type == OperatorType.PUSH_INTEGER:
-                # Push integer operator.
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, int
-                ), "Type error, parser level error?"
-
-                # Push operand to the stack.
-                memory_execution_stack.push(current_operator.operand)
-
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.type == OperatorType.PUSH_STRING:
-                # Push string operator.
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, str
-                ), "Type error, parser level error?"
-
-                # Get string data.
-                string_value = current_operator.operand.encode("UTF-8")
-                string_length = len(string_value)
-
-                if current_operator_index not in memory_string_pointers:
-                    # If we not found string in allocated string pointers.
-
-                    # Get pointer, and push in to the pointers.
-                    string_pointer: TYPE_POINTER = (
-                        memory_string_size + 1 + memory_string_size_ponter
-                    )
-                    memory_string_pointers[current_operator_index] = string_pointer
-
-                    # Write string right into the bytearray memory.
-                    memory_bytearray[
-                        string_pointer : string_pointer + string_length
-                    ] = string_value
-
-                    # Increase next pointer by current string length.
-                    memory_string_size_ponter += string_length
-
-                    # Check that there is no overflow.
-                    if string_length > memory_string_size:
-                        # If overflowed.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            "Trying to push string, when there is memory string buffer overflow!"
-                            " Try use memory size directive, to increase size!",
-                            True,
-                        )
-
-                # Push found string pointer to the stack.
-                found_string_pointer = memory_string_pointers[current_operator_index]
-                memory_execution_stack.push(found_string_pointer)
-
-                # Push string length to the stack.
-                memory_execution_stack.push(string_length)
-
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.type == OperatorType.INTRINSIC:
-                # Intrinsic operator.
-
-                if current_operator.operand == Intrinsic.PLUS:
-                    # Intristic plus operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push sum to the stack.
-                    memory_execution_stack.push(operand_b + operand_a)
-                elif current_operator.operand == Intrinsic.DIVIDE:
-                    # Intristic divide operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push divide to the stack.
-                    memory_execution_stack.push(operand_b // operand_a)
-                elif current_operator.operand == Intrinsic.MODULUS:
-                    # Intristic modulus operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push divide to the stack.
-                    memory_execution_stack.push(int(operand_b % operand_a))
-                elif current_operator.operand == Intrinsic.MINUS:
-                    # Intristic minus operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push difference to the stack.
-                    memory_execution_stack.push(operand_b - operand_a)
-                elif current_operator.operand == Intrinsic.MULTIPLY:
-                    # Intristic multiply operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push muliply to the stack.
-                    memory_execution_stack.push(operand_b * operand_a)
-                elif current_operator.operand == Intrinsic.EQUAL:
-                    # Intristic equal operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push equal to the stack.
-                    memory_execution_stack.push(int(operand_b == operand_a))
-                elif current_operator.operand == Intrinsic.NOT_EQUAL:
-                    # Intristic not equal operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push not equal to the stack.
-                    memory_execution_stack.push(int(operand_b != operand_a))
-                elif current_operator.operand == Intrinsic.LESS_THAN:
-                    # Intristic less than operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push less than to the stack.
-                    memory_execution_stack.push(int(operand_b < operand_a))
-                elif current_operator.operand == Intrinsic.GREATER_THAN:
-                    # Intristic greater than operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push greater than to the stack.
-                    memory_execution_stack.push(int(operand_b > operand_a))
-                elif current_operator.operand == Intrinsic.LESS_EQUAL_THAN:
-                    # Intristic less equal than operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push less equal than to the stack.
-                    memory_execution_stack.push(int(operand_b <= operand_a))
-                elif current_operator.operand == Intrinsic.GREATER_EQUAL_THAN:
-                    # Intristic greater equal than operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push greater equal than to the stack.
-                    memory_execution_stack.push(int(operand_b >= operand_a))
-                elif current_operator.operand == Intrinsic.SWAP:
-                    # Intristic swap operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push swapped to the stack.
-                    memory_execution_stack.push(operand_a)
-                    memory_execution_stack.push(operand_b)
-                elif current_operator.operand == Intrinsic.COPY:
-                    # Intristic copy operator.
-
-                    # Get operand.
-                    operand_a = memory_execution_stack.pop()
-
-                    # Push copy to the stack.
-                    memory_execution_stack.push(operand_a)
-                    memory_execution_stack.push(operand_a)
-                elif current_operator.operand == Intrinsic.COPY2:
-                    # Intristic copy2 operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push copy to the stack.
-                    memory_execution_stack.push(operand_b)
-                    memory_execution_stack.push(operand_a)
-                    memory_execution_stack.push(operand_b)
-                    memory_execution_stack.push(operand_a)
-                elif current_operator.operand == Intrinsic.COPY_OVER:
-                    # Intristic copy over operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Push copy to the stack.
-                    memory_execution_stack.push(operand_b)
-                    memory_execution_stack.push(operand_a)
-                    memory_execution_stack.push(operand_b)
-                elif current_operator.operand == Intrinsic.DECREMENT:
-                    # Intristic decrement operator.
-
-                    # Get operand.
-                    operand_a = memory_execution_stack.pop()
-
-                    # Push decrement to the stack.
-                    memory_execution_stack.push(operand_a - 1)
-                elif current_operator.operand == Intrinsic.INCREMENT:
-                    # Intristic increment operator.
-
-                    # Get operand.
-                    operand_a = memory_execution_stack.pop()
-
-                    # Push increment to the stack.
-                    memory_execution_stack.push(operand_a + 1)
-                elif current_operator.operand == Intrinsic.FREE:
-                    # Intristic free operator.
-
-                    # Pop and left.
-                    memory_execution_stack.pop()
-                elif current_operator.operand == Intrinsic.SHOW:
-                    # Intristic show operator.
-
-                    # Get operand.
-                    operand_a = memory_execution_stack.pop()
-
-                    # Show operand.
-                    print(operand_a)
-                elif current_operator.operand == Intrinsic.MEMORY_WRITE:
-                    # Intristic memory write operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    if operand_b > len(memory_bytearray):
-                        # If this is going to be memory overflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to write at memory address {operand_b} "
-                            f"that overflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferOverflow)",
-                            True,
-                        )
-                    elif operand_b < 0:
-                        # If this is going to be memory undeflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to write at memory address {operand_b} "
-                            f"that underflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferUnderflow)",
-                            True,
-                        )
-
-                    # Write memory.
-                    try:
-                        memory_bytearray[operand_b] = operand_a
-                    except IndexError:
-                        # Memory error.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer (over|under)flow "
-                            f"(Write to pointer {operand_b} when there is memory buffer "
-                            f"with size {len(memory_bytearray)} bytes)!",
-                            True,
-                        )
-
-                    except ValueError:
-                        # If this is 8bit (1byte) range (number) overflow.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer cell can only contain 1 byte (8 bit) "
-                            f"that must be in range (0, 256),\nbut you passed number "
-                            f"{operand_a} which is not fits in the 1 byte cell! (ByteOverflow)",
-                            True,
-                        )
-                elif current_operator.operand == Intrinsic.MEMORY_WRITE4BYTES:
-                    # Intristic memory write 4 bytes operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # Convert value to 4 bytes.
-                    try:
-                        operand_a = operand_a.to_bytes(
-                            length=4, byteorder="little", signed=(operand_a < 0)
-                        )
-                    except OverflowError:
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer cell can only contain 4 byte (32 bit) "
-                            f"that must be in range (0, 4294967295),\nbut you passed number "
-                            f"{operand_a} which is not fits in the 4 byte cell! (ByteOverflow)",
-                            True,
-                        )
-
-                    if operand_b + 4 - 1 > len(memory_bytearray):
-                        # If this is going to be memory overflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to write 4 bytes to memory address from {operand_b} to "
-                            f"{operand_b + 4 - 1} "
-                            f"that overflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferOverflow)",
-                            True,
-                        )
-                    elif operand_b < 0:
-                        # If this is going to be memory undeflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to write at memory address "
-                            f"from {operand_b} to {operand_b + 2} "
-                            f"that underflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferUnderflow)",
-                            True,
-                        )
-
-                    # Write memory.
-                    try:
-                        memory_bytearray[operand_b : operand_b + 4] = operand_a
-                    except IndexError:
-                        # Memory* error.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer (over|under)flow "
-                            f"(Write to pointer from "
-                            f"{operand_b} to {operand_b + 4 - 1} "
-                            f"when there is memory buffer with size "
-                            f"{len(memory_bytearray)} bytes)!",
-                            True,
-                        )
-
-                    except ValueError:
-                        # If this is 32bit (4byte) range (number) overflow.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer cell can only contain 4 byte (32 bit) "
-                            f"that must be in range (0, 4294967295),\nbut you passed number "
-                            f"{operand_a} which is not fits in the 4 byte cell! (ByteOverflow)",
-                            True,
-                        )
-                elif current_operator.operand == Intrinsic.MEMORY_READ4BYTES:
-                    # Intristic memory read 4 bytes operator.
-
-                    # Get operand.
-                    operand_a = memory_execution_stack.pop()
-
-                    if operand_a + 4 - 1 > len(memory_bytearray):
-                        # If this is going to be memory overflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to read from memory address "
-                            f"{operand_a} to {operand_a + 4 - 1} "
-                            f"that overflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferOverflow)",
-                            True,
-                        )
-                    elif operand_a < 0:
-                        # If this is going to be memory undeflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to read from memory address "
-                            f"{operand_a} to {operand_a + 4 - 1}"
-                            f"that underflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferUnderflow)",
-                            True,
-                        )
-                    # Read memory at the pointer.
-                    try:
-                        memory_bytes = int.from_bytes(
-                            memory_bytearray[operand_a : operand_a + 4],
-                            byteorder="little",
-                        )
-                    except IndexError:
-                        # Memory* error.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer (over|under)flow "
-                            f"(Read from pointer {operand_a} to {operand_a + 4 - 1} "
-                            f"when there is memory buffer with size "
-                            f"{len(memory_bytearray)} bytes)!",
-                            True,
-                        )
-                    else:
-                        # Push memory to the stack.
-                        memory_execution_stack.push(memory_bytes)
-                elif current_operator.operand == Intrinsic.MEMORY_READ:
-                    # Intristic memory read operator.
-
-                    # Get operand.
-                    operand_a = memory_execution_stack.pop()
-
-                    if operand_a > len(memory_bytearray):
-                        # If this is going to be memory overflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to read from memory address {operand_a} "
-                            f"that overflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferOverflow)",
-                            True,
-                        )
-                    elif operand_a < 0:
-                        # If this is going to be memory undeflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to read from memory address {operand_a} "
-                            f"that underflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferUnderflow)",
-                            True,
-                        )
-                    # Read memory at the pointer.
-                    try:
-                        memory_byte = memory_bytearray[operand_a]
-                    except IndexError:
-                        # Memory* error.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer (over|under)flow "
-                            f"(Read from pointer {operand_a} when there is memory buffer "
-                            f"with size {len(memory_bytearray)} bytes)!",
-                            True,
-                        )
-                    else:
-                        # Push memory to the stack.
-                        memory_execution_stack.push(memory_byte)
-                elif current_operator.operand == Intrinsic.MEMORY_SHOW_CHARACTERS:
-                    # Intristic memory show as chars operator.
-
-                    # Get both operands.
-                    operand_a = memory_execution_stack.pop()
-                    operand_b = memory_execution_stack.pop()
-
-                    # String to show.
-                    memory_string: bytes = b""
-
-                    if operand_b + operand_a > len(memory_bytearray):
-                        # If this is going to be memory overflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to read from memory address "
-                            f"from {operand_b} to {operand_b + operand_a} "
-                            f"that overflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferOverflow)",
-                            True,
-                        )
-                    elif operand_a < 0:
-                        # If this is going to be memory undeflow.
-
-                        # Error.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Trying to read from memory address"
-                            f"from {operand_b} to {operand_b + operand_a} "
-                            f"that underflows memory buffer size {(len(memory_bytearray))}"
-                            " bytes (MemoryBufferUnderflow)",
-                            True,
-                        )
-
-                    # Read memory string.
-                    try:
-                        memory_string = memory_bytearray[
-                            operand_b : operand_b + operand_a
-                        ]
-                    except IndexError:
-                        # Memory* error.
-
-                        # Error message.
-                        gofra.core.errors.message_verbosed(
-                            Stage.RUNNER,
-                            current_operator.token.location,
-                            "Error",
-                            f"Memory buffer (over|under)flow "
-                            f"(Read from {operand_b} to {operand_b + operand_a} "
-                            f"when there is memory "
-                            f"buffer with size {len(memory_bytearray)} bytes)!",
-                            True,
-                        )
-
-                    # Print decoded memory bytes.
-                    print(memory_string.decode("UTF-8"), end="")
-                elif current_operator.operand == Intrinsic.MEMORY_POINTER:
-                    # Intristic memory pointer operator.
-
-                    # Push pointer to the stack.
-                    memory_execution_stack.push(MEMORY_BYTEARRAY_NULL_POINTER)
-                elif current_operator.operand == Intrinsic.NULL:
-                    # Intristic null operator.
-
-                    # Push pointer to the stack.
-                    memory_execution_stack.push(0)
-                elif current_operator.operand == Intrinsic.IO_READ_STRING:
-                    # Intrinsic I/O read string operator.
-
-                    # Get string data.
-                    string_value = input().encode("UTF-8")
-                    string_length = len(string_value)
-
-                    if current_operator_index not in memory_string_pointers:
-                        # If we not found string in allocated string pointers.
-
-                        # Get pointer, and push in to the pointers.
-                        string_pointer: TYPE_POINTER = 1 + memory_string_size_ponter
-                        memory_string_pointers[current_operator_index] = string_pointer
-
-                        # Write string right into the bytearray memory.
-                        memory_bytearray[
-                            string_pointer : string_pointer + string_length
-                        ] = string_value
-
-                        # Increase next pointer by current string length.
-                        memory_string_size_ponter += string_length
-
-                        # Check that there is no overflow.
-                        if string_length > memory_string_size:
-                            # If overflow.
-
-                            # Error.
-                            gofra.core.errors.message_verbosed(
-                                Stage.RUNNER,
-                                current_operator.token.location,
-                                "Error",
-                                "Trying to push I/O string, "
-                                "when there is memory string buffer overflow! "
-                                "Try use memory size directive, to increase size!",
-                                True,
-                            )
-
-                    # Push found string pointer to the stack.
-                    found_string_pointer = memory_string_pointers[
-                        current_operator_index
-                    ]
-                    memory_execution_stack.push(found_string_pointer)
-
-                    # Push string length to the stack.
-                    memory_execution_stack.push(string_length)
-                elif current_operator.operand == Intrinsic.IO_READ_INTEGER:
-                    # Intrinsic I/O read integer operator.
-
-                    # Get integer data.
-                    try:
-                        integer_value = int(input())
-                    except ValueError:
-                        integer_value = -1
-
-                    # Push integer to the stack.
-                    memory_execution_stack.push(integer_value)
-                else:
-                    # If unknown instrinsic type.
-                    assert False, "Unknown instrinsic! (How?)"
-
-                # Increase operator index.
-                current_operator_index += 1
-            elif current_operator.type == OperatorType.IF:
-                # IF operator.
-
-                # Get operand.
-                operand_a = memory_execution_stack.pop()
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, OPERATOR_ADDRESS
-                ), "Type error, parser level error?"
-
-                if operand_a == 0:
-                    # If this is false.
-
-                    # Type check.
-                    assert isinstance(
-                        current_operator.operand, OPERATOR_ADDRESS
-                    ), "Type error, parser level error?"
-
-                    # Jump to the operator operand.
-                    # As this is IF, so we should jump to the END.
-                    current_operator_index = current_operator.operand
-                else:
-                    # If this is true.
-
-                    # Increment operator index.
-                    # This is makes jump into the if branch.
-                    current_operator_index += 1
-            elif current_operator.type == OperatorType.ELSE:
-                # ELSE operator.
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, OPERATOR_ADDRESS
-                ), "Type error, parser level error?"
-
-                # Jump to the operator operand.
-                # As this is ELSE operator, we should have index + 1, index!
-                current_operator_index = current_operator.operand
-            elif current_operator.type == OperatorType.DO:
-                # DO operator.
-
-                # Get operand.
-                operand_a = memory_execution_stack.pop()
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, OPERATOR_ADDRESS
-                ), "Type error, parser level error?"
-
-                if operand_a == 0:
-                    # If this is false.
-
-                    # Endif jump operator index.
-                    end_jump_operator_index = source.operators[
-                        current_operator.operand
-                    ].operand
-
-                    # Type check.
-                    assert isinstance(
-                        end_jump_operator_index, OPERATOR_ADDRESS
-                    ), "Type error, parser level error?"
-
-                    # Jump to the operator operand.
-                    # As this is DO, so we should jump to the END.
-                    current_operator_index = int(end_jump_operator_index)
-                else:
-                    # If this is true.
-
-                    # Increment operator index.
-                    # This is makes jump into the if body.
-                    current_operator_index += 1
-            elif current_operator.type == OperatorType.WHILE:
-                # WHILE operator.
-
-                # Increment operator index.
-                # This is makes jump into the if statement (expression).
-                current_operator_index += 1
-            elif current_operator.type == OperatorType.END:
-                # END operator.
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, OPERATOR_ADDRESS
-                ), "Type error, parser level error?"
-
-                # Type check.
-                assert isinstance(
-                    current_operator.operand, OPERATOR_ADDRESS
-                ), "Type error, parser level error?"
-
-                # Jump to the operator operand.
-                # As this is END operator, we should have index + 1, index!
-                current_operator_index = current_operator.operand
-            elif current_operator.type == OperatorType.DEFINE:
-                # DEFINE Operator.
-
-                # Error.
-                assert (
-                    False
-                ), "Got definition operator at runner stage, parser level error?"
-            elif current_operator.type == OperatorType.MEMORY:
-                assert False, "Got memory operator at runner stage, parser level error?"
-            else:
-                # If unknown operator type.
-                assert False, "Unknown operator type! (How?)"
-        except IndexError:
-            # Should be stack error.
-
-            # Error message.
-            gofra.core.errors.message_verbosed(
-                Stage.RUNNER,
-                current_operator.token.location,
-                "Error",
-                f"Stack error! This is may caused by popping from empty stack!"
-                f"IndexError, (From: {current_operator.token.text})",
-                True,
-            )
-        except KeyboardInterrupt:
-            # If stopped.
-
-            # Error message.
-            gofra.core.errors.message_verbosed(
-                Stage.RUNNER,
-                current_operator.token.location,
-                "Error",
-                "Interpretation was stopped by keyboard interrupt!",
-                True,
-            )
-
-    if len(memory_execution_stack) > 0:
-        # If there is any in the stack.
-
-        # Error message.
-        gofra.core.errors.message_verbosed(
-            Stage.RUNNER,
-            ("__runner__", 1, 1),
-            "Warning",
-            "Stack is not empty after running the interpretation!",
-        )
-
-
 # Source.
 
 
@@ -1742,7 +925,7 @@ def compile_bytecode(source: Source, _, path: str):
                 True,
             )
 
-    def __write_operator(operator: Operator):
+    def __write_operator(operator: Operator, current_operator_index: int):
         """Writes default operator (non-intrinsic)."""
 
         # Grab our operator
@@ -1765,37 +948,32 @@ def compile_bytecode(source: Source, _, path: str):
             assert isinstance(
                 operator.operand, OPERATOR_ADDRESS
             ), f"Type error, parser level error?"
-            gofra.core.errors.message(
-                "Error", "Conditional is not implemented yet in the bytecode!", True
-            )
+            write("IF")
+            write(f"{operator.operand}")
         elif operator.type == OperatorType.WHILE:
             assert isinstance(
                 operator.operand, OPERATOR_ADDRESS
             ), f"Type error, parser level error?"
-            gofra.core.errors.message(
-                "Error", "Conditional is not implemented yet in the bytecode!", True
-            )
+            write("WHILE")
+            write(f"{operator.operand}")
         elif operator.type == OperatorType.DO:
             assert isinstance(
                 operator.operand, OPERATOR_ADDRESS
             ), f"Type error, parser level error?"
-            gofra.core.errors.message(
-                "Error", "Conditional is not implemented yet in the bytecode!", True
-            )
+            write("DO")
+            write(f"{operator.operand}")
         elif operator.type == OperatorType.ELSE:
             assert isinstance(
                 operator.operand, OPERATOR_ADDRESS
             ), "Type error, parser level error?"
-            gofra.core.errors.message(
-                "Error", "Conditional is not implemented yet in the bytecode!", True
-            )
+            write("ELSE")
+            write(f"{operator.operand}")
         elif operator.type == OperatorType.END:
             assert isinstance(
                 operator.operand, OPERATOR_ADDRESS
             ), "Type error, parser level error?"
-            gofra.core.errors.message(
-                "Error", "Conditional is not implemented yet in the bytecode!", True
-            )
+            write("END")
+            write(f"{operator.operand}")
         elif operator.type == OperatorType.DEFINE:
             assert False, "Got definition operator at runner stage, parser level error?"
         else:
@@ -1849,7 +1027,7 @@ def compile_bytecode(source: Source, _, path: str):
             # If this is other operator.
 
             # Write default operator.
-            __write_operator(current_operator)
+            __write_operator(current_operator, current_operator_index)
 
         # Increment current index.
         current_operator_index += 1
@@ -1911,6 +1089,56 @@ def execute_bytecode(path: str):
             )
             current_bc_operator_index += 2
             continue
+        elif bc_operator in OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.IF]:
+            parser_context.operators.append(
+                Operator(
+                    OperatorType.IF,
+                    Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                    int(bc_op_tokens[current_bc_operator_index + 1]),
+                )
+            )
+            current_bc_operator_index += 2
+            continue
+        elif bc_operator == OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.END]:
+            parser_context.operators.append(
+                Operator(
+                    OperatorType.END,
+                    Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                    int(bc_op_tokens[current_bc_operator_index + 1]),
+                )
+            )
+            current_bc_operator_index += 2
+            continue
+        elif bc_operator == OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.ELSE]:
+            parser_context.operators.append(
+                Operator(
+                    OperatorType.ELSE,
+                    Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                    int(bc_op_tokens[current_bc_operator_index + 1]),
+                )
+            )
+            current_bc_operator_index += 2
+            continue
+        elif bc_operator == OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.DO]:
+            parser_context.operators.append(
+                Operator(
+                    OperatorType.DO,
+                    Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                    int(bc_op_tokens[current_bc_operator_index + 1]),
+                )
+            )
+            current_bc_operator_index += 2
+            continue
+        elif bc_operator == OPERATOR_TYPE_TO_BYTECODE_OPERATOR[OperatorType.WHILE]:
+            parser_context.operators.append(
+                Operator(
+                    OperatorType.WHILE,
+                    Token(TokenType.BYTECODE, bc_operator, (path, -1, -1), bc_operator),
+                    int(bc_op_tokens[current_bc_operator_index + 1]),
+                )
+            )
+            current_bc_operator_index += 2
+            continue
         else:
             if bc_operator in BYTECODE_OPERATOR_NAMES_TO_INTRINSIC:
                 parser_context.operators.append(
@@ -1934,8 +1162,85 @@ def execute_bytecode(path: str):
         continue
 
     # Run.
-    parser_context_source = Source(parser_context.operators)
-    interpretator_run(parser_context_source)
+    bytecode_ops = []
+    for operator in parser_context.operators:
+        vm_bit = None
+        vm_operand = None
+        if operator.type == OperatorType.PUSH_INTEGER:
+            vm_bit = vm.BytecodeInstructionType.STACK_PUSH_INTEGER
+            vm_operand = operator.operand
+        elif operator.type == OperatorType.IF:
+            vm_bit = vm.BytecodeInstructionType.CONDITIONAL_IF
+            vm_operand = operator.operand
+        elif operator.type == OperatorType.END:
+            vm_bit = vm.BytecodeInstructionType.CONDITIONAL_END
+            vm_operand = operator.operand
+        elif operator.type == OperatorType.ELSE:
+            vm_bit = vm.BytecodeInstructionType.CONDITIONAL_ELSE
+            vm_operand = operator.operand
+        elif operator.type == OperatorType.DO:
+            vm_bit = vm.BytecodeInstructionType.CONDITIONAL_DO
+            vm_operand = operator.operand
+        elif operator.type == OperatorType.WHILE:
+            vm_bit = vm.BytecodeInstructionType.CONDITIONAL_WHILE
+            vm_operand = operator.operand
+        elif operator.type == OperatorType.INTRINSIC:
+            if operator.operand == Intrinsic.SHOW:
+                vm_bit = vm.BytecodeInstructionType.VM_ECHO_INTEGER
+            elif operator.operand == Intrinsic.INCREMENT:
+                vm_bit = vm.BytecodeInstructionType.MATH_INCREMENT
+            elif operator.operand == Intrinsic.DECREMENT:
+                vm_bit = vm.BytecodeInstructionType.MATH_DECREMENT
+            elif operator.operand == Intrinsic.PLUS:
+                vm_bit = vm.BytecodeInstructionType.MATH_ADD
+            elif operator.operand == Intrinsic.MINUS:
+                vm_bit = vm.BytecodeInstructionType.MATH_MINUS
+            elif operator.operand == Intrinsic.MULTIPLY:
+                vm_bit = vm.BytecodeInstructionType.MATH_MULTIPLY
+            elif operator.operand == Intrinsic.DIVIDE:
+                vm_bit = vm.BytecodeInstructionType.MATH_DIVIDE
+            elif operator.operand == Intrinsic.MODULUS:
+                vm_bit = vm.BytecodeInstructionType.MATH_MODULUS
+            elif operator.operand == Intrinsic.COPY:
+                vm_bit = vm.BytecodeInstructionType.STACK_COPY
+            elif operator.operand == Intrinsic.COPY2:
+                vm_bit = vm.BytecodeInstructionType.STACK_COPY2
+            elif operator.operand == Intrinsic.COPY_OVER:
+                vm_bit = vm.BytecodeInstructionType.STACK_COPY_OVER
+            elif operator.operand == Intrinsic.FREE:
+                vm_bit = vm.BytecodeInstructionType.STACK_DROP
+            elif operator.operand == Intrinsic.COPY_OVER:
+                vm_bit = vm.BytecodeInstructionType.STACK_SWAP
+            elif operator.operand == Intrinsic.EQUAL:
+                vm_bit = vm.BytecodeInstructionType.LOGIC_EQUAL
+            elif operator.operand == Intrinsic.NOT_EQUAL:
+                vm_bit = vm.BytecodeInstructionType.LOGIC_NOT_EQUAL
+            elif operator.operand == Intrinsic.LESS_THAN:
+                vm_bit = vm.BytecodeInstructionType.LOGIC_LESS
+            elif operator.operand == Intrinsic.GREATER_THAN:
+                vm_bit = vm.BytecodeInstructionType.LOGIC_GREATER
+            elif operator.operand == Intrinsic.LESS_EQUAL_THAN:
+                vm_bit = vm.BytecodeInstructionType.LOGIC_LESS_EQUAL
+            elif operator.operand == Intrinsic.GREATER_EQUAL_THAN:
+                vm_bit = vm.BytecodeInstructionType.LOGIC_GREATER_EQUAL
+            elif operator.operand in (
+                Intrinsic.MEMORY_WRITE,
+                Intrinsic.MEMORY_READ,
+                Intrinsic.MEMORY_WRITE4BYTES,
+                Intrinsic.MEMORY_READ4BYTES,
+                Intrinsic.MEMORY_SHOW_CHARACTERS,
+                Intrinsic.MEMORY_POINTER,
+                Intrinsic.IO_READ_INTEGER,
+                Intrinsic.IO_READ_STRING,
+                Intrinsic.NULL,
+            ):
+                vm_bit = vm.BytecodeInstructionType.MATH_MODULUS
+
+        if vm_bit:
+            bytecode_ops.append(vm.BytecodeInstruction(vm_bit, vm_operand))
+            continue
+        print(operator)
+    vm.VM().execute_bytecode(bytecode=vm.Bytecode(bytecode_ops))
 
     # Close file.
     file.close()
@@ -2021,71 +1326,38 @@ def cli_entry_point():
 
     # Load source and check size of it.
     loaded_file = None
-    if cli_subcommand in ("run", "dump", "compile", "runc"):
+    if cli_subcommand in ("run", "dump", "compile"):
         loaded_file = load_source_from_file(cli_source_path)
         assert len(loaded_file) == 2, "Got unexpected data from loaded file."
 
     if cli_subcommand == "run":
-        # If this is interpretate subcommand.
-
-        cli_source, cli_context = loaded_file
-
-        interpretator_run(cli_source, cli_context.memory_bytearray_size)
-
-        # Message.
-        if not cli_silent:
-            print(f'[Info] File "{basename(cli_source_path)}" was interpreted!')
-    elif cli_subcommand == "runc":
-        # If this is compile and run command.
         cli_source, cli_context = loaded_file
         bytecode_path = compile_bytecode(cli_source, cli_context, cli_source_path)
         if not cli_silent:
             print(
-                f'[Info] File "{basename(cli_source_path)}" was compiled to "{basename(bytecode_path)}"!'
+                f'[Info] Generated bytecode for "{basename(cli_source_path)}" in to the file "{basename(bytecode_path)}"!'
             )
 
         execute_bytecode(bytecode_path)
         if not cli_silent:
-            print(f'[Info] File "{basename(bytecode_path)}" was executed!')
+            print(f'[Info] Bytecode file "{basename(bytecode_path)}" was executed!')
     elif cli_subcommand == "dump":
-        # If this is dump subcommand.
-
-        # Get source from loaded file.
         cli_source, _ = loaded_file
-
-        # Dump print.
         gofra.systems.dump.dump(cli_source.operators)
-
-        # Message.
         if not cli_silent:
             print(f'[Info] File "{basename(cli_source_path)}" was dump printed!')
     elif cli_subcommand == "compile":
-        # If this is compile subcommand.
-
-        # Get source from loaded file.
         cli_source, cli_context = loaded_file
-
-        # Compile.
         bytecode_path = compile_bytecode(cli_source, cli_context, cli_source_path)
-
-        # Message.
         if not cli_silent:
             print(
-                f'[Info] File "{basename(cli_source_path)}" was compiled to "{basename(bytecode_path)}"!'
+                f'[Info] Generated bytecode for "{basename(cli_source_path)}" in to the file "{basename(bytecode_path)}"!'
             )
     elif cli_subcommand == "execute":
-        # If this is execute subcommand.
-
-        # Execute.
         execute_bytecode(cli_source_path)
-
-        # Message.
         if not cli_silent:
-            print(f'[Info] File "{basename(cli_source_path)}" was executed!')
+            print(f'[Info] Bytecode file "{basename(bytecode_path)}" was executed!')
     else:
-        # If unknown subcommand.
-
-        # Message.
         gofra.systems.cli.usage_message(__file__)
         gofra.core.errors.message("Error", f"Unknown subcommand `{cli_subcommand}`!")
 

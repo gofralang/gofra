@@ -1,0 +1,9 @@
+// Shows "1 && 1" as conditions confgured to jump there (not "1 && 0")
+
+1 if
+    32 show
+end
+
+0 if
+    16 show
+end

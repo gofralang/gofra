@@ -315,6 +315,11 @@ INTRINSIC_TO_BYTECODE_OPERATOR: Dict[Intrinsic, str] = {
 }
 BYTECODE_OPERATOR_NAMES_TO_OPERATOR_TYPE: Dict[str, OperatorType] = {
     "I": OperatorType.PUSH_INTEGER,
+    "IF": OperatorType.IF,
+    "END": OperatorType.END,
+    "ELSE": OperatorType.ELSE,
+    "DO": OperatorType.DO,
+    "WHILE": OperatorType.WHILE,
 }
 OPERATOR_TYPE_TO_BYTECODE_OPERATOR: Dict[OperatorType, str] = {
     value: key for key, value in BYTECODE_OPERATOR_NAMES_TO_OPERATOR_TYPE.items()
