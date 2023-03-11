@@ -7,7 +7,6 @@ from typing import Optional
 from sys import stdout
 from os.path import basename
 
-
 # Constants.
 __PREFIX = "[Gofra CLI]"
 

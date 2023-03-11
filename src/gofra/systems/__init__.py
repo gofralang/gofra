@@ -3,5 +3,4 @@
     Contains all systems like CLI and other.
 """
 
-from . import cli
-from . import dump
+from . import dump, cli

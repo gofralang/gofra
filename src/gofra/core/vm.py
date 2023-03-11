@@ -1,4 +1,5 @@
-from enum import Enum, auto
+from typing import Optional, List
+from enum import auto, Enum
 from dataclasses import dataclass
 
 
@@ -45,11 +46,11 @@ class BytecodeInstructionType(Enum):
 @dataclass
 class BytecodeInstruction:
     type: BytecodeInstructionType
-    operand: int | None = None
+    operand: Optional[int] = None
 
 
 class Bytecode:
-    def __init__(self, instructions: list[BytecodeInstruction]) -> None:
+    def __init__(self, instructions: List[BytecodeInstruction]) -> None:
         self._instructions = instructions
 
     def get_instructions(self):

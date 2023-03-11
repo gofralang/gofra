@@ -7,8 +7,6 @@ __version__ = "0.1"
 __license__ = "MIT"
 __author__ = "Kirill Zhosul @kirillzhosul"
 
-# Core.
-from . import core
-
 # Systems.
-from . import systems
+# Core.
+from . import systems, core

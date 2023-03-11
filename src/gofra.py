@@ -7,12 +7,12 @@ __author__ = "Kirill Zhosul @kirillzhosul"
 __license__ = "MIT"
 
 from typing import Generator
-from os.path import basename
 from sys import argv
+from os.path import basename
 
 import gofra
-from gofra.core.danger import *
 from gofra.core.stack import Stack
+from gofra.core.danger import *
 from gofra.core import vm
 
 # MAJOR WARNING FOR ALL READERS.
@@ -850,7 +850,7 @@ def parser_parse(tokens: List[Token], context: ParserContext, path: str):
 # Source.
 
 
-def load_source_from_file(file_path: str) -> tuple[Source, ParserContext]:
+def load_source_from_file(file_path: str) -> Tuple[Source, ParserContext]:
     """Load file, then return ready source and context for it. (Tokenized and parsed)."""
 
     # Read source lines.

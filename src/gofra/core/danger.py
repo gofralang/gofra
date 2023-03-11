@@ -4,9 +4,9 @@
     Should be refactored and totally removed later after refactoring.
 """
 
-from typing import Optional, Union, Tuple, List, Dict
-from enum import Enum, auto
-from dataclasses import dataclass, field
+from typing import Union, Tuple, Optional, List, Dict
+from enum import auto, Enum
+from dataclasses import field, dataclass
 
 
 class Stage(Enum):
@@ -172,7 +172,7 @@ class Definition:
     location: LOCATION
 
     # List of tokens for definition.
-    tokens: list[Token] = field(default_factory=list)
+    tokens: List[Token] = field(default_factory=list)
 
 
 @dataclass
