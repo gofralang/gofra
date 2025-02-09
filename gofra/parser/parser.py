@@ -124,7 +124,7 @@ def parse_tokens(tokens: list[Token]) -> list[Operator]:
                         operator = Operator(
                             type=OperatorType.END,
                             token=token,
-                            operand=None,
+                            operand=operator_idx,
                         )
                         operators.append(operator)
                         match context_operator.type:

@@ -10,5 +10,8 @@
         "syslibroot",
         "xcrun",
         "Zhosul"
+    ],
+    "conventionalCommits.scopes": [
+        "optimizer"
     ]
 }

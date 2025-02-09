@@ -23,6 +23,16 @@ def translate_assembly_arm_macos(fd: IO[str], operators: list[Operator]) -> None
                 fd.write("\tsub SP, SP, #16\n")
                 fd.write(f"\tmov X0, #{operator.operand}\n")
                 fd.write("\tstr X0, [SP]\n")
+            case OperatorType.IF:
+                assert isinstance(operator.operand, int)
+                fd.write("\tldr X0, [SP]\n")
+                fd.write("\tadd SP, SP, #16\n")
+
+                fd.write("\tcmp X0, #1\n")
+                fd.write(f"\tbne .ctx_{operator.operand - 1}\n")
+            case OperatorType.END:
+                assert isinstance(operator.operand, int)
+                fd.write(f".ctx_{operator.operand}:\n")
             case OperatorType.PUSH_STRING:
                 assert isinstance(operator.operand, str)
                 static_string_buffer = f"string_{idx}"
@@ -46,6 +56,17 @@ def translate_assembly_arm_macos(fd: IO[str], operators: list[Operator]) -> None
                 match operator.operand:
                     case Intrinsic.FREE:
                         fd.write("\tadd SP, SP, #16\n")
+                    case Intrinsic.EQUAL:
+                        fd.write("\tldr X0, [SP]\n")
+                        fd.write("\tadd SP, SP, #16\n")
+
+                        fd.write("\tldr X1, [SP]\n")
+                        fd.write("\tadd SP, SP, #16\n")
+                        fd.write("\tcmp X0, X1\n")
+                        fd.write("\tcset X0, eq\n")
+                        fd.write("\tsub SP, SP, #16\n")
+                        fd.write("\tstr X0, [SP]\n")
+
                     case Intrinsic.SWAP:
                         fd.write("\tldr X0, [SP]\n")
                         fd.write("\tadd SP, SP, #16\n")
