@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import IntEnum, auto
 
 from gofra.lexer import Token
@@ -29,6 +29,8 @@ class Operator:
     type: OperatorType
     token: Token
     operand: OperatorOperand
+
+    has_optimizations: bool = field(default=False)
 
     def __repr__(self) -> str:
         return f"Operator<{self.type.name}, {self.token}, operand={self.operand}>"

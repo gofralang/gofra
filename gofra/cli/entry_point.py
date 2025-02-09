@@ -2,7 +2,7 @@ import sys
 from subprocess import CalledProcessError, run
 
 from gofra.assembler import assemble_executable
-from gofra.gofra import parse_and_tokenize_input_file
+from gofra.gofra import process_input_file
 from gofra.parser import Operator
 
 from .arguments import CLIArguments, parse_cli_arguments
@@ -13,8 +13,9 @@ from .output import cli_message
 def cli_entry_point() -> None:
     with cli_user_error_handler():
         args = parse_cli_arguments()
-        operators = parse_and_tokenize_input_file(args.filepath)
-
+        operators = process_input_file(
+            args.filepath, optimize=not args.no_optimizations, linter=not args.no_linter
+        )
         if args.action_compile:
             _cli_compile_action(operators, args)
 

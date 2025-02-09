@@ -1,6 +1,8 @@
 from typing import assert_never
 
 from gofra.lexer import Keyword, Token, TokenType
+from gofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD
+from gofra.parser.macros import Macro
 
 from .exceptions import (
     ParserContextNotClosedError,
@@ -9,8 +11,13 @@ from .exceptions import (
     ParserEndAfterWhileError,
     ParserEndWithoutContextError,
     ParserError,
+    ParserMacroInvalidNonWordName,
+    ParserMacroRedefinesKeyword,
+    ParserMacroRedefinitionError,
     ParserNoIfBeforeElseError,
+    ParserNoMacroName,
     ParserNoWhileBeforeDoError,
+    ParserUnclosedMacroError,
     ParserUnknownWordError,
 )
 from .intrinsics import WORD_TO_INTRINSIC
@@ -25,6 +32,7 @@ def parse_tokens(tokens: list[Token]) -> list[Operator]:
     operator_idx = 0
     operators: list[Operator] = []
     context_stack: list[int] = []
+    macros: dict[str, Macro] = dict()
 
     if not reversed_tokens:
         raise ParserEmptyInputTokensError
@@ -39,6 +47,10 @@ def parse_tokens(tokens: list[Token]) -> list[Operator]:
             case TokenType.SYMBOL:
                 _push_symbol_operator(operators, token)
             case TokenType.WORD:
+                if macro := macros.get(token.text, None):
+                    reversed_tokens += reversed(macro.expanded_tokens)
+                    continue
+
                 _push_intrinsic_operator_from_word(operators, token)
             case TokenType.KEYWORD:
                 assert isinstance(token.value, Keyword)
@@ -147,6 +159,60 @@ def parse_tokens(tokens: list[Token]) -> list[Operator]:
                                 ):
                                     raise ParserError
                                 assert_never(never)
+                    case Keyword.MACRO:
+                        if not reversed_tokens:
+                            raise ParserNoMacroName
+
+                        macro_token = reversed_tokens.pop()
+                        macro_name = macro_token.text
+
+                        if macro_token.type != TokenType.WORD:
+                            raise ParserMacroInvalidNonWordName
+
+                        if macro_name in macros:
+                            raise ParserMacroRedefinitionError
+
+                        if (
+                            macro_name in WORD_TO_INTRINSIC
+                            or macro_name in WORD_TO_KEYWORD
+                        ):
+                            raise ParserMacroRedefinesKeyword
+
+                        macro = Macro(token.location, expanded_tokens=[])
+                        macros[macro_name] = macro
+
+                        macro_required_end_blocks = 0
+
+                        while len(reversed_tokens) > 0:
+                            token = reversed_tokens.pop()
+
+                            if token.type != TokenType.KEYWORD:
+                                macro.expanded_tokens.append(token)
+                                continue
+
+                            assert token.text in WORD_TO_KEYWORD
+
+                            if token.text == KEYWORD_TO_NAME[Keyword.END]:
+                                if macro_required_end_blocks <= 0:
+                                    break
+                                macro_required_end_blocks -= 1
+
+                            if WORD_TO_KEYWORD[token.text] in (
+                                Keyword.IF,
+                                Keyword.MACRO,
+                                Keyword.DO,
+                            ):
+                                macro_required_end_blocks += 1
+
+                            macro.expanded_tokens.append(token)
+
+                        if (
+                            macro_required_end_blocks != 0
+                            or token.type != TokenType.KEYWORD
+                            or token.text != KEYWORD_TO_NAME[Keyword.END]
+                        ):
+                            raise ParserUnclosedMacroError
+
                     case _:
                         assert_never(token.value)
             case TokenType.STRING:

@@ -18,11 +18,17 @@ class Intrinsic(IntEnum):
     LESS_EQUAL_THAN = auto()
     GREATER_EQUAL_THAN = auto()
 
+    SYSCALL2 = auto()
+    SYSCALL4 = auto()
+    SYSCALL5 = auto()
+    SYSCALL7 = auto()
+
     COPY = auto()
     COPY_OVER = auto()
     COPY2 = auto()
     FREE = auto()
     SWAP = auto()
+    SWAP_OVER = auto()
 
 
 WORD_TO_INTRINSIC = {
@@ -44,4 +50,9 @@ WORD_TO_INTRINSIC = {
     "copy2": Intrinsic.COPY2,
     "copy_over": Intrinsic.COPY_OVER,
     "free": Intrinsic.FREE,
+    "syscall2": Intrinsic.SYSCALL2,
+    "syscall4": Intrinsic.SYSCALL4,
+    "syscall5": Intrinsic.SYSCALL5,
+    "syscall7": Intrinsic.SYSCALL7,
+    "swap_over": Intrinsic.SWAP_OVER,
 }

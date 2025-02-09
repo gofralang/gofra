@@ -34,3 +34,22 @@ class ParserEndWithoutContextError(ParserError): ...
 
 
 class ParserEndAfterWhileError(ParserError): ...
+
+
+class ParserNoMacroName(ParserError):
+    def __repr__(self) -> str:
+        return "Macro should have name after the keyword, do you has unfinished macro?"
+
+
+class ParserMacroInvalidNonWordName(ParserError):
+    def __repr__(self) -> str:
+        return "Macro name should be of type WORD, sorry, but you can`t use something that you give as name for the macro!"
+
+
+class ParserMacroRedefinitionError(ParserError): ...
+
+
+class ParserUnclosedMacroError(ParserError): ...
+
+
+class ParserMacroRedefinesKeyword(ParserError): ...

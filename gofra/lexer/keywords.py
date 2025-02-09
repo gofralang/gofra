@@ -7,6 +7,7 @@ class Keyword(IntEnum):
     DO = auto()
     ELSE = auto()
     END = auto()
+    MACRO = auto()
 
 
 WORD_TO_KEYWORD = {
@@ -15,4 +16,6 @@ WORD_TO_KEYWORD = {
     "while": Keyword.WHILE,
     "do": Keyword.DO,
     "end": Keyword.END,
+    "macro": Keyword.MACRO,
 }
+KEYWORD_TO_NAME = {v: k for k, v in WORD_TO_KEYWORD.items()}

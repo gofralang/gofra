@@ -18,6 +18,8 @@ class CLIArguments:
     target_os: TargetOperatingSystem
     target_architecture: TargetArchitecture
 
+    no_optimizations: bool
+    no_linter: bool
     build_cache_directory: Path | None
     build_cache_delete_after_run: bool
 
@@ -36,11 +38,15 @@ def parse_cli_arguments() -> CLIArguments:
         build_cache_directory=Path(args.cache_dir) if args.cache_dir else None,
         target_architecture=TargetArchitecture.ARM,
         target_os=TargetOperatingSystem.MACOS,
+        no_optimizations=bool(args.no_optimizations),
+        no_linter=bool(args.no_linter),
     )
 
 
 def _construct_argument_parser() -> ArgumentParser:
-    parser = ArgumentParser(description="Gofra Toolkit")
+    parser = ArgumentParser(
+        description="Gofra Toolkit - CLI for working with Gofra programming language"
+    )
 
     parser.add_argument("file", type=str, help="The input file")
 
@@ -77,6 +83,22 @@ def _construct_argument_parser() -> ArgumentParser:
         action="store_true",
         required=False,
         help="If passed, will delete cache after run",
+    )
+
+    parser.add_argument(
+        "--no-optimizations",
+        "-no",
+        action="store_true",
+        required=False,
+        help="If passed, will disable optimizer",
+    )
+
+    parser.add_argument(
+        "--no-linter",
+        "-nl",
+        action="store_true",
+        required=False,
+        help="If passed, will disable linter",
     )
 
     return parser
