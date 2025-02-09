@@ -65,14 +65,16 @@ def optimize_constant_folding(unoptimized_operators: list[Operator]):
             case _:
                 assert_never(operator.operand)
         if fold_predicate:
-            _fold_binary_integer_math_operator(
+            was_folded = _fold_binary_integer_math_operator(
                 idx,
                 operators,
                 unoptimized_operators,
                 fold_predicate=fold_predicate,
             )
-        else:
-            operators.append(operator)
+            if was_folded:
+                continue
+
+        operators.append(operator)
     return operators
 
 
@@ -82,14 +84,14 @@ def _fold_binary_integer_math_operator(
     unoptimized_operators: list[Operator],
     *,
     fold_predicate: FoldPredicate,
-):
+) -> bool:
     assert idx > 2
     operands = [
         unoptimized_operators[idx - 2],
         unoptimized_operators[idx - 3],
     ]
     if not (operands[0].type == operands[1].type == OperatorType.PUSH_INTEGER):
-        return
+        return False
 
     operands = [operands[0].operand, operands[1].operand]
     assert isinstance(operands[0], int) and isinstance(operands[1], int)
@@ -115,3 +117,4 @@ def _fold_binary_integer_math_operator(
     )
 
     operators.append(operator)
+    return True
