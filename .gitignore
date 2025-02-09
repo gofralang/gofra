@@ -1,12 +1,2 @@
-# IDE.
-.idea
-
-# Python.
+.build/
 *.pyc
-
-# Gofra releated.
-# Bytecode.
-*.gofbc
-
-# Ignore sandbox folder.
-/sandbox/

@@ -1,0 +1,89 @@
+from argparse import ArgumentParser
+from dataclasses import dataclass
+from pathlib import Path
+from platform import system as current_platform_system
+
+from gofra.targets import TargetArchitecture, TargetOperatingSystem
+
+
+@dataclass(frozen=True)
+class CLIArguments:
+    filepath: Path
+    filepath_output: Path
+
+    action_compile: bool
+
+    execute_after_compile: bool
+
+    target_os: TargetOperatingSystem
+    target_architecture: TargetArchitecture
+
+    build_cache_directory: Path | None
+    build_cache_delete_after_run: bool
+
+
+def parse_cli_arguments() -> CLIArguments:
+    args = _construct_argument_parser().parse_args()
+    filepath_output = (
+        Path(args.output) if args.output else _output_filename_fallback(Path(args.file))
+    )
+    return CLIArguments(
+        filepath=Path(args.file),
+        filepath_output=filepath_output,
+        action_compile=bool(args.compile),
+        execute_after_compile=bool(args.execute),
+        build_cache_delete_after_run=bool(args.delete_cache),
+        build_cache_directory=Path(args.cache_dir) if args.cache_dir else None,
+        target_architecture=TargetArchitecture.ARM,
+        target_os=TargetOperatingSystem.MACOS,
+    )
+
+
+def _construct_argument_parser() -> ArgumentParser:
+    parser = ArgumentParser(description="Gofra Toolkit")
+
+    parser.add_argument("file", type=str, help="The input file")
+
+    action_group = parser.add_mutually_exclusive_group(required=True)
+    action_group.add_argument(
+        "--compile", "-c", action="store_true", help="Compile the file into executable"
+    )
+
+    parser.add_argument(
+        "--execute",
+        "-e",
+        action="store_true",
+        help="If given, will execute output after run",
+    )
+
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        required=False,
+        help="Path to output file which will be generated",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        "-cd",
+        type=str,
+        default="./.build",
+        required=False,
+        help="Path to directory where to store cache (defaults to current directory)",
+    )
+    parser.add_argument(
+        "--delete-cache",
+        "-dc",
+        action="store_true",
+        required=False,
+        help="If passed, will delete cache after run",
+    )
+
+    return parser
+
+
+def _output_filename_fallback(input_filepath: Path) -> Path:
+    assert current_platform_system() == "Darwin"
+    if input_filepath.suffix == "":
+        return input_filepath.with_suffix(input_filepath.suffix + "._")
+    return input_filepath.with_suffix("")
