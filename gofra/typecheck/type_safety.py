@@ -35,30 +35,31 @@ def validate_type_safety(operators: Sequence[Operator]) -> None:
             case OperatorType.INTRINSIC:
                 assert isinstance(operator.operand, Intrinsic)
                 match operator.operand:
-                    case Intrinsic.MEMORY_POINTER:
-                        context.push_types(GofraType.POINTER)
-                    case Intrinsic.MEMORY_WRITE:
+                    case Intrinsic.MEMORY_STORE:
                         context.raise_for_enough_arguments(operator, required_args=2)
-                        context.pop_and_raise_for_argument_type(
-                            GofraType.POINTER,
-                            operator=operator,
-                        )
-                        context.pop_and_raise_for_argument_type(
-                            GofraType.INTEGER,
-                            operator=operator,
-                        )
-                        context.pop_argument_type()
-                    case Intrinsic.MEMORY_READ:
+                        # context.pop_and_raise_for_argument_type(
+                        #    GofraType.POINTER,
+                        #    operator=operator,
+                        # )
+                        # context.pop_and_raise_for_argument_type(
+                        #    GofraType.INTEGER,
+                        #    operator=operator,
+                        # )
+                        # context.pop_argument_type()
+                        context.consume_n_arguments(2)
+                    case Intrinsic.MEMORY_LOAD:
                         context.raise_for_enough_arguments(operator, required_args=2)
-                        context.pop_and_raise_for_argument_type(
-                            GofraType.POINTER,
-                            operator=operator,
-                        )
-                        context.pop_and_raise_for_argument_type(
-                            GofraType.INTEGER,
-                            operator=operator,
-                        )
+                        context.consume_n_arguments(2)
                         context.push_types(GofraType.INTEGER)
+                        # context.pop_and_raise_for_argument_type(
+                        #    GofraType.POINTER,
+                        #    operator=operator,
+                        # )
+                        # context.pop_and_raise_for_argument_type(
+                        #    GofraType.INTEGER,
+                        #    operator=operator,
+                        # )
+                        # context.push_types(GofraType.INTEGER)
                     case Intrinsic.INCREMENT | Intrinsic.DECREMENT:
                         context.raise_for_enough_arguments(operator, required_args=1)
                         context.pop_and_raise_for_argument_type(

@@ -18,9 +18,8 @@ class Intrinsic(IntEnum):
     LESS_EQUAL_THAN = auto()
     GREATER_EQUAL_THAN = auto()
 
-    MEMORY_POINTER = auto()
-    MEMORY_READ = auto()
-    MEMORY_WRITE = auto()
+    MEMORY_LOAD = auto()
+    MEMORY_STORE = auto()
 
     SYSCALL0 = auto()
     SYSCALL1 = auto()
@@ -59,7 +58,6 @@ WORD_TO_INTRINSIC = {
     "syscall4": Intrinsic.SYSCALL4,
     "syscall5": Intrinsic.SYSCALL5,
     "syscall6": Intrinsic.SYSCALL6,
-    "mem_ptr": Intrinsic.MEMORY_POINTER,
-    "mem_read": Intrinsic.MEMORY_READ,
-    "mem_write": Intrinsic.MEMORY_WRITE,
+    "?>": Intrinsic.MEMORY_LOAD,
+    "!<": Intrinsic.MEMORY_STORE,
 }

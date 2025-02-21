@@ -72,28 +72,18 @@ def generate_ARM64_MacOS_backend(  # noqa: N802
             case OperatorType.INTRINSIC:
                 assert isinstance(operator.operand, Intrinsic)
                 match operator.operand:
-                    case Intrinsic.MEMORY_READ:
+                    case Intrinsic.MEMORY_LOAD:
                         context.write(
-                            "add SP, SP, #16",
                             "ldr X0, [SP]",
-                            "ldrb X3, [X0, #0]",
-                            "sub SP, SP, #16",
-                            "str X3, [SP]",
+                            "ldr X1, [X0]",
+                            "str X1, [SP]",
                         )
-                    case Intrinsic.MEMORY_WRITE:
+                    case Intrinsic.MEMORY_STORE:
                         context.write(
+                            "ldr X0, [SP]",
                             "add SP, SP, #16",
                             "ldr X1, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X0, [SP]",
                             "str X0, [X1]",
-                        )
-                    case Intrinsic.MEMORY_POINTER:
-                        context.write(
-                            "adr X0, mem_buffer@GOTPAGE",
-                            "sub SP, SP, #16",
-                            "ldr X0, [X0, mem_buffer@GOTPAGEOFF] ",
-                            "str X0, [SP]",
                         )
                     case Intrinsic.DROP:
                         context.write("add SP, SP, #16")

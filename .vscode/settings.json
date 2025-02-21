@@ -18,6 +18,7 @@
     ],
     "conventionalCommits.scopes": [
         "optimizer",
-        "lexer"
+        "lexer",
+        "typecheck"
     ]
 }
