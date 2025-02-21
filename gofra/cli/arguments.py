@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
@@ -45,14 +47,17 @@ def parse_cli_arguments() -> CLIArguments:
 
 def _construct_argument_parser() -> ArgumentParser:
     parser = ArgumentParser(
-        description="Gofra Toolkit - CLI for working with Gofra programming language"
+        description="Gofra Toolkit - CLI for working with Gofra programming language",
     )
 
     parser.add_argument("file", type=str, help="The input file")
 
     action_group = parser.add_mutually_exclusive_group(required=True)
     action_group.add_argument(
-        "--compile", "-c", action="store_true", help="Compile the file into executable"
+        "--compile",
+        "-c",
+        action="store_true",
+        help="Compile the file into executable",
     )
 
     parser.add_argument(

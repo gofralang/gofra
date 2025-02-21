@@ -1,17 +1,24 @@
 from dataclasses import dataclass
 from enum import IntEnum, auto
-from typing import Generator
+from pathlib import Path
 
 type TokenValue = int | float | str
-type TokenLocation = tuple[str, int, int]
-type TokenGenerator = Generator[Token]
+
+
+@dataclass(frozen=True)
+class TokenLocation:
+    filepath: Path
+    line_number: int
+    col_number: int
+
+    def __repr__(self) -> str:
+        return f"'{self.filepath.name}:{self.line_number + 1}:{self.col_number + 1}'"
 
 
 class TokenType(IntEnum):
     INTEGER = auto()
-    FLOAT = auto()
 
-    SYMBOL = auto()
+    CHARACTER = auto()
     STRING = auto()
 
     WORD = auto()

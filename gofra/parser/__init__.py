@@ -1,4 +1,6 @@
-from .operators import Operator, OperatorType
-from .parser import parse_tokens
+"""Parser package that used to parse source tokens into operators."""
 
-__all__ = ["Operator", "OperatorType", "parse_tokens"]
+from .operators import Operator, OperatorType
+from .parser import parse_file_into_operators
+
+__all__ = ["Operator", "OperatorType", "parse_file_into_operators"]

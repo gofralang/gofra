@@ -1,8 +1,0 @@
-MPTR 0 mwrite4b
-1 while copy 1000 < do
-    copy copy 3 % 0 == swap 2 % 0 == + 1 <= if
-        copy MPTR mread4b +
-        MPTR swap mwrite4b
-    end
-inc end free
-MPTR mread4b show

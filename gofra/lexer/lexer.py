@@ -1,156 +1,230 @@
+from __future__ import annotations
+
+from collections.abc import Generator, Sequence
+from typing import TYPE_CHECKING
+
 from gofra.lexer.keywords import WORD_TO_KEYWORD
 
+from ._context import LexerContext
 from .exceptions import (
-    LexerAmbiguousSymbolLengthError,
-    LexerEmptyInputLinesError,
-    LexerEmptySymbolError,
+    LexerEmptyCharacterError,
+    LexerExcessiveCharacterLengthError,
+    LexerUnclosedCharacterQuoteError,
     LexerUnclosedStringQuoteError,
-    LexerUnclosedSymbolQuoteError,
 )
 from .helpers import (
-    find_column,
     find_string_end,
     find_word_end,
     find_word_start,
     unescape_string,
 )
-from .tokens import Token, TokenGenerator, TokenLocation, TokenType
+from .tokens import Token, TokenLocation, TokenType
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+type TokenGenerator = Generator[Token, None, LexerContext]
 
 
-def tokenize_text(lines: list[str], filename: str) -> TokenGenerator:
-    idx = 0
-    idx_end = len(lines)
+def load_file_for_lexical_analysis(
+    source_filepath: Path,
+) -> TokenGenerator:
+    """Load file to read and stream resulting lexical tokens.
 
-    if idx_end == 0:
-        raise LexerEmptyInputLinesError
+    Propagates source file path so can be used for module file resolution
 
-    while idx < idx_end:
-        line = lines[idx]
+    Returns tokens in default order (ordered)
+    """
+    with source_filepath.open(
+        errors="strict",
+        buffering=1,
+        newline="",
+        encoding="UTF-8",
+    ) as fd:
+        source_file_lines = fd.readlines(-1)
 
-        idy = find_word_start(line, 0)
-        idy_end = len(line)
-
-        while idy < idy_end:
-            loc = (filename, idx + 1, idy + 1)
-            symbol = line[idy]
-
-            match symbol:
-                case "'":
-                    idy, token = _tokenize_symbol_token(loc, idy, idy_end, line)
-                    yield token
-                case '"':
-                    string = ""
-
-                    string_ends_at = None
-                    while idx < idx_end:
-                        string_starts_at = idy if string else idy + 1
-                        if string:
-                            line = lines[idx]
-                            idy_end = len(line)
-
-                        string_ends_at = find_string_end(line, string_starts_at)
-                        if string_ends_at is None:
-                            string += line[string_starts_at:]
-                            idx += 1
-                            idy = 0
-                            continue
-                        else:
-                            string += line[string_starts_at:string_ends_at]
-                            break
-
-                    assert string_ends_at is not None
-                    if idx >= idx_end:
-                        raise LexerUnclosedStringQuoteError
-
-                    yield Token(
-                        type=TokenType.STRING,
-                        text=f'"{string}"',
-                        location=loc,
-                        value=unescape_string(string),
-                    )
-                    idy = find_word_start(line, string_ends_at + 1)
-                case _:
-                    word_ends_at = find_word_end(line, idy)
-                    word = line[idy:word_ends_at]
-
-                    if word.startswith("//"):
-                        # TODO(@kirillzhosul): Split segment and make comments fully supported
-                        break
-
-                    if token := _tokenize_number_token(loc, word):
-                        idy = find_word_start(line, word_ends_at)
-                        yield token
-                        continue
-
-                    yield _tokenize_word_token(loc, word)
-                    idy = find_word_start(line, word_ends_at)
-        idx += 1
+    context = yield from _perform_lexical_analysis(
+        lines=source_file_lines,
+        source_filepath=source_filepath,
+    )
+    return context
 
 
-def _tokenize_word_token(loc: TokenLocation, word: str) -> Token:
-    keyword = WORD_TO_KEYWORD.get(word)
+def _perform_lexical_analysis(
+    lines: Sequence[str],
+    source_filepath: Path,
+) -> TokenGenerator:
+    """Convert source lines of text into stream of tokens.
 
-    if keyword:
+    TODO(@kirillzhosul): Input is not an stream, we may introduce generator sending with lines
+    """
+    context = LexerContext(
+        source_filepath=source_filepath,
+        lines=lines,
+        row_end=len(lines),
+    )
+
+    while not context.row_is_consumed():
+        context.line = lines[context.row]
+        context = yield from _consume_context_from_row_start(context=context)
+        context.row += 1
+
+    return context
+
+
+def _consume_context_from_row_start(context: LexerContext) -> TokenGenerator:
+    """Feed context to begin from current context line (row)."""
+    context.col = find_word_start(context.line, 0)
+    context.col_end = len(context.line)
+
+    while not context.col_is_consumed():
+        symbol = context.line[context.col]
+        location = context.current_location()
+
+        if not (token := _consume_context_from_symbol(symbol, context, location)):
+            return context
+
+        yield token
+
+    return context
+
+
+def _consume_context_from_symbol(
+    symbol: str,
+    context: LexerContext,
+    location: TokenLocation,
+) -> Token | None:
+    """Consumes starting from given symbol an token.
+
+    returns None if there is no resulting tokens on line, and context is already switched to the next line
+    """
+    if symbol == "'":
+        return _consume_into_character_token(context, location)
+
+    if symbol == '"':
+        return _consume_into_string_token(context, location)
+
+    return _consume_into_token(context, location)
+
+
+def _consume_into_string_token(context: LexerContext, location: TokenLocation) -> Token:
+    """Consume context into string token."""
+    string_starts_at = context.col + 1
+    if string_starts_at >= context.col_end:
+        context.col += 1
+        raise LexerUnclosedStringQuoteError(
+            open_quote_location=context.current_location(),
+        )
+
+    string_ends_at = find_string_end(context.line, string_starts_at)
+    if string_ends_at is None:
+        context.col += 1
+        raise LexerUnclosedStringQuoteError(
+            open_quote_location=context.current_location(),
+        )
+
+    string_raw = context.line[string_starts_at - 1 : string_ends_at + 1]
+    string = context.line[string_starts_at:string_ends_at]
+
+    context.col = find_word_start(context.line, string_ends_at + 1)
+    return Token(
+        type=TokenType.STRING,
+        text=string_raw,
+        location=location,
+        value=unescape_string(string),
+    )
+
+
+def _consume_number_into_token(word: str, location: TokenLocation) -> Token | None:
+    """Try to consume given word into number token (integer / float) or return nothing."""
+    if not word.isdigit() and not (word[0] == "-" and word[1:].isdigit()):
+        return None
+    return Token(
+        type=TokenType.INTEGER,
+        text=word,
+        value=int(word),
+        location=location,
+    )
+
+
+def _consume_comment_segment(word: str, context: LexerContext) -> bool:
+    """Continues to next line if encountered comment within words."""
+    is_comment = word.startswith("//")
+    if is_comment:
+        context.row += 1
+    return is_comment
+
+
+def _consume_word_or_keyword_into_token(word: str, location: TokenLocation) -> Token:
+    """Consume given word into word or keyword according to declaration."""
+    if keyword := WORD_TO_KEYWORD.get(word):
         return Token(
             type=TokenType.KEYWORD,
             text=word,
-            location=loc,
+            location=location,
             value=keyword,
         )
 
     return Token(
         type=TokenType.WORD,
         text=word,
-        location=loc,
+        location=location,
         value=word,
     )
 
 
-def _tokenize_number_token(loc: TokenLocation, word: str) -> Token | None:
-    if word.isdigit():
-        return Token(
-            type=TokenType.INTEGER,
-            text=word,
-            value=int(word),
-            location=loc,
+def _consume_into_token(context: LexerContext, location: TokenLocation) -> Token | None:
+    """Consumes base symbol into token (non-string, no-character)."""
+    word_starts_at = context.col
+    word_ends_at = find_word_end(context.line, context.col)
+
+    word = context.line[word_starts_at:word_ends_at]
+    context.col = find_word_start(context.line, word_ends_at)
+
+    if _consume_comment_segment(word, context):
+        return None
+
+    if token := _consume_number_into_token(word, location):
+        return token
+
+    return _consume_word_or_keyword_into_token(word, location)
+
+
+def _consume_into_character_token(
+    context: LexerContext,
+    location: TokenLocation,
+) -> Token:
+    """Consume current context line with resulting character token."""
+    char_starts_at = context.col + 1
+    char_ends_at = context.line.find("'", char_starts_at)
+
+    if char_ends_at == -1:
+        context.col += 1
+        raise LexerUnclosedCharacterQuoteError(
+            open_quote_location=context.current_location(),
         )
 
-    if len(word) == 1:
-        return
+    character_raw = context.line[char_starts_at - 1 : char_ends_at + 1]
+    character = character_raw[1:-1]
+    character = unescape_string(character)
 
-    if word.replace(".", "", count=1).isdigit():
-        value = float("0." + word[1:] if word[0] == "." else word)
-        return Token(
-            type=TokenType.FLOAT,
-            text=word,
-            value=value,
-            location=loc,
+    character_len = len(character)
+    if character_len == 0:
+        context.col += 1
+        raise LexerEmptyCharacterError(open_quote_location=context.current_location())
+    if character_len > 1:
+        context.col += 2
+        raise LexerExcessiveCharacterLengthError(
+            excess_begins_at=context.current_location(),
+            excess_by_count=character_len,
         )
+    assert character_len == 1
 
+    context.col = find_word_start(context.line, char_ends_at + 1)
 
-def _tokenize_symbol_token(
-    loc: TokenLocation, idy: int, idy_end: int, line: str
-) -> tuple[int, Token]:
-    symbol_starts_at = idy + 1
-    symbol_ends_at = find_column(line, symbol_starts_at, lambda s: s == "'")
-    if symbol_ends_at >= idy_end:
-        raise LexerUnclosedSymbolQuoteError
-
-    symbol_len = symbol_ends_at - idy - 1
-    if symbol_len == 0:
-        raise LexerEmptySymbolError
-    if symbol_len > 1:
-        raise LexerAmbiguousSymbolLengthError
-
-    symbol = unescape_string(line[symbol_starts_at:symbol_ends_at])
-    assert len(symbol) == 1
-
-    idy = find_word_start(line, symbol_ends_at + 1)
-    token = Token(
-        type=TokenType.SYMBOL,
-        text=line[symbol_starts_at - 1 : symbol_ends_at + 1],
-        location=loc,
-        value=symbol,
+    return Token(
+        type=TokenType.CHARACTER,
+        text=character_raw,
+        value=ord(character),
+        location=location,
     )
-
-    return idy, token

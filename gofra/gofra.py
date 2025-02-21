@@ -1,9 +1,9 @@
+from collections.abc import Sequence
 from pathlib import Path
 
-from gofra.lexer import tokenize_text
-from gofra.linter import linter_validate
 from gofra.optimizer import optimize_operators
-from gofra.parser import Operator, parse_tokens
+from gofra.parser import Operator, parse_file_into_operators
+from gofra.typecheck import validate_type_safety
 
 
 def process_input_file(
@@ -11,26 +11,10 @@ def process_input_file(
     *,
     optimize: bool = True,
     linter: bool = True,
-) -> list[Operator]:
-    with open(filepath, mode="r", encoding="UTF-8") as fd:
-        lines = fd.readlines()
-
-    return process_input_lines(
-        lines, from_filename=filepath.name, optimize=optimize, linter=linter
-    )
-
-
-def process_input_lines(
-    lines: list[str],
-    from_filename: str,
-    *,
-    optimize: bool = True,
-    linter: bool = True,
-) -> list[Operator]:
-    tokens = list(tokenize_text(lines, from_filename))
-    operators = parse_tokens(tokens)
+) -> Sequence[Operator]:
+    operators = parse_file_into_operators(filepath).operators
     if optimize:
         operators = optimize_operators(operators)
     if linter:
-        linter_validate(operators)
+        validate_type_safety(operators)
     return operators

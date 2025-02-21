@@ -18,17 +18,21 @@ class Intrinsic(IntEnum):
     LESS_EQUAL_THAN = auto()
     GREATER_EQUAL_THAN = auto()
 
+    MEMORY_POINTER = auto()
+    MEMORY_READ = auto()
+    MEMORY_WRITE = auto()
+
+    SYSCALL0 = auto()
+    SYSCALL1 = auto()
     SYSCALL2 = auto()
+    SYSCALL3 = auto()
     SYSCALL4 = auto()
     SYSCALL5 = auto()
-    SYSCALL7 = auto()
+    SYSCALL6 = auto()
 
     COPY = auto()
-    COPY_OVER = auto()
-    COPY2 = auto()
-    FREE = auto()
+    DROP = auto()
     SWAP = auto()
-    SWAP_OVER = auto()
 
 
 WORD_TO_INTRINSIC = {
@@ -47,12 +51,15 @@ WORD_TO_INTRINSIC = {
     "inc": Intrinsic.INCREMENT,
     "swap": Intrinsic.SWAP,
     "copy": Intrinsic.COPY,
-    "copy2": Intrinsic.COPY2,
-    "copy_over": Intrinsic.COPY_OVER,
-    "free": Intrinsic.FREE,
+    "drop": Intrinsic.DROP,
+    "syscall0": Intrinsic.SYSCALL0,
+    "syscall1": Intrinsic.SYSCALL1,
     "syscall2": Intrinsic.SYSCALL2,
+    "syscall3": Intrinsic.SYSCALL3,
     "syscall4": Intrinsic.SYSCALL4,
     "syscall5": Intrinsic.SYSCALL5,
-    "syscall7": Intrinsic.SYSCALL7,
-    "swap_over": Intrinsic.SWAP_OVER,
+    "syscall6": Intrinsic.SYSCALL6,
+    "mem_ptr": Intrinsic.MEMORY_POINTER,
+    "mem_read": Intrinsic.MEMORY_READ,
+    "mem_write": Intrinsic.MEMORY_WRITE,
 }

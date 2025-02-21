@@ -1,7 +1,0 @@
-// Uses all of the directives.
-
-// Say that there is only 4 bytes in the memory buffer.
-#MEM_BUF_BYTE_SIZE=4
-
-// Push and trash pop to have any tokens, so the source will run.
-0 free

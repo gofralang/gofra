@@ -7,4 +7,10 @@ from gofra.lexer.tokens import TokenLocation
 @dataclass(frozen=True)
 class Macro:
     location: TokenLocation
-    expanded_tokens: list[Token]
+    name: str
+
+    inner_tokens: list[Token]
+
+    def push_token(self, token: Token) -> Token:
+        self.inner_tokens.append(token)
+        return token

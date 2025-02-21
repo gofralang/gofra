@@ -1,5 +1,0 @@
-// Iterates and shows numbers from 0 to 10
-
-0 while copy 10 < do
-    copy show
-inc end free

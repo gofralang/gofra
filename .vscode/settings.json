@@ -2,12 +2,17 @@
     "cSpell.words": [
         "asciz",
         "codegen",
+        "Concatenative",
+        "cset",
         "gofra",
         "gofralang",
         "Kirill",
         "kirillzhosul",
+        "sdiv",
         "SYSCALL",
         "syslibroot",
+        "tadr",
+        "udiv",
         "xcrun",
         "Zhosul"
     ],

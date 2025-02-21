@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 from typing import Callable
 
 
 def unescape_string(string: str) -> str:
+    """Remove all terminations within string."""
     return (
         string.encode("UTF-8")
         .decode("unicode_escape")
@@ -10,7 +13,7 @@ def unescape_string(string: str) -> str:
     )
 
 
-def find_column(text: str, start: int, predicate: Callable[[str], bool]) -> int:
+def _find_column(text: str, start: int, predicate: Callable[[str], bool]) -> int:
     end = len(text)
     while start < end and not predicate(text[start]):
         start += 1
@@ -18,11 +21,11 @@ def find_column(text: str, start: int, predicate: Callable[[str], bool]) -> int:
 
 
 def find_word_start(text: str, start: int) -> int:
-    return find_column(text, start, lambda s: not s.isspace())
+    return _find_column(text, start, lambda s: not s.isspace())
 
 
 def find_word_end(text: str, start: int) -> int:
-    return find_column(text, start, str.isspace)
+    return _find_column(text, start, str.isspace)
 
 
 def find_string_end(string: str, start: int) -> int | None:

@@ -1,21 +1,29 @@
-# from os import system
+from __future__ import annotations
+
+import sys
 from pathlib import Path
 from platform import system as current_platform_system
 from shutil import which
-from subprocess import check_output
+from subprocess import CalledProcessError, check_output
+from typing import TYPE_CHECKING
 
-from gofra.codegen import TargetArchitecture, generate_asm
-from gofra.parser.operators import Operator
-from gofra.targets import TargetOperatingSystem
+from gofra.cli.output import cli_message
+from gofra.codegen import generate_code_for_assembler
+from gofra.targets import TargetArchitecture, TargetOperatingSystem
 
 from .exceptions import (
     NoToolkitForAssemblingError,
     UnsupportedBuilderOperatingSystemError,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-def assemble_executable(
-    operators: list[Operator],
+    from gofra.parser.operators import Operator
+
+
+def assemble_executable(  # noqa: PLR0913
+    operators: Sequence[Operator],
     output: Path,
     architecture: TargetArchitecture,
     os: TargetOperatingSystem,
@@ -24,14 +32,24 @@ def assemble_executable(
     build_cache_delete_after_end: bool = False,
 ) -> None:
     _validate_toolkit_installation()
-    if build_cache_directory:
-        build_cache_directory.mkdir(exist_ok=True)
+
+    _prepare_build_cache_directory(
+        build_cache_directory=build_cache_directory,
+    )
+
     asm_filepath = _generate_asm(
-        operators, output, architecture, os, build_cache_directory=build_cache_directory
+        operators,
+        output,
+        architecture,
+        os,
+        build_cache_directory=build_cache_directory,
     )
 
     o_filepath = _assemble_object_file(
-        output, architecture, asm_filepath, build_cache_directory=build_cache_directory
+        output,
+        architecture,
+        asm_filepath,
+        build_cache_directory=build_cache_directory,
     )
 
     _link_final_executable(output, architecture, os, o_filepath)
@@ -39,6 +57,17 @@ def assemble_executable(
     if build_cache_delete_after_end:
         asm_filepath.unlink()
         o_filepath.unlink()
+
+
+def _prepare_build_cache_directory(build_cache_directory: Path | None) -> None:
+    if build_cache_directory is None or build_cache_directory.exists():
+        return
+
+    build_cache_directory.mkdir(exist_ok=False)
+
+    with (build_cache_directory / ".gitignore").open("w") as f:
+        f.write("# Do not include this newly generated build cache into git VCS\n")
+        f.write("*\n")
 
 
 def _link_final_executable(
@@ -53,14 +82,15 @@ def _link_final_executable(
             assert os == TargetOperatingSystem.MACOS
 
             system_sdk = Path(
-                check_output(
-                    ["xcrun", "-sdk", "macosx", "--show-sdk-path"], text=True
-                ).strip()
+                check_output(  # noqa: S603
+                    ["/usr/bin/xcrun", "-sdk", "macosx", "--show-sdk-path"],
+                    text=True,
+                ).strip(),
             )
 
-            check_output(
+            check_output(  # noqa: S603
                 [
-                    "ld",
+                    "/usr/bin/ld",
                     "-o",
                     output,
                     o_filepath,
@@ -71,7 +101,7 @@ def _link_final_executable(
                     "-lSystem",
                     "-syslibroot",
                     system_sdk,
-                ]
+                ],
             )
         case _:
             raise UnsupportedBuilderOperatingSystemError
@@ -89,8 +119,26 @@ def _assemble_object_file(
 
     match current_platform_system():
         case "Darwin":
-            assert architecture == TargetArchitecture.ARM
-            check_output(["as", "-arch", "arm64", "-o", o_filepath, asm_filepath])
+            if architecture != TargetArchitecture.ARM:
+                raise UnsupportedBuilderOperatingSystemError
+
+            command = [
+                "/usr/bin/as",
+                "-arch",
+                "arm64",
+                "-o",
+                str(o_filepath),
+                str(asm_filepath),
+            ]
+            try:
+                check_output(command)  # noqa: S603
+            except CalledProcessError as e:
+                cli_message(
+                    "ERROR",
+                    "Failed to generate binary from output assembly,"
+                    f"error code: {e.returncode}",
+                )
+                sys.exit(1)
         case _:
             raise UnsupportedBuilderOperatingSystemError
 
@@ -98,7 +146,7 @@ def _assemble_object_file(
 
 
 def _generate_asm(
-    operators: list[Operator],
+    operators: Sequence[Operator],
     output: Path,
     architecture: TargetArchitecture,
     os: TargetOperatingSystem,
@@ -108,7 +156,7 @@ def _generate_asm(
     asm_filepath = build_cache_directory / "build" if build_cache_directory else output
     asm_filepath = asm_filepath.with_suffix(".s")
 
-    generate_asm(asm_filepath, operators, architecture, os)
+    generate_code_for_assembler(asm_filepath, operators, architecture, os)
     return asm_filepath
 
 
@@ -117,7 +165,7 @@ def _validate_toolkit_installation() -> None:
         case "Darwin":
             required_toolkit = ("as", "ld", "xcrun")
 
-            toolkit = set([(tk, which(tk) is not None) for tk in required_toolkit])
+            toolkit = {(tk, which(tk) is not None) for tk in required_toolkit}
             missing_toolkit = {
                 tk for (tk, tk_is_installed) in toolkit if not tk_is_installed
             }

@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Sequence
 from subprocess import CalledProcessError, run
 
 from gofra.assembler import assemble_executable
@@ -14,13 +15,15 @@ def cli_entry_point() -> None:
     with cli_user_error_handler():
         args = parse_cli_arguments()
         operators = process_input_file(
-            args.filepath, optimize=not args.no_optimizations, linter=not args.no_linter
+            args.filepath,
+            optimize=not args.no_optimizations,
+            linter=not args.no_linter,
         )
         if args.action_compile:
             _cli_compile_action(operators, args)
 
 
-def _cli_compile_action(operators: list[Operator], args: CLIArguments) -> None:
+def _cli_compile_action(operators: Sequence[Operator], args: CLIArguments) -> None:
     cli_message("INFO", "Trying to compile input file...")
 
     assemble_executable(
@@ -33,23 +36,25 @@ def _cli_compile_action(operators: list[Operator], args: CLIArguments) -> None:
     )
 
     cli_message(
-        "INFO", f"Compiled input file down to executable `{args.filepath_output.name}`!"
+        "INFO",
+        f"Compiled input file down to executable `{args.filepath_output.name}`!",
     )
 
     if args.execute_after_compile:
         _cli_execute_after_compilation(args)
 
 
-def _cli_execute_after_compilation(args: CLIArguments):
+def _cli_execute_after_compilation(args: CLIArguments) -> None:
     cli_message("INFO", "Trying to execute compiled file due to execute flag...")
     exit_code = 0
     try:
-        run(
+        run(  # noqa: S602
             [args.filepath_output.absolute()],
             stdin=sys.stdin,
             stdout=sys.stdout,
             stderr=sys.stderr,
             check=True,
+            shell=True,
         )
     except CalledProcessError as e:
         exit_code = e.returncode
