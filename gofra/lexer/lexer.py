@@ -154,14 +154,6 @@ def _consume_number_into_token(word: str, location: TokenLocation) -> Token | No
     )
 
 
-def _consume_comment_segment(word: str, context: LexerContext) -> bool:
-    """Continues to next line if encountered comment within words."""
-    is_comment = word.startswith("//")
-    if is_comment:
-        context.row += 1
-    return is_comment
-
-
 def _consume_word_or_keyword_into_token(word: str, location: TokenLocation) -> Token:
     """Consume given word into word or keyword according to declaration."""
     if keyword := WORD_TO_KEYWORD.get(word):
@@ -188,7 +180,7 @@ def _consume_into_token(context: LexerContext, location: TokenLocation) -> Token
     word = context.line[word_starts_at:word_ends_at]
     context.col = find_word_start(context.line, word_ends_at)
 
-    if _consume_comment_segment(word, context):
+    if word.startswith("//"):
         return None
 
     if token := _consume_number_into_token(word, location):
