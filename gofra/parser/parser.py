@@ -8,6 +8,7 @@ from gofra.lexer import (
     TokenType,
     load_file_for_lexical_analysis,
 )
+from gofra.lexer.exceptions import LexerFileNotFoundError
 from gofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD
 
 from ._context import ParserContext
@@ -170,7 +171,7 @@ def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
 
     try:
         include_tokens = list(load_file_for_lexical_analysis(include_path))
-    except FileNotFoundError as e:
+    except LexerFileNotFoundError as e:
         raise ParserIncludeFileNotFoundError(
             include_token=token,
             include_path=include_path,

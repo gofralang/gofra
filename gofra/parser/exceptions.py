@@ -135,6 +135,7 @@ class ParserIncludeFileNotFoundError(GofraError):
         return f"""Unable to include file '{self.include_path}' at {self.include_token.location}'
 File does not exists!
 Please check that this file exists, or try updating include directory paths.
+Import path resolves to '{self.include_path.resolve()}'
 
 Did you supplied wrong name?"""
 

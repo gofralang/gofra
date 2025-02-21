@@ -9,6 +9,7 @@ from ._context import LexerContext
 from .exceptions import (
     LexerEmptyCharacterError,
     LexerExcessiveCharacterLengthError,
+    LexerFileNotFoundError,
     LexerUnclosedCharacterQuoteError,
     LexerUnclosedStringQuoteError,
 )
@@ -35,6 +36,12 @@ def load_file_for_lexical_analysis(
 
     Returns tokens in default order (ordered)
     """
+    if not source_filepath.exists():
+        raise LexerFileNotFoundError(filepath=source_filepath)
+
+    if not source_filepath.is_file():
+        exit(1)
+
     with source_filepath.open(
         errors="strict",
         buffering=1,

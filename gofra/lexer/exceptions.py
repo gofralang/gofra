@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from gofra.exceptions import GofraError
 
 from .tokens import TokenLocation
@@ -71,3 +73,19 @@ class LexerUnclosedStringQuoteError(LexerError):
 
     def __repr__(self) -> str:
         return f"Unclosed string quote at {self.open_quote_location}"
+
+
+class LexerFileNotFoundError(LexerError):
+    def __init__(
+        self,
+        *args: object,
+        filepath: Path,
+    ) -> None:
+        super().__init__(*args)
+        self.filepath = filepath
+
+    def __repr__(self) -> str:
+        return f"""File not found for lexing!
+
+Tried filepath: '{self.filepath}'
+Resolves to: '{self.filepath.resolve()}'"""
