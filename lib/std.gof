@@ -1,5 +1,6 @@
 include "lib/syscall.gof"
 
+// File descriptors
 macro FD_SDT_IN 0 end
 macro FD_STD_OUT 1 end
 macro FD_STD_ERR 2 end
@@ -7,5 +8,17 @@ macro FD_STD_ERR 2 end
 // For now this is plain binding onto `sc_write` syscall
 // We cannot ensure stack swap state
 macro write
-    sc_write
+    // ARGS: FD, str[ptr, len]
+    sc_write drop
 end
+
+macro fork 
+    sc_fork drop 
+end
+
+macro exit
+    sc_exit drop
+end
+
+macro true 1 1 == end
+macro false 1 0 == end

@@ -28,6 +28,58 @@ Expected {self.expected_type.name} but got {self.actual_type.name}
 Did you miss the types?"""
 
 
+class TypecheckInvalidBinaryMathArithmeticsError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        actual_lhs_type: GofraType,
+        actual_rhs_type: GofraType,
+        operator: Operator,
+    ) -> None:
+        super().__init__(*args)
+        self.actual_lhs_type = actual_lhs_type
+        self.actual_rhs_type = actual_rhs_type
+        self.operator = operator
+
+    def __repr__(self) -> str:
+        return f"""Type safety check failed!
+
+Binary math operator '{self.operator.token.text}' at {self.operator.token.location} expected both {GofraType.INTEGER.name} operands, 
+but got {self.actual_lhs_type.name} on the left and {self.actual_rhs_type.name} on the right.
+
+Expected contract: [{GofraType.INTEGER.name}, {GofraType.INTEGER.name}]
+Actual contract: [{self.actual_lhs_type.name}, {self.actual_rhs_type.name}]
+
+Pointer arithmetics disallowed within binary math operators!
+Please use desired pointer-arithmetics safe operators!
+
+Did you miss the types?"""
+
+
+class TypecheckInvalidPointerArithmeticsError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        actual_lhs_type: GofraType,
+        actual_rhs_type: GofraType,
+        operator: Operator,
+    ) -> None:
+        super().__init__(*args)
+        self.actual_lhs_type = actual_lhs_type
+        self.actual_rhs_type = actual_rhs_type
+        self.operator = operator
+
+    def __repr__(self) -> str:
+        return f"""Type safety check failed!
+
+Invalid pointer arithmetics for operator '{self.operator.token.text}' at {self.operator.token.location}
+
+Expected contract: [{GofraType.POINTER.name}, {GofraType.INTEGER.name}]
+Actual contract: [{self.actual_lhs_type.name}, {self.actual_rhs_type.name}]
+
+Did you miss the types?"""
+
+
 class TypecheckNonEmptyStackAtEndError(GofraError):
     def __init__(
         self,

@@ -6,6 +6,8 @@ from gofra.parser.intrinsics import Intrinsic
 
 from ._context import TypecheckContext
 from .exceptions import (
+    TypecheckInvalidBinaryMathArithmeticsError,
+    TypecheckInvalidPointerArithmeticsError,
     TypecheckNonEmptyStackAtEndError,
 )
 from .types import GofraType
@@ -41,6 +43,10 @@ def validate_type_safety(operators: Sequence[Operator]) -> None:
                             GofraType.POINTER,
                             operator=operator,
                         )
+                        context.pop_and_raise_for_argument_type(
+                            GofraType.INTEGER,
+                            operator=operator,
+                        )
                         context.pop_argument_type()
                     case Intrinsic.MEMORY_READ:
                         context.raise_for_enough_arguments(operator, required_args=2)
@@ -48,15 +54,18 @@ def validate_type_safety(operators: Sequence[Operator]) -> None:
                             GofraType.POINTER,
                             operator=operator,
                         )
+                        context.pop_and_raise_for_argument_type(
+                            GofraType.INTEGER,
+                            operator=operator,
+                        )
                         context.push_types(GofraType.INTEGER)
                     case Intrinsic.INCREMENT | Intrinsic.DECREMENT:
                         context.raise_for_enough_arguments(operator, required_args=1)
-                        context.push_types(
-                            context.pop_and_raise_for_argument_type(
-                                GofraType.INTEGER,
-                                operator=operator,
-                            ),
+                        context.pop_and_raise_for_argument_type(
+                            GofraType.INTEGER,
+                            operator=operator,
                         )
+                        context.push_types(GofraType.INTEGER)
                     case Intrinsic.DROP:
                         context.raise_for_enough_arguments(operator, required_args=1)
                         context.consume_n_arguments(args_to_consume=1)
@@ -71,15 +80,49 @@ def validate_type_safety(operators: Sequence[Operator]) -> None:
                         context.raise_for_enough_arguments(operator, required_args=2)
                         context.consume_n_arguments(args_to_consume=2)
                         context.push_types(GofraType.BOOLEAN)
-                    case (
-                        Intrinsic.MINUS
-                        | Intrinsic.PLUS
-                        | Intrinsic.MULTIPLY
-                        | Intrinsic.DIVIDE
-                        | Intrinsic.MODULUS
-                    ):
+                    case Intrinsic.MINUS | Intrinsic.PLUS:
                         context.raise_for_enough_arguments(operator, required_args=2)
-                        context.consume_n_arguments(args_to_consume=2)
+
+                        b, a = (
+                            context.pop_argument_type(),
+                            context.pop_argument_type(),
+                        )
+
+                        if a == GofraType.POINTER:
+                            # Pointer arithmetics
+                            if b != GofraType.INTEGER:
+                                raise TypecheckInvalidPointerArithmeticsError(
+                                    actual_lhs_type=a,
+                                    actual_rhs_type=b,
+                                    operator=operator,
+                                )
+                            context.push_types(GofraType.POINTER)
+                            continue
+
+                        context.push_types(b, a)
+
+                        for _ in range(2):
+                            context.pop_and_raise_for_argument_type(
+                                GofraType.INTEGER,
+                                operator=operator,
+                            )
+
+                        context.push_types(GofraType.INTEGER)
+
+                    case Intrinsic.MULTIPLY | Intrinsic.DIVIDE | Intrinsic.MODULUS:
+                        # Math arithmetics operates only on integers
+                        # so no pointers/booleans/etc are allowed inside these intrinsics
+
+                        context.raise_for_enough_arguments(operator, required_args=2)
+                        b, a = context.pop_argument_type(), context.pop_argument_type()
+
+                        if b != GofraType.INTEGER or a != GofraType.INTEGER:
+                            raise TypecheckInvalidBinaryMathArithmeticsError(
+                                actual_lhs_type=a,
+                                actual_rhs_type=b,
+                                operator=operator,
+                            )
+
                         context.push_types(GofraType.INTEGER)
                     case (
                         Intrinsic.SYSCALL0
