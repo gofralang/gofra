@@ -17,6 +17,7 @@
         "Zhosul"
     ],
     "conventionalCommits.scopes": [
-        "optimizer"
+        "optimizer",
+        "lexer"
     ]
 }

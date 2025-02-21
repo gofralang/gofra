@@ -1,0 +1,13 @@
+include "lib/syscall.gof"
+
+macro FD_SDT_IN 0 end
+macro FD_STD_OUT 1 end
+macro FD_STD_ERR 2 end
+
+macro write
+
+    // For now this is plain binding onto `sc_write` syscall
+    // We cannot ensure stack swap state
+
+    sc_write
+end

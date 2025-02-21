@@ -1,0 +1,18 @@
+// Library that provides convent usage of syscall
+// Implemented for MacOS, ARM64
+// BTW, works-on-my-machine
+
+
+// Syscall numbers 
+
+macro SC_EXIT 1 end
+macro SC_FORK 2 end
+macro SC_READ 3 end
+macro SC_WRITE 4 end
+
+
+// Syscall
+
+macro sc_write
+    SC_WRITE syscall3 drop
+end
