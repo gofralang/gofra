@@ -46,7 +46,10 @@ def optimize_constant_folding(unoptimized: Sequence[Operator]) -> Sequence[Opera
     def shift_unoptimized_operator() -> None:
         op = optimized[-1]
         if op.jumps_to_operator_idx is not None:
-            op.jumps_to_operator_idx -= int(jump_idx_left_shift)
+            op.jumps_to_operator_idx = max(
+                op.jumps_to_operator_idx - int(jump_idx_left_shift),
+                0,
+            )
 
     def shift_open_ctx_operator(shifted_left_by: int) -> None:
         assert len(open_ctx_stack) > 0
