@@ -8,6 +8,8 @@
         "gofralang",
         "Kirill",
         "kirillzhosul",
+        "lldb",
+        "MUNMAP",
         "sdiv",
         "SYSCALL",
         "syslibroot",
@@ -19,6 +21,8 @@
     "conventionalCommits.scopes": [
         "optimizer",
         "lexer",
-        "typecheck"
+        "typecheck",
+        "cli",
+        "parser"
     ]
 }

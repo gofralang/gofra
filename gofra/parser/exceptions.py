@@ -204,6 +204,17 @@ Macro definition should have 'end' to close block.
 Did you forgot to close macro definition?"""
 
 
+class ParserIncludeSelfFileMacroError(GofraError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+    def __repr__(self) -> str:
+        return """Tried to include self within include!
+Including self is prohibited and will lead to no actions, so please remove self-import
+
+Did you mistyped import path?"""
+
+
 class ParserMacroRedefinesLanguageDefinitionError(GofraError):
     def __init__(self, *args: object, macro_token: Token, macro_name: str) -> None:
         super().__init__(*args)

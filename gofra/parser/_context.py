@@ -1,6 +1,7 @@
 from collections import deque
 from collections.abc import MutableMapping, MutableSequence
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from gofra.lexer import Token
 
@@ -13,16 +14,26 @@ from .operators import Operator, OperatorOperand, OperatorType
 class ParserContext:
     """Context for parsing which only required from internal usages."""
 
+    parsing_from_path: Path
+
+    # Mostly immutable input source tokens
     tokens: deque[Token]
+
+    # Resulting operators from parsing
     operators: MutableSequence[Operator] = field(default_factory=list)
+
+    # Contextual data
     macros: MutableMapping[str, Macro] = field(default_factory=dict)
     context_stack: deque[tuple[int, Operator]] = field(default_factory=deque)
+    included_source_paths: set[Path] = field(default_factory=set)
 
     current_operator: int = field(default=0)
 
     def __post_init__(self) -> None:
         if not self.tokens:
             raise ParserEmptyInputTokensError
+
+        self.included_source_paths.add(self.parsing_from_path)
 
     def tokens_exhausted(self) -> bool:
         return len(self.tokens) == 0

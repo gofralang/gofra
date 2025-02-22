@@ -20,6 +20,7 @@ from .exceptions import (
     ParserIncludeFileNotFoundError,
     ParserIncludeNonStringNameError,
     ParserIncludeNoPathError,
+    ParserIncludeSelfFileMacroError,
     ParserMacroNonWordNameError,
     ParserMacroRedefinesLanguageDefinitionError,
     ParserMacroRedefinitionError,
@@ -38,12 +39,16 @@ from .operators import OperatorType
 def parse_file_into_operators(path: Path) -> ParserContext:
     """Load file for parsing into operators (lex and then parse)."""
     tokens = load_file_for_lexical_analysis(source_filepath=path)
-    return _parse_lexical_tokens_into_operators(tokens)
+    return _parse_lexical_tokens_into_operators(path, tokens)
 
 
-def _parse_lexical_tokens_into_operators(tokens: TokenGenerator) -> ParserContext:
+def _parse_lexical_tokens_into_operators(
+    parsing_from_path: Path,
+    tokens: TokenGenerator,
+) -> ParserContext:
     """Consumes token stream into language operators."""
     context = ParserContext(
+        parsing_from_path=parsing_from_path,
         tokens=deque(reversed(list(tokens))),
     )
 
@@ -169,6 +174,15 @@ def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
     assert isinstance(include_path_raw, str)
     include_path = Path(include_path_raw)
 
+    if include_path.absolute() == context.parsing_from_path.absolute():
+        raise ParserIncludeSelfFileMacroError
+
+    already_included_sources = (n.resolve() for n in context.included_source_paths)
+    if include_path.resolve() in already_included_sources:
+        return
+
+    context.included_source_paths.add(include_path)
+
     try:
         include_tokens = list(load_file_for_lexical_analysis(include_path))
     except LexerFileNotFoundError as e:
@@ -176,7 +190,8 @@ def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
             include_token=token,
             include_path=include_path,
         ) from e
-    context.tokens.extend(deque(reversed(include_tokens)))
+
+    context.tokens.extend(reversed(include_tokens))
 
 
 def _consume_conditional_keyword_from_token(
