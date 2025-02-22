@@ -16,12 +16,14 @@ class CLIArguments:
     action_compile: bool
 
     execute_after_compile: bool
+    fall_into_debugger: bool
 
     target_os: TargetOperatingSystem
     target_architecture: TargetArchitecture
 
     no_optimizations: bool
-    no_linter: bool
+    no_typecheck: bool
+
     build_cache_directory: Path | None
     build_cache_delete_after_run: bool
 
@@ -33,6 +35,7 @@ def parse_cli_arguments() -> CLIArguments:
     )
     return CLIArguments(
         filepath=Path(args.file),
+        fall_into_debugger=bool(args.fall_into_debugger),
         filepath_output=filepath_output,
         action_compile=bool(args.compile),
         execute_after_compile=bool(args.execute),
@@ -41,7 +44,7 @@ def parse_cli_arguments() -> CLIArguments:
         target_architecture=TargetArchitecture.ARM,
         target_os=TargetOperatingSystem.MACOS,
         no_optimizations=bool(args.no_optimizations),
-        no_linter=bool(args.no_linter),
+        no_typecheck=bool(args.no_typecheck),
     )
 
 
@@ -63,8 +66,17 @@ def _construct_argument_parser() -> ArgumentParser:
     parser.add_argument(
         "--execute",
         "-e",
+        required=False,
         action="store_true",
         help="If given, will execute output after run",
+    )
+
+    parser.add_argument(
+        "--fall-into-debugger",
+        "-dbg",
+        action="store_true",
+        required=False,
+        help="If passed, will run debugger after compile",
     )
 
     parser.add_argument(
@@ -74,6 +86,7 @@ def _construct_argument_parser() -> ArgumentParser:
         required=False,
         help="Path to output file which will be generated",
     )
+
     parser.add_argument(
         "--cache-dir",
         "-cd",
@@ -99,11 +112,11 @@ def _construct_argument_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
-        "--no-linter",
-        "-nl",
+        "--no-typecheck",
+        "-nt",
         action="store_true",
         required=False,
-        help="If passed, will disable linter",
+        help="If passed, will disable type checking",
     )
 
     return parser

@@ -10,11 +10,11 @@ def process_input_file(
     filepath: Path,
     *,
     optimize: bool = True,
-    linter: bool = True,
+    typecheck: bool = True,
 ) -> Sequence[Operator]:
     operators = parse_file_into_operators(filepath).operators
     if optimize:
         operators = optimize_operators(operators)
-    if linter:
+    if typecheck:
         validate_type_safety(operators)
     return operators

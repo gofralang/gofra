@@ -1,3 +1,4 @@
+import signal
 import sys
 from collections.abc import Sequence
 from subprocess import CalledProcessError, run
@@ -17,7 +18,7 @@ def cli_entry_point() -> None:
         operators = process_input_file(
             args.filepath,
             optimize=not args.no_optimizations,
-            linter=not args.no_linter,
+            typecheck=not args.no_typecheck,
         )
         if args.action_compile:
             _cli_compile_action(operators, args)
@@ -40,7 +41,9 @@ def _cli_compile_action(operators: Sequence[Operator], args: CLIArguments) -> No
         f"Compiled input file down to executable `{args.filepath_output.name}`!",
     )
 
-    if args.execute_after_compile:
+    if args.fall_into_debugger:
+        _cli_fall_into_debugger_after_compilation(args)
+    elif args.execute_after_compile:
         _cli_execute_after_compilation(args)
 
 
@@ -61,3 +64,32 @@ def _cli_execute_after_compilation(args: CLIArguments) -> None:
 
     level = "INFO" if exit_code == 0 else "ERROR"
     cli_message(level, f"Program finished with exit code {exit_code}!")
+
+
+def _cli_fall_into_debugger_after_compilation(args: CLIArguments) -> None:
+    cli_message(
+        "INFO",
+        "Trying to fall into debugger for compiled file due to debugger flag...",
+    )
+
+    compiled_target_path = args.filepath_output.absolute()
+
+    cmd_args = ["-o", "run"]
+
+    exit_code = 0
+    try:
+        run(  # noqa: S603
+            ["/usr/bin/lldb", str(compiled_target_path), *cmd_args],
+            stdin=sys.stdin,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            check=True,
+        )
+    except CalledProcessError as e:
+        exit_code = e.returncode
+    except KeyboardInterrupt:
+        cli_message("INFO", "Debugger was interrupted by user!")
+        sys.exit(0)
+
+    level = "INFO" if exit_code == 0 else "ERROR"
+    cli_message(level, f"Debugger finished with exit code {exit_code}!")
