@@ -1,4 +1,3 @@
-import signal
 import sys
 from collections.abc import Sequence
 from subprocess import CalledProcessError, run
