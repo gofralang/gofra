@@ -1,5 +1,5 @@
 from collections import deque
-from collections.abc import MutableMapping, MutableSequence
+from collections.abc import Iterable, MutableMapping, MutableSequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -15,6 +15,7 @@ class ParserContext:
     """Context for parsing which only required from internal usages."""
 
     parsing_from_path: Path
+    include_search_directories: Iterable[Path]
 
     # Mostly immutable input source tokens
     tokens: deque[Token]

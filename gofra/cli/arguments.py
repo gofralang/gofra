@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from platform import system as current_platform_system
 
+from gofra.cli.output import MessageLevel, cli_message
 from gofra.targets import TargetArchitecture, TargetOperatingSystem
 
 
@@ -17,6 +18,8 @@ class CLIArguments:
 
     execute_after_compile: bool
     fall_into_debugger: bool
+
+    include_search_directories: list[Path]
 
     target_os: TargetOperatingSystem
     target_architecture: TargetArchitecture
@@ -33,6 +36,12 @@ def parse_cli_arguments() -> CLIArguments:
     filepath_output = (
         Path(args.output) if args.output else _output_filename_fallback(Path(args.file))
     )
+    if None in args.include_search_dir:
+        cli_message(
+            level="WARNING",
+            text="One of the include search directories is empty, skipping...",
+        )
+
     return CLIArguments(
         filepath=Path(args.file),
         fall_into_debugger=bool(args.fall_into_debugger),
@@ -45,6 +54,11 @@ def parse_cli_arguments() -> CLIArguments:
         target_os=TargetOperatingSystem.MACOS,
         no_optimizations=bool(args.no_optimizations),
         no_typecheck=bool(args.no_typecheck),
+        include_search_directories=[
+            Path(args.file).parent,
+            Path("./"),
+            *map(Path, [a for a in args.include_search_dir if a]),
+        ],
     )
 
 
@@ -61,6 +75,16 @@ def _construct_argument_parser() -> ArgumentParser:
         "-c",
         action="store_true",
         help="Compile the file into executable",
+    )
+
+    parser.add_argument(
+        "--include-search-dir",
+        "-isd",
+        required=False,
+        help="Directories to search for include files",
+        action="append",
+        nargs="?",
+        default=["./", "./lib"],
     )
 
     parser.add_argument(

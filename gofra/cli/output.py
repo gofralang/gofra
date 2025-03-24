@@ -1,7 +1,7 @@
 from sys import stderr, stdout
 from typing import Literal
 
-type MessageLevel = Literal["INFO", "ERROR"]
+type MessageLevel = Literal["INFO", "ERROR", "WARNING"]
 
 
 def cli_message(level: MessageLevel, text: str) -> None:

@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from collections import deque
+from collections.abc import Iterable
 from pathlib import Path
 
 from gofra.lexer import (
@@ -8,7 +11,6 @@ from gofra.lexer import (
     TokenType,
     load_file_for_lexical_analysis,
 )
-from gofra.lexer.exceptions import LexerFileNotFoundError
 from gofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD
 
 from ._context import ParserContext
@@ -36,20 +38,29 @@ from .intrinsics import WORD_TO_INTRINSIC
 from .operators import OperatorType
 
 
-def parse_file_into_operators(path: Path) -> ParserContext:
+def parse_file_into_operators(
+    path: Path,
+    include_search_directories: Iterable[Path],
+) -> ParserContext:
     """Load file for parsing into operators (lex and then parse)."""
     tokens = load_file_for_lexical_analysis(source_filepath=path)
-    return _parse_lexical_tokens_into_operators(path, tokens)
+    return _parse_lexical_tokens_into_operators(
+        path,
+        tokens,
+        include_search_directories=include_search_directories,
+    )
 
 
 def _parse_lexical_tokens_into_operators(
     parsing_from_path: Path,
     tokens: TokenGenerator,
+    include_search_directories: Iterable[Path],
 ) -> ParserContext:
     """Consumes token stream into language operators."""
     context = ParserContext(
         parsing_from_path=parsing_from_path,
         tokens=deque(reversed(list(tokens))),
+        include_search_directories=include_search_directories,
     )
 
     while not context.tokens_exhausted():
@@ -172,26 +183,41 @@ def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
         raise ParserIncludeNonStringNameError(include_path_token=include_path_token)
 
     assert isinstance(include_path_raw, str)
-    include_path = Path(include_path_raw)
+    requested_include_path = Path(include_path_raw)
 
-    if include_path.absolute() == context.parsing_from_path.absolute():
+    if requested_include_path.absolute() == context.parsing_from_path.absolute():
         raise ParserIncludeSelfFileMacroError
 
     already_included_sources = (n.resolve() for n in context.included_source_paths)
-    if include_path.resolve() in already_included_sources:
+    if requested_include_path.resolve() in already_included_sources:
         return
+
+    include_path = _resolve_real_import_path(requested_include_path, context)
+
+    if include_path is None:
+        raise ParserIncludeFileNotFoundError(
+            include_token=token,
+            include_path=requested_include_path,
+        )
 
     context.included_source_paths.add(include_path)
 
-    try:
-        include_tokens = list(load_file_for_lexical_analysis(include_path))
-    except LexerFileNotFoundError as e:
-        raise ParserIncludeFileNotFoundError(
-            include_token=token,
-            include_path=include_path,
-        ) from e
+    context.tokens.extend(reversed(list(load_file_for_lexical_analysis(include_path))))
 
-    context.tokens.extend(reversed(include_tokens))
+
+def _resolve_real_import_path(
+    requested_include_path: Path,
+    context: ParserContext,
+) -> Path | None:
+    if requested_include_path.exists():
+        return requested_include_path
+
+    for include_search_directory in context.include_search_directories:
+        load_from_path = include_search_directory.joinpath(requested_include_path)
+        if load_from_path.exists():
+            return load_from_path
+
+    return None
 
 
 def _consume_conditional_keyword_from_token(

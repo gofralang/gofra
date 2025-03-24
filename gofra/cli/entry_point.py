@@ -18,6 +18,7 @@ def cli_entry_point() -> None:
             args.filepath,
             optimize=not args.no_optimizations,
             typecheck=not args.no_typecheck,
+            include_search_directories=args.include_search_directories,
         )
         if args.action_compile:
             _cli_compile_action(operators, args)

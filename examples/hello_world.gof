@@ -1,6 +1,6 @@
 // Example of  "Hello, World!"
 // Almost same as bare example, but introduces library usage
 
-include "lib/std.gof"
+include "std.gof"
 
 FD_STD_OUT "Hello, World!\n" write
