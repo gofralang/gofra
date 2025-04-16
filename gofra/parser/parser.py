@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Iterable
+from difflib import get_close_matches
 from pathlib import Path
 
 from gofra.lexer import (
@@ -98,9 +99,15 @@ def _consume_token_for_parsing(token: Token, context: ParserContext) -> None:
             raise ParserUnknownWordError(
                 word_token=token,
                 macro_names=context.macros.keys(),
+                best_match=_best_match_for_word(context, token.text),
             )
         case TokenType.KEYWORD:
             return _consume_keyword_token(context, token)
+
+
+def _best_match_for_word(context: ParserContext, word: str) -> str | None:
+    matches = get_close_matches(word, WORD_TO_INTRINSIC.keys() | context.macros.keys())
+    return matches[0] if matches else None
 
 
 def _consume_keyword_token(context: ParserContext, token: Token) -> None:
@@ -188,10 +195,6 @@ def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
     if requested_include_path.absolute() == context.parsing_from_path.absolute():
         raise ParserIncludeSelfFileMacroError
 
-    already_included_sources = (n.resolve() for n in context.included_source_paths)
-    if requested_include_path.resolve() in already_included_sources:
-        return
-
     include_path = _resolve_real_import_path(requested_include_path, context)
 
     if include_path is None:
@@ -200,8 +203,11 @@ def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
             include_path=requested_include_path,
         )
 
-    context.included_source_paths.add(include_path)
+    already_included_sources = (n.resolve() for n in context.included_source_paths)
+    if include_path.resolve() in already_included_sources:
+        return
 
+    context.included_source_paths.add(include_path)
     context.tokens.extend(reversed(list(load_file_for_lexical_analysis(include_path))))
 
 

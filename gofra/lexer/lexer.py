@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Generator, Sequence
 from typing import TYPE_CHECKING
 
@@ -40,7 +41,7 @@ def load_file_for_lexical_analysis(
         raise LexerFileNotFoundError(filepath=source_filepath)
 
     if not source_filepath.is_file():
-        exit(1)
+        sys.exit(1)
 
     with source_filepath.open(
         errors="strict",

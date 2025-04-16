@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -51,16 +53,20 @@ class ParserUnknownWordError(GofraError):
         *args: object,
         word_token: Token,
         macro_names: Iterable[str],
+        best_match: str | None = None,
     ) -> None:
         super().__init__(*args)
         self.word_token = word_token
         self.macro_names = macro_names
+        self.best_match = best_match
 
     def __repr__(self) -> str:
         return f"""Encountered an unknown name '{self.word_token.text}' at {self.word_token.location}!
 Expected intrinsic or macro name.
 
-Available macro names: {", ".join(self.macro_names) or "..."}"""
+Available macro names: {", ".join(self.macro_names) or "..."}""" + (
+            f"\nDid you mean '{self.best_match}'?" if self.best_match else ""
+        )
 
 
 class ParserNoWhileBeforeDoError(GofraError):
@@ -135,7 +141,8 @@ class ParserIncludeFileNotFoundError(GofraError):
         return f"""Unable to include file '{self.include_path}' at {self.include_token.location}'
 File does not exists!
 Please check that this file exists, or try updating include directory paths.
-Import path resolves to '{self.include_path.resolve()}'
+Direct import path resolves to '{self.include_path.resolve()}'
+(Does not includes import directory traverses)
 
 Did you supplied wrong name?"""
 
