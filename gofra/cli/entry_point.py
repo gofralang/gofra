@@ -61,6 +61,9 @@ def _cli_execute_after_compilation(args: CLIArguments) -> None:
         )
     except CalledProcessError as e:
         exit_code = e.returncode
+    except KeyboardInterrupt:
+        cli_message("INFO", "Execution was interrupted by user!")
+        sys.exit(0)
 
     level = "INFO" if exit_code == 0 else "ERROR"
     cli_message(level, f"Program finished with exit code {exit_code}!")
