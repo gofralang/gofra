@@ -23,6 +23,7 @@
         "lexer",
         "typecheck",
         "cli",
-        "parser"
+        "parser",
+        "library"
     ]
 }
