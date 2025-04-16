@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from platform import system as current_platform_system
 
-from gofra.cli.output import MessageLevel, cli_message
+from gofra.cli.output import cli_message
 from gofra.targets import TargetArchitecture, TargetOperatingSystem
 
 
