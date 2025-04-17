@@ -9,9 +9,12 @@
         "gofralang",
         "Kirill",
         "kirillzhosul",
+        "libc",
         "lldb",
+        "malloc",
         "MUNMAP",
         "sdiv",
+        "sprintf",
         "SYSCALL",
         "syslibroot",
         "tadr",
@@ -25,6 +28,7 @@
         "typecheck",
         "cli",
         "parser",
-        "library"
+        "library",
+        "codegen"
     ]
 }

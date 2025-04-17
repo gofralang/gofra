@@ -313,12 +313,17 @@ def _write_executable_body_instruction_set(
                 function = program_context.functions[function_name]
 
                 if function.is_extern:
-                    for arg_register, call_sig in enumerate(function.call_signature):
-                        del call_sig
+                    for arg_register, _ in enumerate(function.call_signature):
                         context.write("ldr X%s, [SP]" % arg_register)
                         context.write("add SP, SP, #16")
 
                 context.write("bl %s" % function_name)
+
+                if function.return_type is not None:
+                    context.write(
+                        "str X0, [SP]",
+                        "sub SP, SP, #16",
+                    )
             case _:
                 raise NotImplementedError(
                     "Operator %s is not implemented in ARM64 MacOS backend"
