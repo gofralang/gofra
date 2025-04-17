@@ -1,10 +1,9 @@
 import sys
-from collections.abc import Sequence
 from subprocess import CalledProcessError, run
 
 from gofra.assembler import assemble_executable
+from gofra.context import ProgramContext
 from gofra.gofra import process_input_file
-from gofra.parser import Operator
 
 from .arguments import CLIArguments, parse_cli_arguments
 from .errors import cli_user_error_handler
@@ -14,21 +13,21 @@ from .output import cli_message
 def cli_entry_point() -> None:
     with cli_user_error_handler():
         args = parse_cli_arguments()
-        operators = process_input_file(
+        context = process_input_file(
             args.filepath,
             optimize=not args.no_optimizations,
             typecheck=not args.no_typecheck,
             include_search_directories=args.include_search_directories,
         )
         if args.action_compile:
-            _cli_compile_action(operators, args)
+            _cli_compile_action(context, args)
 
 
-def _cli_compile_action(operators: Sequence[Operator], args: CLIArguments) -> None:
+def _cli_compile_action(context: ProgramContext, args: CLIArguments) -> None:
     cli_message("INFO", "Trying to compile input file...")
 
     assemble_executable(
-        operators=operators,
+        context=context,
         output=args.filepath_output,
         architecture=args.target_architecture,
         os=args.target_os,

@@ -1,14 +1,13 @@
-from collections.abc import Sequence
 from typing import IO, Protocol
 
-from gofra.parser.operators import Operator
+from gofra.context import ProgramContext
 
 
 class CodeGeneratorBackend(Protocol):
     def __call__(
         self,
         fd: IO[str],
-        operators: Sequence[Operator],
+        program_context: ProgramContext,
         *,
         debug_comments: bool,
     ) -> None: ...

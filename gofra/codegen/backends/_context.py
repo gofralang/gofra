@@ -6,7 +6,7 @@ from typing import IO
 @dataclass(frozen=True)
 class CodegenContext:
     fd: IO[str]
-    strings: MutableMapping[str, str] = field(default_factory=dict)
+    strings: MutableMapping[str, str] = field(default_factory=lambda: dict())  # noqa: C408
 
     def write(self, *lines: str) -> int:
         return self.fd.write("\t" + "\n\t".join(lines) + "\n")

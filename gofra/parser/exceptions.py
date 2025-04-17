@@ -1,10 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from gofra.exceptions import GofraError
-from gofra.lexer.tokens import Token, TokenLocation
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
+    from gofra.lexer.tokens import Token, TokenLocation
 
 
 class ParserEmptyInputTokensError(GofraError):
@@ -169,6 +173,65 @@ class ParserNoMacroNameError(GofraError):
 Macros should have name after 'macro' keyword
 
 Do you have unfinished macro definition?"""
+
+
+class ExternNoFunctionNameError(GofraError):
+    def __init__(self, *args: object, macro_token: Token) -> None:
+        super().__init__(*args)
+        self.macro_token = macro_token
+
+    def __repr__(self) -> str:
+        return f"""No 'extern' function name specified at {self.macro_token.location}!
+Extern functions should have name after 'extern' keyword
+
+Do you have unfinished extern function definition?"""
+
+
+class ParserExternNonWordNameError(GofraError):
+    def __init__(self, *args: object, function_name_token: Token) -> None:
+        super().__init__(*args)
+        self.function_name_token = function_name_token
+
+    def __repr__(self) -> str:
+        return f"""Non word name for extern function name at {self.function_name_token.location}!
+Extern function signature should have name as word after 'extern' keyword but got '{self.function_name_token.type.name}'!"""
+
+
+class ParserExternRedefinesMacroError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        redefine_extern_function_name_token: Token,
+        original_macro_location: TokenLocation,
+        original_macro_name: str,
+    ) -> None:
+        super().__init__(*args)
+        self.redefine_extern_function_name_token = redefine_extern_function_name_token
+        self.original_macro_location = original_macro_location
+        self.original_macro_name = original_macro_name
+
+    def __repr__(self) -> str:
+        return f"""Redefinition of an macro '{self.original_macro_name}' at {self.redefine_extern_function_name_token.location} inside extern function!
+Original definition found at {self.original_macro_location}!
+Extern cannot redefine macro names!"""
+
+
+class ParserExternRedefinesLanguageDefinitionError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        extern_token: Token,
+        extern_function_name: str,
+    ) -> None:
+        super().__init__(*args)
+        self.extern_token = extern_token
+        self.extern_function_name = extern_function_name
+
+    def __repr__(self) -> str:
+        return (
+            f"Extern function '{self.extern_function_name}' at {self.extern_token.location}"
+            " tries to redefine language definition!"
+        )
 
 
 class ParserMacroNonWordNameError(GofraError):

@@ -7,3 +7,12 @@ class GofraType(IntEnum):
     INTEGER = auto()
     POINTER = auto()
     BOOLEAN = auto()
+    VOID = auto()
+
+
+WORD_TO_GOFRA_TYPE = {
+    "int": GofraType.INTEGER,
+    "ptr": GofraType.POINTER,
+    "bool": GofraType.BOOLEAN,
+    "void": GofraType.VOID,
+}

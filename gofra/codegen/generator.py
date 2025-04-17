@@ -1,7 +1,6 @@
-from collections.abc import Sequence
 from pathlib import Path
 
-from gofra.parser.operators import Operator
+from gofra.context import ProgramContext
 from gofra.targets import TargetArchitecture, TargetOperatingSystem
 
 from .get_backend import get_backend_for_target_pair
@@ -9,7 +8,7 @@ from .get_backend import get_backend_for_target_pair
 
 def generate_code_for_assembler(
     output_path: Path,
-    operators: Sequence[Operator],
+    context: ProgramContext,
     architecture: TargetArchitecture,
     operating_system: TargetOperatingSystem,
     *,
@@ -25,4 +24,4 @@ def generate_code_for_assembler(
         newline="",
         encoding="UTF-8",
     ) as fd:
-        return backend(fd, operators, debug_comments=debug_comments)
+        return backend(fd, context, debug_comments=debug_comments)

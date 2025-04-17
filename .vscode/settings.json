@@ -4,6 +4,7 @@
         "codegen",
         "Concatenative",
         "cset",
+        "extendleft",
         "gofra",
         "gofralang",
         "Kirill",

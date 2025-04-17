@@ -14,3 +14,6 @@ macro false 1 0 == end
 macro fork  sc_fork  drop end
 macro exit  sc_exit  drop end
 macro write sc_write drop end
+
+
+

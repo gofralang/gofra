@@ -17,13 +17,11 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    from gofra.parser.operators import Operator
+    from gofra.context import ProgramContext
 
 
 def assemble_executable(  # noqa: PLR0913
-    operators: Sequence[Operator],
+    context: ProgramContext,
     output: Path,
     architecture: TargetArchitecture,
     os: TargetOperatingSystem,
@@ -38,7 +36,7 @@ def assemble_executable(  # noqa: PLR0913
     )
 
     asm_filepath = _generate_asm(
-        operators,
+        context,
         output,
         architecture,
         os,
@@ -135,7 +133,7 @@ def _assemble_object_file(
             except CalledProcessError as e:
                 cli_message(
                     "ERROR",
-                    "Failed to generate binary from output assembly,"
+                    "Failed to generate binary from output assembly, "
                     f"error code: {e.returncode}",
                 )
                 sys.exit(1)
@@ -146,7 +144,7 @@ def _assemble_object_file(
 
 
 def _generate_asm(
-    operators: Sequence[Operator],
+    context: ProgramContext,
     output: Path,
     architecture: TargetArchitecture,
     os: TargetOperatingSystem,
@@ -156,7 +154,7 @@ def _generate_asm(
     asm_filepath = build_cache_directory / "build" if build_cache_directory else output
     asm_filepath = asm_filepath.with_suffix(".s")
 
-    generate_code_for_assembler(asm_filepath, operators, architecture, os)
+    generate_code_for_assembler(asm_filepath, context, architecture, os)
     return asm_filepath
 
 

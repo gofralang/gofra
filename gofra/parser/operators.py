@@ -24,6 +24,8 @@ class OperatorType(IntEnum):
     DO = auto()
     END = auto()
 
+    CALL = auto()
+
 
 @dataclass(frozen=False)
 class Operator:

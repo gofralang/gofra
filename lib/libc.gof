@@ -1,0 +1,19 @@
+extern func void _puts[ptr]
+extern func void _socket[int,int,int]
+
+inline func void puts[]
+    drop 
+    call _puts
+    drop
+end
+
+
+macro _malloc end
+macro _htons end 
+macro _inet_addr end
+
+macro socket call _socket end
+macro htons call _htons end
+macro inet_addr call _inet_addr end 
+macro malloc call _malloc end
+
