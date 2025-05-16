@@ -327,8 +327,8 @@ def _write_executable_body_instruction_set(
 
                 if function.type_contract_out:
                     context.write(
-                        "str X0, [SP]",
                         "sub SP, SP, #16",
+                        "str X0, [SP]",
                     )
             case _:
                 raise NotImplementedError(
