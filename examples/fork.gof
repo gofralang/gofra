@@ -1,0 +1,5 @@
+include "std.gof"
+
+80 call _putchar < 1 if 
+    "write failed" puts exit
+end

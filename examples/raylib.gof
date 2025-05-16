@@ -1,0 +1,30 @@
+include "std.gof"
+include "raylib.gof"
+
+macro WINDOW_WIDTH 800 end
+macro WINDOW_HEIGHT 450 end
+macro WINDOW_NAME "Welcome to Gofra!" end
+macro WINDOW_FPS 60 end
+
+inline func void create_window
+    WINDOW_WIDTH WINDOW_HEIGHT 
+    WINDOW_NAME drop 
+    call InitWindow
+
+    WINDOW_FPS call SetTargetFPS
+end
+
+inline func bool window_is_open
+    call WindowShouldClose false ==
+end
+
+call create_window
+
+while window_is_open do 
+    BeginDrawing
+    0 ClearBackground
+    "Hello World" drop 0 200 20 255 call _DrawText
+    EndDrawing
+end
+
+CloseWindow

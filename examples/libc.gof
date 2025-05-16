@@ -1,0 +1,19 @@
+include "std.gof"
+
+"Goodbye!" call puts
+macro BUFFER_SIZE 1024 end
+
+inline func void panic
+    puts
+    "Panicked, aborted." puts
+    1 exit
+end
+
+
+"from my panic handler" call panic
+
+BUFFER_SIZE malloc 
+0 < if 
+    "Unable to allocate buffer!"
+    call panic
+end

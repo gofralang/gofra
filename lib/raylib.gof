@@ -22,3 +22,14 @@ inline func void BeginDrawing[] call _BeginDrawing end
 // void EndDrawing()
 extern func void _EndDrawing[]
 inline func void EndDrawing[] call _EndDrawing end
+
+// void ClearBackground(Color)
+// TODO(@kirillzhosul): We cannot pass color struct for now
+extern func void _ClearBackground[int]
+inline func void ClearBackground[int] call _ClearBackground end
+
+
+// void DrawText(char[], int, int, int, Color)
+extern func void _DrawText[int,int,int,int,int]
+inline func void DrawText[int,int,int,int,int] call _DrawText end
+
