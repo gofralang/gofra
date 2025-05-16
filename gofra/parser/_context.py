@@ -57,28 +57,32 @@ class ParserContext:
         from_token: Token,
         name: str,
         *,
-        call_signature: Sequence[GofraType],
-        return_type: GofraType | None,
-        is_inline: bool,
-        is_extern: bool,
+        type_contract_in: Sequence[GofraType],
+        type_contract_out: Sequence[GofraType],
+        emit_inline_body: bool,
+        is_externally_defined: bool,
+        source: Sequence[Operator],
     ) -> Function:
         function = Function(
             location=from_token.location,
-            inner_tokens=[],
-            inner_body=[],
             name=name,
-            call_signature=call_signature,
-            return_type=return_type,
-            is_inline=is_inline,
-            is_extern=is_extern,
+            source=source,
+            type_contract_in=type_contract_in,
+            type_contract_out=type_contract_out,
+            emit_inline_body=emit_inline_body,
+            is_externally_defined=is_externally_defined,
         )
         self.functions[name] = function
         return function
 
     def expand_from_inline_block(self, inline_block: Macro | Function) -> None:
-        if isinstance(inline_block, Function) and inline_block.is_extern:
-            msg = "Cannot expand extern function."
-            raise ValueError(msg)
+        if isinstance(inline_block, Function):
+            if inline_block.is_externally_defined:
+                msg = "Cannot expand extern function."
+                raise ValueError(msg)
+            self.current_operator += len(inline_block.source)
+            self.operators.extend(inline_block.source)
+            return
         self.tokens.extend(deque(reversed(inline_block.inner_tokens)))
 
     def pop_context_stack(self) -> tuple[int, Operator]:

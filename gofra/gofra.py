@@ -27,6 +27,6 @@ def process_input_file(
     if optimize:
         context.operators = optimize_operators(context.operators)  # type: ignore  # noqa: PGH003
     if typecheck:
-        validate_type_safety(context.operators)
+        validate_type_safety(context, context.operators)
 
     return context

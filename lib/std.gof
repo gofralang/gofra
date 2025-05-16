@@ -1,19 +1,15 @@
 include "./syscall/_wrapper.gof"
-
-// Unix file descriptors
-macro FD_STD_IN 0 end
-macro FD_STD_OUT 1 end
-macro FD_STD_ERR 2 end
+include "../lib/libc.gof"
 
 // Boolean bindings for type-safety
 // Under optimizer this resolves into single boolean push onto stack
+
+
 macro true 1 1 == end
 macro false 1 0 == end
 
-// Syscall bound macros
-macro fork  sc_fork  drop end
-macro exit  sc_exit  drop end
-macro write sc_write drop end
-
-
-
+inline func void panic_w_message[ptr]
+    puts
+    "Panicked, aborted." puts
+    drop 1 exit
+end

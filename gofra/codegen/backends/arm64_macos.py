@@ -1,4 +1,4 @@
-from collections.abc import MutableSequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import IO
 
@@ -46,7 +46,7 @@ def generate_ARM64_MacOS_backend(  # noqa: N802
 def _write_executable_body_instruction_set(
     fd: IO[str],
     context: CodegenContext,
-    operators: MutableSequence[Operator],
+    operators: Sequence[Operator],
     program_context: ProgramContext,
     *,
     debug_comments: bool,
@@ -312,14 +312,20 @@ def _write_executable_body_instruction_set(
                 function_name = operator.operand
                 function = program_context.functions[function_name]
 
-                if function.is_extern:
-                    for arg_register, _ in enumerate(function.call_signature):
+                if function.is_externally_defined:
+                    # @kirillzhosul: We are reversing arg registers loading end to start
+                    # As loading head of the stack means loading the last argument
+                    for arg_register in range(
+                        len(function.type_contract_in) - 1,
+                        -1,
+                        -1,
+                    ):
                         context.write("ldr X%s, [SP]" % arg_register)
                         context.write("add SP, SP, #16")
 
                 context.write("bl %s" % function_name)
 
-                if function.return_type is not None:
+                if function.type_contract_out:
                     context.write(
                         "str X0, [SP]",
                         "sub SP, SP, #16",
@@ -363,14 +369,14 @@ def _write_function_declarations(
     debug_comments: bool,
 ) -> None:
     for function in filter(
-        lambda f: not f.is_inline and not f.is_extern,
+        lambda f: not f.emit_inline_body and not f.is_externally_defined,
         program_context.functions.values(),
     ):
         context.fd.write("%s:\n" % function.name)
         _write_executable_body_instruction_set(
             context.fd,
             context,
-            function.inner_body,
+            function.source,
             program_context,
             debug_comments=debug_comments,
         )

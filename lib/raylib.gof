@@ -1,0 +1,24 @@
+
+// void InitWindow(int, int, char[])
+extern func void _InitWindow[int,int,int]
+inline func void InitWindow[int,int,int] call _InitWindow end
+
+// bool WindowShouldClose()
+extern func int _WindowShouldClose[]
+inline func int WindowShouldClose[] call _WindowShouldClose end
+
+// void CloseWindow()
+extern func void _CloseWindow[]
+inline func void CloseWindow[] call _CloseWindow end
+
+// void SetTargetFPS(int)
+extern func void _SetTargetFPS[int]
+inline func void SetTargetFPS[int] call _SetTargetFPS end
+
+// void BeginDrawing()
+extern func void _BeginDrawing[]
+inline func void BeginDrawing[] call _BeginDrawing end
+
+// void EndDrawing()
+extern func void _EndDrawing[]
+inline func void EndDrawing[] call _EndDrawing end

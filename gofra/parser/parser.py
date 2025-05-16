@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import MutableSequence
 from difflib import get_close_matches
 from pathlib import Path
-from typing import TYPE_CHECKING, MutableMapping, Sequence
+from typing import TYPE_CHECKING
 
 from gofra.lexer import (
     Keyword,
@@ -15,19 +14,14 @@ from gofra.lexer import (
 )
 from gofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD
 from gofra.parser.functions import Function
-from gofra.parser.macros import Macro
-from gofra.typecheck.types import WORD_TO_GOFRA_TYPE, GofraType
+from gofra.parser.functions.parser import consume_function_definition
 
 from ._context import ParserContext
 from .exceptions import (
-    ExternNoFunctionNameError,
     ParserEmptyIfBodyError,
     ParserEndAfterWhileError,
     ParserEndWithoutContextError,
     ParserExhaustiveContextStackError,
-    ParserExternNonWordNameError,
-    ParserExternRedefinesLanguageDefinitionError,
-    ParserExternRedefinesMacroError,
     ParserIncludeFileNotFoundError,
     ParserIncludeNonStringNameError,
     ParserIncludeNoPathError,
@@ -47,7 +41,9 @@ from .intrinsics import WORD_TO_INTRINSIC
 from .operators import OperatorType
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, MutableMapping, MutableSequence
+
+    from gofra.parser.macros import Macro
 
 
 def parse_file_into_operators(
@@ -212,7 +208,7 @@ def _unpack_function_call_from_token(context: ParserContext, token: Token) -> No
     if not target_function:
         raise NotImplementedError
 
-    if target_function.is_inline:
+    if target_function.emit_inline_body:
         _try_unpack_macro_or_inline_function_from_token(context, extern_call_name_token)
         return
 
@@ -224,111 +220,30 @@ def _unpack_function_call_from_token(context: ParserContext, token: Token) -> No
     )
 
 
-def _unpack_function_modifiers(
-    context: ParserContext,
-    token: Token,
-) -> tuple[Token, bool, bool]:
-    """Return: [is_inline, is_extern]. Consumes tokens for modifiers."""
-    modifier_is_inline = False
-    modifier_is_extern = False
-
-    while not context.tokens_exhausted():
-        if token.type == TokenType.KEYWORD and token.value == Keyword.INLINE:
-            if modifier_is_inline or modifier_is_extern:
-                raise ValueError
-            modifier_is_inline = True
-            token = context.tokens.pop()
-
-        if token.type == TokenType.KEYWORD and token.value == Keyword.EXTERN:
-            if modifier_is_extern or modifier_is_inline:
-                raise ValueError
-            modifier_is_extern = True
-            token = context.tokens.pop()
-
-        if token.type == TokenType.KEYWORD and token.value == Keyword.FUNCTION:
-            break
-
-        raise ValueError
-
-    assert not (modifier_is_extern and modifier_is_inline)
-    return token, modifier_is_inline, modifier_is_extern
-
-
-def _consume_function_definition_name_with_types(
-    context: ParserContext,
-    token: Token,
-) -> tuple[GofraType, str, list[GofraType]]:
-    if context.tokens_exhausted():
-        raise ValueError
-
-    return_type_token = context.tokens.pop()
-
-    return_type = return_type_token.text
-    if return_type not in WORD_TO_GOFRA_TYPE:
-        raise ValueError
-    return_type = WORD_TO_GOFRA_TYPE[return_type]
-
-    if context.tokens_exhausted():
-        raise ExternNoFunctionNameError(macro_token=token)
-
-    function_sig_def_token = context.tokens.pop()
-    function_sig_def = function_sig_def_token.text
-
-    if "[" not in function_sig_def or "]" not in function_sig_def:
-        raise ValueError
-
-    function_name = function_sig_def.split("[")[0].strip()
-
-    signature_types = function_sig_def.split("[")[1].split("]")[0].strip().split(",")
-    signature_types = [WORD_TO_GOFRA_TYPE[t] for t in signature_types if t != ""]
-
-    if function_sig_def_token.type != TokenType.WORD:
-        raise ParserExternNonWordNameError(
-            function_name_token=function_sig_def_token,
-        )
-
-    if function_name in context.macros:
-        macro_reference = context.macros[function_name]
-        raise ParserExternRedefinesMacroError(
-            redefine_extern_function_name_token=function_sig_def_token,
-            original_macro_name=macro_reference.name,
-            original_macro_location=macro_reference.location,
-        )
-
-    if function_name in (WORD_TO_INTRINSIC.keys() | WORD_TO_KEYWORD.keys()):
-        raise ParserExternRedefinesLanguageDefinitionError(
-            extern_token=function_sig_def_token,
-            extern_function_name=function_name,
-        )
-
-    return return_type, function_name, signature_types
-
-
 def _unpack_function_definition_from_token(
     context: ParserContext,
     token: Token,
 ) -> None:
-    token, modifier_is_inline, modifier_is_extern = _unpack_function_modifiers(
-        context,
+    definition = consume_function_definition(context, token)
+    (
         token,
-    )
-    assert token.type == TokenType.KEYWORD
-    assert token.value == Keyword.FUNCTION
-
-    return_type, function_name, call_signature = (
-        _consume_function_definition_name_with_types(context, token)
-    )
-
-    function = context.new_function(
-        from_token=token,
-        name=function_name,
-        call_signature=call_signature,
-        return_type=return_type,
-        is_inline=modifier_is_inline,
-        is_extern=modifier_is_extern,
-    )
+        function_name,
+        type_contract_in,
+        type_contract_out,
+        modifier_is_inline,
+        modifier_is_extern,
+    ) = definition
 
     if modifier_is_extern:
+        context.new_function(
+            from_token=token,
+            name=function_name,
+            type_contract_in=type_contract_in,
+            type_contract_out=type_contract_out,
+            emit_inline_body=modifier_is_inline,
+            is_externally_defined=modifier_is_extern,
+            source=[],
+        )
         return
 
     opened_context_blocks = 0
@@ -338,11 +253,12 @@ def _unpack_function_definition_from_token(
     end_keyword_text = KEYWORD_TO_NAME[Keyword.END]
 
     original_token = token
+    function_body_tokens: list[Token] = []
     while not context.tokens_exhausted():
         token = context.tokens.pop()
 
         if token.type != TokenType.KEYWORD:
-            function.push_token(token)
+            function_body_tokens.append(token)
             continue
 
         if token.text == end_keyword_text:
@@ -355,7 +271,7 @@ def _unpack_function_definition_from_token(
         if is_context_keyword:
             opened_context_blocks += 1
 
-        function.push_token(token)
+        function_body_tokens.append(token)
 
     if not function_was_closed:
         raise ParserUnclosedMacroError(
@@ -363,13 +279,21 @@ def _unpack_function_definition_from_token(
             macro_name=function_name,
         )
 
-    function.inner_body = _parse_lexical_tokens_into_operators(
-        context.parsing_from_path,
-        tokens=function.inner_tokens,
-        include_search_directories=context.include_search_directories,
-        context_propagated_functions=context.functions,
-        context_propagated_macros=context.macros,
-    ).operators
+    context.new_function(
+        from_token=token,
+        name=function_name,
+        type_contract_in=type_contract_in,
+        type_contract_out=type_contract_out,
+        emit_inline_body=modifier_is_inline,
+        is_externally_defined=modifier_is_extern,
+        source=_parse_lexical_tokens_into_operators(
+            context.parsing_from_path,
+            tokens=function_body_tokens,
+            include_search_directories=context.include_search_directories,
+            context_propagated_functions=context.functions,
+            context_propagated_macros=context.macros,
+        ).operators,
+    )
 
 
 def _unpack_include_from_token(context: ParserContext, token: Token) -> None:
@@ -505,7 +429,7 @@ def _try_unpack_macro_or_inline_function_from_token(
     )
     if inline_block:
         if isinstance(inline_block, Function) and (
-            not inline_block.is_inline or inline_block.is_extern
+            not inline_block.emit_inline_body or inline_block.is_externally_defined
         ):
             raise NotImplementedError
         context.expand_from_inline_block(inline_block)

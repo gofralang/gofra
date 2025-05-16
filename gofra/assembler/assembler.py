@@ -25,6 +25,7 @@ def assemble_executable(  # noqa: PLR0913
     output: Path,
     architecture: TargetArchitecture,
     os: TargetOperatingSystem,
+    propagated_linker_flags: list[str],
     *,
     build_cache_directory: Path | None = None,
     build_cache_delete_after_end: bool = False,
@@ -50,7 +51,13 @@ def assemble_executable(  # noqa: PLR0913
         build_cache_directory=build_cache_directory,
     )
 
-    _link_final_executable(output, architecture, os, o_filepath)
+    _link_final_executable(
+        output,
+        architecture,
+        os,
+        o_filepath,
+        propagated_linker_flags=propagated_linker_flags,
+    )
 
     if build_cache_delete_after_end:
         asm_filepath.unlink()
@@ -73,6 +80,7 @@ def _link_final_executable(
     architecture: TargetArchitecture,
     os: TargetOperatingSystem,
     o_filepath: Path,
+    propagated_linker_flags: list[str],
 ) -> None:
     match current_platform_system():
         case "Darwin":
@@ -99,6 +107,7 @@ def _link_final_executable(
                     "-lSystem",
                     "-syslibroot",
                     system_sdk,
+                    *propagated_linker_flags,
                 ],
             )
         case _:

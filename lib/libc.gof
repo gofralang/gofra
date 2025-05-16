@@ -1,19 +1,27 @@
-extern func void _puts[ptr]
-extern func void _socket[int,int,int]
+// libc wrapper
+// externs libc functions and provides inline functions for using them (but you may always use raw calls)
 
-inline func void puts[]
-    drop 
-    call _puts
+
+// int puts(const char *s);
+extern func int _puts[ptr]
+inline func void puts[ptr,int]
     drop
+    call _puts drop
 end
 
+extern func int _putchar[int]
 
-macro _malloc end
-macro _htons end 
-macro _inet_addr end
+// void *malloc(size_t size);
+extern func ptr _malloc[int]
+inline func ptr malloc[int]
+    call _malloc
+end
 
-macro socket call _socket end
-macro htons call _htons end
-macro inet_addr call _inet_addr end 
-macro malloc call _malloc end
-
+// int sprintf(char *buf, const char *fmt, ...);
+extern func int _sprintf[ptr,ptr,int]
+inline func int sprintf[ptr,ptr,int]
+    drop
+    drop
+    call _sprintf
+    drop
+end

@@ -1,6 +1,7 @@
 from collections import deque
 from collections.abc import Sequence
 
+from gofra.context import ProgramContext
 from gofra.parser import Operator, OperatorType
 from gofra.parser.intrinsics import Intrinsic
 
@@ -13,7 +14,10 @@ from .exceptions import (
 from .types import GofraType
 
 
-def validate_type_safety(operators: Sequence[Operator]) -> None:
+def validate_type_safety(
+    program_context: ProgramContext,
+    operators: Sequence[Operator],
+) -> None:
     context = TypecheckContext(operators=deque(operators), emulated_stack_types=[])
 
     for operator in operators:
@@ -167,6 +171,20 @@ def validate_type_safety(operators: Sequence[Operator]) -> None:
                     GofraType.BOOLEAN,
                     operator=operator,
                 )
+            case OperatorType.CALL:
+                function = program_context.functions[str(operator.operand)]
+
+                context.raise_for_enough_arguments(
+                    operator,
+                    required_args=len(function.type_contract_in),
+                )
+
+                for type_in in reversed(function.type_contract_in):
+                    context.pop_and_raise_for_argument_type(
+                        type_in,
+                        operator=operator,
+                    )
+                context.push_types(*function.type_contract_out)
             case OperatorType.DO:
                 context.raise_for_enough_arguments(operator, required_args=1)
                 context.pop_and_raise_for_argument_type(

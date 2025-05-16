@@ -20,6 +20,7 @@ class CLIArguments:
     fall_into_debugger: bool
 
     include_search_directories: list[Path]
+    linker_flags: list[str]
 
     target_os: TargetOperatingSystem
     target_architecture: TargetArchitecture
@@ -59,6 +60,7 @@ def parse_cli_arguments() -> CLIArguments:
             Path("./"),
             *map(Path, [a for a in args.include_search_dir if a]),
         ],
+        linker_flags=args.linker,
     )
 
 
@@ -77,6 +79,15 @@ def _construct_argument_parser() -> ArgumentParser:
         help="Compile the file into executable",
     )
 
+    parser.add_argument(
+        "--linker",
+        "-L",
+        required=False,
+        help="Additional linker flags",
+        action="append",
+        nargs="?",
+        default=[],
+    )
     parser.add_argument(
         "--include-search-dir",
         "-isd",

@@ -31,6 +31,7 @@ def _cli_compile_action(context: ProgramContext, args: CLIArguments) -> None:
         output=args.filepath_output,
         architecture=args.target_architecture,
         os=args.target_os,
+        propagated_linker_flags=args.linker_flags,
         build_cache_delete_after_end=args.build_cache_delete_after_run,
         build_cache_directory=args.build_cache_directory,
     )
