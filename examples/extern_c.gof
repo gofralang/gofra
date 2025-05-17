@@ -1,5 +1,0 @@
-include "libc.gof"
-
-"hello" call puts
-
-
