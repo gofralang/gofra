@@ -1,5 +1,4 @@
 //  python3.13 -m gofra examples/raylib_graphics.gof -c -nt -e -L=-lraylib -L=-L/opt/homebrew/lib -no -o test
-include "std.gof"
 include "raylib.gof"
 
 macro WINDOW_WIDTH 800 end
@@ -7,24 +6,17 @@ macro WINDOW_HEIGHT 450 end
 macro WINDOW_NAME "Welcome to Gofra!" end
 macro WINDOW_FPS 60 end
 
-inline func void create_window
-    WINDOW_WIDTH WINDOW_HEIGHT 
-    WINDOW_NAME drop 
-    call InitWindow
+WINDOW_WIDTH WINDOW_HEIGHT WINDOW_NAME drop InitWindow
 
-    WINDOW_FPS call SetTargetFPS
-end
+WINDOW_FPS SetTargetFPS
 
-inline func bool window_is_open
-    call WindowShouldClose false ==
-end
+macro PLAYER_COLOR 255 255 * 255 * 255 * end
 
-call create_window
-
-while window_is_open do 
+0 0 // player_x, player_y
+while WindowShouldClose 0 == do 
     BeginDrawing
-    0 ClearBackground
-    "Hello World" drop 0 200 20 255 call _DrawText
+        0 ClearBackground
+        inc copy inc copy 64 64 PLAYER_COLOR DrawRectangle
     EndDrawing
 end
 

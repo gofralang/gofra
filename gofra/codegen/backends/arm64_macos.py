@@ -5,6 +5,7 @@ from typing import IO
 from gofra.context import ProgramContext
 from gofra.parser.intrinsics import Intrinsic
 from gofra.parser.operators import Operator, OperatorType
+from gofra.typecheck.types import GofraType
 
 from ._context import CodegenContext
 
@@ -315,17 +316,30 @@ def _write_executable_body_instruction_set(
                 if function.is_externally_defined:
                     # @kirillzhosul: We are reversing arg registers loading end to start
                     # As loading head of the stack means loading the last argument
-                    for arg_register in range(
-                        len(function.type_contract_in) - 1,
-                        -1,
-                        -1,
+                    stack_offset = 0
+                    for _, arg_register in zip(
+                        range(len(function.type_contract_in)),
+                        range(len(function.type_contract_in) - 1, -1, -1),
                     ):
-                        context.write("ldr X%s, [SP]" % arg_register)
-                        context.write("add SP, SP, #16")
-
+                        arg_type = function.type_contract_in[arg_register]
+                        match arg_type:
+                            case GofraType.INTEGER:
+                                context.write(
+                                    "ldr W%s, [SP, #%i]" % (arg_register, stack_offset),
+                                )
+                                stack_offset += 16
+                            case GofraType.POINTER:
+                                context.write(
+                                    "ldr X%s, [SP, #%i]" % (arg_register, stack_offset),
+                                )
+                                stack_offset += 16
+                            case _:
+                                raise NotImplementedError
+                    context.write("add SP, SP, #%i" % (stack_offset))
                 context.write("bl %s" % function_name)
 
                 if function.type_contract_out:
+                    # TODO(@kirillzhosul): No FFI reference for W%, and X% registers
                     context.write(
                         "sub SP, SP, #16",
                         "str X0, [SP]",
