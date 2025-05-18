@@ -16,6 +16,7 @@ type OperatorOperand = int | str | None | Intrinsic
 class OperatorType(IntEnum):
     PUSH_INTEGER = auto()
     PUSH_STRING = auto()
+    PUSH_MEMORY_POINTER = auto()  # Static segment memory pointer
 
     INTRINSIC = auto()
 

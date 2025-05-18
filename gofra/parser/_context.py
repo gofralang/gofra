@@ -27,11 +27,12 @@ class ParserContext:
     # Resulting operators from parsing
     operators: MutableSequence[Operator] = field(default_factory=lambda: list())  # noqa: C408
 
-    # Contextual data
     macros: MutableMapping[str, Macro] = field(default_factory=lambda: dict())  # noqa: C408
     functions: MutableMapping[str, Function] = field(default_factory=lambda: dict())  # noqa: C408
-    context_stack: deque[tuple[int, Operator]] = field(default_factory=deque)
-    included_source_paths: set[Path] = field(default_factory=set)
+    memories: MutableMapping[str, int] = field(default_factory=lambda: dict())  # noqa: C408
+
+    context_stack: deque[tuple[int, Operator]] = field(default_factory=lambda: deque())
+    included_source_paths: set[Path] = field(default_factory=lambda: set())
 
     current_operator: int = field(default=0)
 

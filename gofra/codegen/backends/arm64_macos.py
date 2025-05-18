@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from collections.abc import Sequence
 from datetime import datetime
-from typing import IO
+from typing import IO, Literal
 
 from gofra.context import ProgramContext
 from gofra.parser.intrinsics import Intrinsic
@@ -41,7 +43,27 @@ def generate_ARM64_MacOS_backend(  # noqa: N802
         debug_comments=debug_comments,
     )
     _write_program_epilogue(context, debug_comments=debug_comments)
-    _write_static_segment(context)
+    _write_static_segment(program_context, context)
+
+
+def _write_push_to_stack(
+    context: CodegenContext,
+    value: str | int,
+    value_type: Literal["immediate", "register", "address"],
+):
+    context.write("sub SP, SP, #16")
+
+    if value_type == "immediate":
+        context.write(f"mov X0, #{value}")
+    elif value_type == "register":
+        context.write(f"mov X0, {value}")
+    elif value_type == "address":
+        context.write(f"adrp X0, {value}@PAGE")
+        context.write(f"add X0, X0, {value}@PAGEOFF")
+    else:
+        raise ValueError("Unsupported value type")
+
+    context.write("str X0, [SP]")
 
 
 def _write_executable_body_instruction_set(
@@ -58,10 +80,11 @@ def _write_executable_body_instruction_set(
 
         match operator.type:
             case OperatorType.PUSH_INTEGER:
-                context.write(
-                    "sub SP, SP, #16",
-                    "mov X0, #%d" % operator.operand,
-                    "str X0, [SP]",
+                assert isinstance(operator.operand, int)
+                _write_push_to_stack(
+                    context,
+                    operator.operand,
+                    value_type="immediate",
                 )
             case OperatorType.PUSH_STRING:
                 assert isinstance(operator.operand, str)
@@ -104,15 +127,15 @@ def _write_executable_body_instruction_set(
                     case Intrinsic.MEMORY_LOAD:
                         context.write(
                             "ldr X0, [SP]",
-                            "ldr X1, [X0]",
-                            "str X1, [SP]",
+                            "ldr X0, [X0]",
+                            "str X0, [SP]",
                         )
                     case Intrinsic.MEMORY_STORE:
                         context.write(
                             "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
+                            "ldr X1, [SP, #16]",
                             "str X0, [X1]",
+                            "add SP, SP, #32",
                         )
                     case Intrinsic.DROP:
                         context.write("add SP, SP, #16")
@@ -344,6 +367,13 @@ def _write_executable_body_instruction_set(
                         "sub SP, SP, #16",
                         "str X0, [SP]",
                     )
+            case OperatorType.PUSH_MEMORY_POINTER:
+                assert isinstance(operator.operand, str)
+                _write_push_to_stack(
+                    context,
+                    operator.operand,
+                    value_type="address",
+                )
             case _:
                 raise NotImplementedError(
                     "Operator %s is not implemented in ARM64 MacOS backend"
@@ -417,12 +447,16 @@ def _write_program_epilogue(context: CodegenContext, *, debug_comments: bool) ->
     )
 
 
-def _write_static_segment(context: CodegenContext) -> None:
-    if not context.strings:
-        return
-
+def _write_static_segment(
+    program_context: ProgramContext,
+    context: CodegenContext,
+) -> None:
     for string_key, string_value in context.strings.items():
         context.fd.write(f'{string_key}: .string "{string_value}"\n')
+
+    context.fd.write(".section __DATA,__data\n")
+    for memory_name, memory_segment_size in program_context.memories.items():
+        context.fd.write("%s: .space %d\n" % (memory_name, memory_segment_size))
 
 
 def _write_entry_header(fd: IO[str]) -> None:

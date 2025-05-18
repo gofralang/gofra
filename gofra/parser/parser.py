@@ -66,6 +66,7 @@ def _parse_lexical_tokens_into_operators(
     *,
     context_propagated_macros: MutableMapping[str, Macro] | None = None,
     context_propagated_functions: MutableMapping[str, Function] | None = None,
+    context_propagated_memories: MutableMapping[str, int] | None = None,
 ) -> ParserContext:
     """Consumes token stream into language operators."""
     context = ParserContext(
@@ -74,6 +75,7 @@ def _parse_lexical_tokens_into_operators(
         include_search_directories=include_search_directories,
         macros=context_propagated_macros or {},
         functions=context_propagated_functions or {},
+        memories=context_propagated_memories or {},
     )
 
     while not context.tokens_exhausted():
@@ -103,6 +105,9 @@ def _consume_token_for_parsing(token: Token, context: ParserContext) -> None:
             return _push_string_operator(context, token)
         case TokenType.WORD:
             if _try_unpack_macro_or_inline_function_from_token(context, token):
+                return None
+
+            if _try_unpack_memory_reference_from_token(context, token):
                 return None
 
             if _try_push_intrinsic_operator(context, token):
@@ -135,11 +140,32 @@ def _consume_keyword_token(context: ParserContext, token: Token) -> None:
             return _unpack_function_definition_from_token(context, token)
         case Keyword.CALL:
             return _unpack_function_call_from_token(context, token)
+        case Keyword.MEMORY:
+            return _unpack_memory_segment_from_token(context, token)
+
+
+def _unpack_memory_segment_from_token(context: ParserContext, token: Token) -> None:
+    if context.tokens_exhausted():
+        raise NotImplementedError
+
+    memory_segment_name = context.tokens.pop()
+    if memory_segment_name.type != TokenType.WORD:
+        raise NotImplementedError
+    assert isinstance(memory_segment_name.value, str)
+    memory_segment_size = context.tokens.pop()
+    if memory_segment_size.type != TokenType.INTEGER:
+        raise NotImplementedError
+    assert isinstance(memory_segment_size.value, int)
+
+    # This is an definition only so we dont acquire reference/pointer
+    context.memories[memory_segment_name.value] = memory_segment_size.value
 
 
 def _consume_macro_definition_into_token(context: ParserContext, token: Token) -> None:
     if context.tokens_exhausted():
         raise ParserNoMacroNameError(macro_token=token)
+
+    # Macro definition probably can overlap with function definition container
 
     macro_name_token = context.tokens.pop()
     macro_name = macro_name_token.text
@@ -292,6 +318,7 @@ def _unpack_function_definition_from_token(
             include_search_directories=context.include_search_directories,
             context_propagated_functions=context.functions,
             context_propagated_macros=context.macros,
+            context_propagated_memories=context.memories,
         ).operators,
     )
 
@@ -415,6 +442,24 @@ def _consume_conditional_keyword_from_token(
             return None
         case _:
             raise AssertionError
+
+
+def _try_unpack_memory_reference_from_token(
+    context: ParserContext,
+    token: Token,
+) -> bool:
+    assert token.type == TokenType.WORD
+
+    memory_name = token.text
+    if memory_name not in context.memories:
+        return False
+    context.push_new_operator(
+        type=OperatorType.PUSH_MEMORY_POINTER,
+        token=token,
+        operand=memory_name,
+        is_contextual=False,
+    )
+    return True
 
 
 def _try_unpack_macro_or_inline_function_from_token(

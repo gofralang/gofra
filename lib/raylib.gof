@@ -28,7 +28,6 @@ inline func void EndDrawing[] call _EndDrawing end
 extern func void _ClearBackground[int]
 inline func void ClearBackground[int] call _ClearBackground end
 
-
 // void DrawCircle(int, int, int, Color);
 // TODO(@kirillzhosul): Cannot pass floats into FFI ABI
 extern func void _DrawCircle[int,int,int,ptr]
@@ -36,8 +35,15 @@ inline func void DrawCircle[int,int,int,ptr] call _DrawCircle end
 
 extern func void _DrawRectangle[int,int,int,int,ptr]
 inline func void DrawRectangle[int,int,int,int,ptr] call _DrawRectangle end
+extern func int _IsKeyPressed[int]
+inline func int IsKeyPressed[int] call _IsKeyPressed end
 
 // void DrawText(char[], int, int, int, Color)
 extern func void _DrawText[int,int,int,int,int]
 inline func void DrawText[int,int,int,int,int] call _DrawText end
 
+// Key codes
+macro KEY_W 87 end
+macro KEY_A 65 end
+macro KEY_S 83 end
+macro KEY_D 68 end

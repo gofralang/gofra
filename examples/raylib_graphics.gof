@@ -2,6 +2,9 @@
 include "raylib.gof"
 include "std.gof"
 
+memory player_x 16
+memory player_y 16
+
 macro WINDOW_WIDTH 800 end
 macro WINDOW_HEIGHT 450 end
 macro WINDOW_NAME "Welcome to Gofra!" end
@@ -17,11 +20,15 @@ end
 
 inline func [int,int] handle_player_movement[int,int] drop drop end
 
+
 inline func void main[]
+    player_x 120 !<
+    player_y 120 !<
+
+
     WINDOW_WIDTH WINDOW_HEIGHT WINDOW_NAME drop InitWindow
     WINDOW_FPS SetTargetFPS
 
-    0 0 // player_x, player_y
     while WindowShouldClose 0 == do 
         BeginDrawing
             0 ClearBackground
@@ -46,6 +53,8 @@ inline func void main[]
             swap // X Y
             copy copy
 
+            player_x ?>
+            player_y ?>
             call draw_player        
         EndDrawing
     end
@@ -54,3 +63,6 @@ inline func void main[]
 end
 
 call main
+
+
+
