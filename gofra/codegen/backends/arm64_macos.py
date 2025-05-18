@@ -89,9 +89,11 @@ def _write_executable_body_instruction_set(
             case OperatorType.PUSH_STRING:
                 assert isinstance(operator.operand, str)
 
+                sting_segment = context.load_string(operator.token.text[1:-1])
                 context.write(
                     "sub SP, SP, #16",
-                    "adr X0, %s" % context.load_string(operator.token.text[1:-1]),
+                    "adrp X0, %s@PAGE" % sting_segment,
+                    "add X0, X0, %s@PAGEOFF" % sting_segment,
                     "str X0, [SP]",
                     "sub SP, SP, #16",
                     "mov X0, #%d" % len(operator.operand),
@@ -451,10 +453,10 @@ def _write_static_segment(
     program_context: ProgramContext,
     context: CodegenContext,
 ) -> None:
-    for string_key, string_value in context.strings.items():
-        context.fd.write(f'{string_key}: .string "{string_value}"\n')
-
     context.fd.write(".section __DATA,__data\n")
+    for string_key, string_value in context.strings.items():
+        context.fd.write(f'{string_key}: .asciz "{string_value}"\n')
+
     for memory_name, memory_segment_size in program_context.memories.items():
         context.fd.write("%s: .space %d\n" % (memory_name, memory_segment_size))
 
