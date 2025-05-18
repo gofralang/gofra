@@ -418,7 +418,6 @@ def _write_program_epilogue(context: CodegenContext, *, debug_comments: bool) ->
 
 
 def _write_static_segment(context: CodegenContext) -> None:
-    context.fd.write("mem_buffer: .space 1000\n")
     if not context.strings:
         return
 
