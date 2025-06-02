@@ -11,6 +11,9 @@ from gofra.typecheck.types import GofraType
 
 from ._context import CodegenContext
 
+AARCH_HALF_WORD_BIT_SIZE = 0xFFFF  # 2**16 - 1
+AARCH_DOUBLE_WORD_BIT_SIZE = 0xFFFF_FFFF_FFFF_FFFF  # 2**64 - 1
+
 
 def generate_ARM64_MacOS_backend(  # noqa: N802
     fd: IO[str],
@@ -46,6 +49,29 @@ def generate_ARM64_MacOS_backend(  # noqa: N802
     _write_static_segment(program_context, context)
 
 
+def _write_push_immediate_shifted_to_stack(
+    context: CodegenContext,
+    value: int,
+    register: str = "X0",
+) -> None:
+    assert value >= 0, "Value must be non-negative"
+    assert value <= AARCH_DOUBLE_WORD_BIT_SIZE, "Value too big for 64-bit register"
+
+    if value <= AARCH_HALF_WORD_BIT_SIZE:
+        context.write(f"mov X0, #{hex(value)}")
+
+    preserve_bits = False
+    for shift in range(0, 64, 16):
+        chunk = (value >> shift) & AARCH_HALF_WORD_BIT_SIZE
+        if chunk == 0:
+            continue
+        if not preserve_bits:
+            context.write(f"movz {register}, #{hex(chunk)}, lsl #{shift}")
+            preserve_bits = True
+            continue
+        context.write(f"movk {register}, #{hex(chunk)}, lsl #{shift}")
+
+
 def _write_push_to_stack(
     context: CodegenContext,
     value: str | int,
@@ -54,7 +80,8 @@ def _write_push_to_stack(
     context.write("sub SP, SP, #16")
 
     if value_type == "immediate":
-        context.write(f"mov X0, #{value}")
+        assert isinstance(value, int)
+        _write_push_immediate_shifted_to_stack(context, value)
     elif value_type == "register":
         context.write(f"mov X0, {value}")
     elif value_type == "address":
