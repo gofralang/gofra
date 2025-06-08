@@ -1,4 +1,4 @@
 from ._type import CodeGeneratorBackend
-from .arm64_macos import generate_ARM64_MacOS_backend
+from .aarch64_macos import generate_AARCH64_MacOS_backend
 
-__all__ = ["CodeGeneratorBackend", "generate_ARM64_MacOS_backend"]
+__all__ = ["CodeGeneratorBackend", "generate_AARCH64_MacOS_backend"]
