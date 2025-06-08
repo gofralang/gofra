@@ -1,18 +1,31 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
 from datetime import datetime
-from typing import IO, Literal
+from typing import IO, TYPE_CHECKING, cast
 
-from gofra.context import ProgramContext
+from gofra.codegen.backends._context import CodegenContext
+from gofra.codegen.backends.aarch64_macos.assembly import (
+    AARCH64_ABI_REGISTERS,
+    drop_cells_from_stack,
+    evaluate_conditional_block_on_stack_with_jump,
+    ipc_syscall_macos,
+    pop_cells_from_stack_into_registers,
+    pop_or_store_into_register,
+    push_integer_onto_stack,
+    push_static_address_onto_stack,
+    store_integer_into_register,
+)
+from gofra.codegen.backends.aarch64_macos.registers import (
+    AARCH64_MACOS_SYSCALL_NUMBER_REGISTER,
+)
 from gofra.parser.intrinsics import Intrinsic
 from gofra.parser.operators import Operator, OperatorType
 from gofra.typecheck.types import GofraType
 
-from .._context import CodegenContext
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
-AARCH_HALF_WORD_BIT_SIZE = 0xFFFF  # 2**16 - 1
-AARCH_DOUBLE_WORD_BIT_SIZE = 0xFFFF_FFFF_FFFF_FFFF  # 2**64 - 1
+    from gofra.context import ProgramContext
 
 
 def generate_AARCH64_MacOS_backend(  # noqa: N802
@@ -39,7 +52,6 @@ def generate_AARCH64_MacOS_backend(  # noqa: N802
     _write_entry_header(fd)
 
     _write_executable_body_instruction_set(
-        fd,
         context,
         program_context.operators,
         program_context,
@@ -49,52 +61,7 @@ def generate_AARCH64_MacOS_backend(  # noqa: N802
     _write_static_segment(program_context, context)
 
 
-def _write_push_immediate_shifted_to_stack(
-    context: CodegenContext,
-    value: int,
-    register: str = "X0",
-) -> None:
-    assert value >= 0, "Value must be non-negative"
-    assert value <= AARCH_DOUBLE_WORD_BIT_SIZE, "Value too big for 64-bit register"
-
-    if value <= AARCH_HALF_WORD_BIT_SIZE:
-        context.write(f"mov X0, #{hex(value)}")
-
-    preserve_bits = False
-    for shift in range(0, 64, 16):
-        chunk = (value >> shift) & AARCH_HALF_WORD_BIT_SIZE
-        if chunk == 0:
-            continue
-        if not preserve_bits:
-            context.write(f"movz {register}, #{hex(chunk)}, lsl #{shift}")
-            preserve_bits = True
-            continue
-        context.write(f"movk {register}, #{hex(chunk)}, lsl #{shift}")
-
-
-def _write_push_to_stack(
-    context: CodegenContext,
-    value: str | int,
-    value_type: Literal["immediate", "register", "address"],
-):
-    context.write("sub SP, SP, #16")
-
-    if value_type == "immediate":
-        assert isinstance(value, int)
-        _write_push_immediate_shifted_to_stack(context, value)
-    elif value_type == "register":
-        context.write(f"mov X0, {value}")
-    elif value_type == "address":
-        context.write(f"adrp X0, {value}@PAGE")
-        context.write(f"add X0, X0, {value}@PAGEOFF")
-    else:
-        raise ValueError("Unsupported value type")
-
-    context.write("str X0, [SP]")
-
-
 def _write_executable_body_instruction_set(
-    fd: IO[str],
     context: CodegenContext,
     operators: Sequence[Operator],
     program_context: ProgramContext,
@@ -108,48 +75,35 @@ def _write_executable_body_instruction_set(
         match operator.type:
             case OperatorType.PUSH_INTEGER:
                 assert isinstance(operator.operand, int)
-                _write_push_to_stack(
-                    context,
-                    operator.operand,
-                    value_type="immediate",
-                )
+                push_integer_onto_stack(context, operator.operand)
             case OperatorType.PUSH_STRING:
                 assert isinstance(operator.operand, str)
 
-                sting_segment = context.load_string(operator.token.text[1:-1])
-                context.write(
-                    "sub SP, SP, #16",
-                    "adrp X0, %s@PAGE" % sting_segment,
-                    "add X0, X0, %s@PAGEOFF" % sting_segment,
-                    "str X0, [SP]",
-                    "sub SP, SP, #16",
-                    "mov X0, #%d" % len(operator.operand),
-                    "str X0, [SP]",
-                )
+                # String without interpolation
+                raw_string = operator.token.text[1:-1]
+                len_string = len(operator.operand)  # Interpolation folds bits
+                static_segment = context.load_string(raw_string)
+
+                push_static_address_onto_stack(context, segment=static_segment)
+                push_integer_onto_stack(context, value=len_string)
             case OperatorType.DO:
                 assert isinstance(operator.jumps_to_operator_idx, int)
-                context.write(
-                    "ldr X0, [SP]",
-                    "add SP, SP, #16",
-                    "cmp X0, #1",
-                    "bne .ctx_%s_over" % operator.jumps_to_operator_idx,
+                evaluate_conditional_block_on_stack_with_jump(
+                    context,
+                    jump_over_label=f".ctx_{operator.jumps_to_operator_idx}_over",
+                )
+            case OperatorType.IF:
+                assert isinstance(operator.jumps_to_operator_idx, int)
+                evaluate_conditional_block_on_stack_with_jump(
+                    context,
+                    jump_over_label=f".ctx_{operator.jumps_to_operator_idx}",
                 )
             case OperatorType.END | OperatorType.WHILE:
                 if isinstance(operator.jumps_to_operator_idx, int):
-                    context.write(
-                        "b .ctx_%s" % operator.jumps_to_operator_idx,
-                    )
-                    fd.write(f".ctx_{idx}_over:\n")
+                    context.write("b .ctx_%s" % operator.jumps_to_operator_idx)
+                    context.fd.write(f".ctx_{idx}_over:\n")
                 else:
-                    fd.write(f".ctx_{idx}:\n")
-            case OperatorType.IF:
-                assert isinstance(operator.jumps_to_operator_idx, int)
-                context.write(
-                    "ldr X0, [SP]",
-                    "add SP, SP, #16",
-                    "cmp X0, #1",
-                    "bne .ctx_%s" % operator.jumps_to_operator_idx,
-                )
+                    context.fd.write(f".ctx_{idx}:\n")
             case OperatorType.INTRINSIC:
                 assert isinstance(operator.operand, Intrinsic)
                 match operator.operand:
@@ -167,7 +121,8 @@ def _write_executable_body_instruction_set(
                             "add SP, SP, #32",
                         )
                     case Intrinsic.DROP:
-                        context.write("add SP, SP, #16")
+                        # TODO(@kirillzhosul): Optimize (batch) multiple drop OPs into single shift for N bytes  # noqa: FIX002, TD003
+                        drop_cells_from_stack(context, cells_count=1)
                     case (
                         Intrinsic.SYSCALL0
                         | Intrinsic.SYSCALL1
@@ -182,53 +137,53 @@ def _write_executable_body_instruction_set(
                             None for _ in range(syscall_arguments)
                         ]
 
-                        if injected_args[-1] is None:
-                            context.write(
-                                "ldr X16, [SP]",
-                                "add SP, SP, #16",
-                            )
-                        else:
-                            context.write("mov X16, #%d" % injected_args[-1])
+                        syscall_number = injected_args.pop()
+                        pop_or_store_into_register(
+                            context,
+                            register=AARCH64_MACOS_SYSCALL_NUMBER_REGISTER,
+                            integer_or_register=syscall_number,
+                        )
 
-                        injected_args.pop()
+                        store_retval_onto_stack = (
+                            # Do not store result on stack if optimization is applied for omitting result
+                            # this occurs when result drops after syscall
+                            not operator.syscall_optimization_omit_result
+                        )
 
+                        assert syscall_arguments <= 8, "ABI registers count overflow"  # noqa: PLR2004
                         for arg_n in range(syscall_arguments - 1):
                             # Load register in reversed order of stack so top of the stack is max register
                             arg_register = syscall_arguments - arg_n - 2
 
                             injected_arg = injected_args[-arg_n] if arg_n else None
-                            if injected_arg is None:
-                                context.write("ldr X%s, [SP]" % arg_register)
-                                context.write("add SP, SP, #16")
-                            else:
-                                context.write(
-                                    "mov X%s, #%d" % (arg_register, injected_arg),
-                                )
-                        context.write("svc #0")
-
-                        if not operator.syscall_optimization_omit_result:
-                            # Do not store result on stack if optimization is applied for omitting result
-                            # this occurs when result drops after syscall
-                            context.write(
-                                "sub SP, SP, #16",
-                                "str X0, [SP]",
+                            register = cast(
+                                AARCH64_ABI_REGISTERS,
+                                f"X{arg_register}",
                             )
+                            if injected_arg is None:
+                                pop_cells_from_stack_into_registers(context, register)
+                            else:
+                                store_integer_into_register(
+                                    context,
+                                    register,
+                                    injected_arg,
+                                )
+
+                        ipc_syscall_macos(
+                            context,
+                            syscall_number=syscall_number,
+                            store_retval_onto_stack=store_retval_onto_stack,
+                        )
                     case Intrinsic.PLUS:
+                        pop_cells_from_stack_into_registers(context, "X0", "X1")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
                             "add X0, X1, X0",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.MINUS:
+                        pop_cells_from_stack_into_registers(context, "X0")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
                             "sub X0, X1, X0",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
@@ -253,31 +208,22 @@ def _write_executable_body_instruction_set(
                             "str X0, [SP]",
                         )
                     case Intrinsic.MULTIPLY:
+                        pop_cells_from_stack_into_registers(context, "X0", "X1")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
                             "mul X0, X1, X0",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.DIVIDE:
+                        pop_cells_from_stack_into_registers(context, "X0", "X1")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
                             "sdiv X0, X1, X0",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.MODULUS:
+                        pop_cells_from_stack_into_registers(context, "X0", "X1")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
                             "udiv X2, X1, X0",
                             "mul X2, X2, X0",
                             "sub X0, X1, X2",
@@ -285,76 +231,57 @@ def _write_executable_body_instruction_set(
                             "str X0, [SP]",
                         )
                     case Intrinsic.NOT_EQUAL:
+                        pop_cells_from_stack_into_registers(context, "X1", "X0")
                         context.write(
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
                             "cmp X0, X1",
                             "cset X0, ne",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.GREATER_EQUAL_THAN:
+                        pop_cells_from_stack_into_registers(context, "X1", "X0")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
                             "cmp X0, X1",
                             "cset X0, ge",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.LESS_EQUAL_THAN:
+                        pop_cells_from_stack_into_registers(context, "X1", "X0")
                         context.write(
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
                             "cmp X0, X1",
                             "cset X0, le",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.LESS_THAN:
+                        pop_cells_from_stack_into_registers(context, "X1", "X0")
                         context.write(
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
                             "cmp X0, X1",
                             "cset X0, lt",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.GREATER_THAN:
+                        pop_cells_from_stack_into_registers(context, "X1", "X0")
                         context.write(
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
                             "cmp X0, X1",
                             "cset X0, gt",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.EQUAL:
+                        pop_cells_from_stack_into_registers(context, "X1", "X0")
                         context.write(
-                            "ldr X1, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
                             "cmp X0, X1",
                             "cset X0, eq",
                             "sub SP, SP, #16",
                             "str X0, [SP]",
                         )
                     case Intrinsic.SWAP:
+                        pop_cells_from_stack_into_registers(context, "X0")
                         context.write(
-                            "ldr X0, [SP]",
-                            "add SP, SP, #16",
-                            "ldr X1, [SP]",
+                            "ldr X1, [SP]",  # optimize shifting as we push to the same cell
                             "str X0, [SP]",
                             "sub SP, SP, #16",
                             "str X1, [SP]",
@@ -398,11 +325,7 @@ def _write_executable_body_instruction_set(
                     )
             case OperatorType.PUSH_MEMORY_POINTER:
                 assert isinstance(operator.operand, str)
-                _write_push_to_stack(
-                    context,
-                    operator.operand,
-                    value_type="address",
-                )
+                push_static_address_onto_stack(context, operator.operand)
             case _:
                 raise NotImplementedError(
                     "Operator %s is not implemented in AARCH64 MacOS backend"
@@ -447,7 +370,6 @@ def _write_function_declarations(
     ):
         context.fd.write("%s:\n" % function.name)
         _write_executable_body_instruction_set(
-            context.fd,
             context,
             function.source,
             program_context,
