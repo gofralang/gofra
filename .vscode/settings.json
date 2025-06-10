@@ -1,5 +1,6 @@
 {
     "cSpell.words": [
+        "AARCH",
         "adrp",
         "asciz",
         "codegen",
@@ -13,6 +14,8 @@
         "libc",
         "lldb",
         "malloc",
+        "movk",
+        "movz",
         "MUNMAP",
         "PAGEOFF",
         "sdiv",
