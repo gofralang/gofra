@@ -185,12 +185,12 @@ def emulate_type_stack_for_operators(
                         context.raise_for_arguments(operator, *argument_types)
                         context.push_types(T.INTEGER)
                     case Intrinsic.SWAP:
-                        context.raise_for_enough_arguments(operator, required_args=1)
+                        context.raise_for_enough_arguments(operator, required_args=2)
                         b, a = (
                             context.pop_type_from_stack(),
                             context.pop_type_from_stack(),
                         )
-                        context.push_types(a, b)
+                        context.push_types(b, a)
                     case _:
                         assert_never(operator.operand)
             case _:
