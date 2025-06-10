@@ -5,6 +5,7 @@ from difflib import get_close_matches
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.lexer import (
     Keyword,
     Token,
@@ -52,11 +53,23 @@ def parse_file_into_operators(
 ) -> ParserContext:
     """Load file for parsing into operators (lex and then parse)."""
     tokens = load_file_for_lexical_analysis(source_filepath=path)
-    return _parse_lexical_tokens_into_operators(
+    pc = _parse_lexical_tokens_into_operators(
         path,
         tokens,
         include_search_directories=include_search_directories,
     )
+
+    if GOFRA_ENTRY_POINT not in pc.functions:
+        raise ValueError("Expected main function at your code...")
+
+    e = pc.functions[GOFRA_ENTRY_POINT]
+    e.is_global_linker_symbol = True
+    if e.is_externally_defined or e.emit_inline_body:
+        raise ValueError("Main entry cannot be external or inlined")
+
+    if e.type_contract_out or e.type_contract_in:
+        raise ValueError("Main function cannot have type contract out/in")
+    return pc
 
 
 def _parse_lexical_tokens_into_operators(

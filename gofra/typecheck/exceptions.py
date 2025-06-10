@@ -117,3 +117,31 @@ Expected {self.required_args} arguments on stack but got {len(self.types_on_stac
  for '{self.operator.token.text}' at {self.operator.token.location}
 
 Did you miss some arguments?"""
+
+
+class TypecheckStackMismatchError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        operator_begin: Operator,
+        operator_end: Operator,
+        stack_before_block: Sequence[GofraType],
+        stack_after_block: Sequence[GofraType],
+    ) -> None:
+        super().__init__(*args)
+        self.operator_begin = operator_begin
+        self.operator_end = operator_end
+        self.stack_before_block = stack_before_block
+        self.stack_after_block = stack_after_block
+
+    def __repr__(self) -> str:
+        return f"""Stack mismatch!
+
+Expected that `{self.operator_begin.token.text}` block at {self.operator_begin.token.location} will not modify stack state!
+(Block ends with `{self.operator_end.token.text}` at {self.operator_end.token.location})
+
+Before block stack types was: {self.stack_before_block}
+After block stack types become: {self.stack_after_block}
+
+Blocks should not modify stack state.
+Please ensure that stacks are same!"""

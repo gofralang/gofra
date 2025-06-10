@@ -6,7 +6,7 @@ from pathlib import Path
 from platform import system as current_platform_system
 
 from gofra.cli.output import cli_message
-from gofra.targets import TargetArchitecture, TargetOperatingSystem
+from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
 
 
 @dataclass(frozen=True)

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from gofra.cli.output import cli_message
 from gofra.codegen import generate_code_for_assembler
-from gofra.targets import TargetArchitecture, TargetOperatingSystem
+from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
 
 from .exceptions import (
     NoToolkitForAssemblingError,

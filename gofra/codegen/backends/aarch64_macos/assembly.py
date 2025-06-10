@@ -2,26 +2,26 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from .registers import (
-    AARCH64_ABI_REGISTERS,
     AARCH64_DOUBLE_WORD_BITS,
-    AARCH64_GOFRA_TEMP_REGISTER,
+    AARCH64_GOFRA_ON_STACK_OPERATIONS,
     AARCH64_GP_REGISTERS,
     AARCH64_HALF_WORD_BITS,
-    AARCH64_IPC_REGISTERS,
+    AARCH64_MACOS_ABI_ARGUMENT_REGISTERS,
+    AARCH64_MACOS_ABI_RETVAL_REGISTER,
     AARCH64_MACOS_SYSCALL_NUMBER_REGISTER,
-    AARCH64_MACOS_SYSCALL_RETVAL_REGISTER,
     AARCH64_SP,
     AARCH64_STACK_ALIGNMENT,
+    AARCH64_STACK_ALINMENT_BIN,
 )
 
 if TYPE_CHECKING:
-    from gofra.codegen.backends._context import CodegenContext
+    from gofra.codegen.backends.aarch64_macos._context import AARCH64CodegenContext
 
 
-def drop_cells_from_stack(context: CodegenContext, *, cells_count: int) -> None:
+def drop_cells_from_stack(context: AARCH64CodegenContext, *, cells_count: int) -> None:
     """Drop stack cells from stack by shifting stack pointer (SP) by N bytes.
 
     Stack must be aligned so we use `AARCH64_STACK_ALIGNMENT`
@@ -32,8 +32,8 @@ def drop_cells_from_stack(context: CodegenContext, *, cells_count: int) -> None:
 
 
 def pop_cells_from_stack_into_registers(
-    context: CodegenContext,
-    *registers: AARCH64_ABI_REGISTERS | AARCH64_IPC_REGISTERS,
+    context: AARCH64CodegenContext,
+    *registers: AARCH64_GP_REGISTERS,
 ) -> None:
     """Pop cells from stack and store into given registers.
 
@@ -42,21 +42,7 @@ def pop_cells_from_stack_into_registers(
     """
     assert registers, "Expected registers to store popped result into!"
 
-    pairs_count = 2
-
-    total = len(registers)
-    pairs = total // pairs_count
-
-    for i in range(pairs):
-        register_idx = i * pairs_count
-        register_a, register_b = registers[register_idx : register_idx + pairs_count]
-        context.write(
-            f"ldp {register_a}, {register_b}, [{AARCH64_SP}], #{AARCH64_STACK_ALIGNMENT}",
-        )
-
-    if total % pairs_count != 0:
-        # One register left (odd number of total registers)
-        register = registers[-1]
+    for register in registers:
         context.write(
             f"ldr {register}, [{AARCH64_SP}]",
             f"add {AARCH64_SP}, {AARCH64_SP}, #{AARCH64_STACK_ALIGNMENT}",
@@ -64,16 +50,16 @@ def pop_cells_from_stack_into_registers(
 
 
 def push_register_onto_stack(
-    context: CodegenContext,
-    register: AARCH64_ABI_REGISTERS | AARCH64_IPC_REGISTERS,
+    context: AARCH64CodegenContext,
+    register: AARCH64_GP_REGISTERS,
 ) -> None:
     """Store given register onto stack under current stack pointer."""
     context.write(f"str {register}, [{AARCH64_SP}, -{AARCH64_STACK_ALIGNMENT}]!")
 
 
 def store_integer_into_register(
-    context: CodegenContext,
-    register: AARCH64_ABI_REGISTERS | AARCH64_IPC_REGISTERS,
+    context: AARCH64CodegenContext,
+    register: AARCH64_GP_REGISTERS,
     value: int,
 ) -> None:
     """Store given value into given register."""
@@ -81,7 +67,7 @@ def store_integer_into_register(
 
 
 def push_integer_onto_stack(
-    context: CodegenContext,
+    context: AARCH64CodegenContext,
     value: int,
 ) -> None:
     """Push given integer onto stack with auto shifting less-significant bytes.
@@ -99,8 +85,8 @@ def push_integer_onto_stack(
 
     if value <= AARCH64_HALF_WORD_BITS:
         # We have small immediate value which we may just store without shifts
-        context.write(f"mov {AARCH64_GOFRA_TEMP_REGISTER}, #{value}")
-        push_register_onto_stack(context, register=AARCH64_GOFRA_TEMP_REGISTER)
+        context.write(f"mov X0, #{value}")
+        push_register_onto_stack(context, register="X0")
         return
 
     preserve_bits = False
@@ -112,71 +98,181 @@ def push_integer_onto_stack(
 
         if not preserve_bits:
             # Store upper bits
-            context.write(f"movz {AARCH64_GOFRA_TEMP_REGISTER}, #{chunk}, lsl #{shift}")
+            context.write(f"movz X0, #{chunk}, lsl #{shift}")
             preserve_bits = True
             continue
 
         # Store lower bits
-        context.write(f"movk {AARCH64_GOFRA_TEMP_REGISTER}, #{chunk}, lsl #{shift}")
+        context.write(f"movk X0, #{chunk}, lsl #{shift}")
 
-    push_register_onto_stack(context, register=AARCH64_GOFRA_TEMP_REGISTER)
+    push_register_onto_stack(context, register="X0")
 
 
 def push_static_address_onto_stack(
-    context: CodegenContext,
+    context: AARCH64CodegenContext,
     segment: str,
 ) -> None:
     """Push executable static memory addresss onto stack with page dereference."""
     context.write(
-        f"adrp {AARCH64_GOFRA_TEMP_REGISTER}, {segment}@PAGE",
-        f"add {AARCH64_GOFRA_TEMP_REGISTER}, {AARCH64_GOFRA_TEMP_REGISTER}, {segment}@PAGEOFF",
+        f"adrp X0, {segment}@PAGE",
+        f"add X0, X0, {segment}@PAGEOFF",
     )
-    push_register_onto_stack(context, register=AARCH64_GOFRA_TEMP_REGISTER)
+    push_register_onto_stack(context, register="X0")
 
 
 def evaluate_conditional_block_on_stack_with_jump(
-    context: CodegenContext,
+    context: AARCH64CodegenContext,
     jump_over_label: str,
 ) -> None:
     """Evaluate conditional block by popping current value under SP againts zero.
 
     If condition is false (value on stack) then jump out that conditional block to `jump_over_label`
     """
-    pop_cells_from_stack_into_registers(context, AARCH64_GOFRA_TEMP_REGISTER)
+    pop_cells_from_stack_into_registers(context, "X0")
     context.write(
-        f"cmp {AARCH64_GOFRA_TEMP_REGISTER}, #0",
+        "cmp X0, #0",
         f"beq {jump_over_label}",
     )
 
 
-def pop_or_store_into_register(
-    context: CodegenContext,
-    register: AARCH64_GP_REGISTERS,
-    integer_or_register: int | None,
+def initialize_static_data_section(
+    context: AARCH64CodegenContext,
+    static_data_section: list[tuple[str, str | int]],
 ) -> None:
-    """Pop integer from stack and store into register or store integer directly into register if not None."""
-    if integer_or_register is None:
-        pop_cells_from_stack_into_registers(context, register)
-    else:
-        store_integer_into_register(
-            context,
-            register,
-            integer_or_register,
-        )
+    """Initialize data section fields with given values.
+
+    Section is an tuple (label, data)
+    Data is an string (raw ASCII) or number (zeroed memory blob)
+    """
+    context.fd.write(".section __DATA,__data\n")
+    context.fd.write(f".align {AARCH64_STACK_ALINMENT_BIN}\n")
+
+    for name, data in static_data_section:
+        if isinstance(data, str):
+            context.fd.write(f'{name}: .asciz "{data}"\n')
+            continue
+        context.fd.write(f"{name}: .space {data}\n")
 
 
 def ipc_syscall_macos(
-    context: CodegenContext,
+    context: AARCH64CodegenContext,
     *,
-    syscall_number: int | None,
+    arguments_count: int,
     store_retval_onto_stack: bool,
 ) -> None:
     """Call system (syscall) via supervisor call and apply IPC ABI convention to arguments."""
-    # If we got predefined syscall number we will use that otherwise acquire that from stack
+    registers_to_load = (
+        AARCH64_MACOS_SYSCALL_NUMBER_REGISTER,
+        *AARCH64_MACOS_ABI_ARGUMENT_REGISTERS[:arguments_count][::-1],
+    )
+
+    for register in registers_to_load:
+        pop_cells_from_stack_into_registers(context, register)
 
     # Supervisor call (syscall)
     context.write("svc #0")
 
     if store_retval_onto_stack:
         # Mostly related to optimizations above if we dont want to store result
-        push_register_onto_stack(context, AARCH64_MACOS_SYSCALL_RETVAL_REGISTER)
+        push_register_onto_stack(context, AARCH64_MACOS_ABI_RETVAL_REGISTER)
+
+
+def perform_operation_onto_stack(
+    context: AARCH64CodegenContext,
+    operation: AARCH64_GOFRA_ON_STACK_OPERATIONS,
+) -> None:
+    """Perform *math* operation onto stack (pop arguments and push back result)."""
+    is_unary = operation in ("++", "--")
+    registers = ("X0",) if is_unary else ("X0", "X1")
+    pop_cells_from_stack_into_registers(context, *registers)
+
+    match operation:
+        case "+":
+            context.write("add X0, X1, X0")
+        case "-":
+            context.write("sub X0, X1, X0")
+        case "*":
+            context.write("mul X0, X1, X0")
+        case "//":
+            context.write("sdiv X0, X1, X0")
+        case "%":
+            context.write(
+                "udiv X2, X1, X0",
+                "mul X2, X2, X0",
+                "sub X0, X1, X2",
+            )
+        case "++":
+            context.write("add X0, X0, #1")
+        case "--":
+            context.write("sub X0, X0, #1")
+        case "!=" | ">=" | "<=" | "<" | ">" | "==":
+            logic_op = {
+                "!=": "ne",
+                ">=": "ge",
+                "<=": "le",
+                "<": "lt",
+                ">": "gt",
+                "==": "eq",
+            }
+            context.write(
+                "cmp X1, X0",
+                f"cset X0, {logic_op[operation]}",
+            )
+        case _:
+            assert_never()
+    push_register_onto_stack(context, "X0")
+
+
+def load_memory_from_stack_arguments(context: AARCH64CodegenContext) -> None:
+    """Load memory as value using arguments from stack."""
+    pop_cells_from_stack_into_registers(context, "X0")
+    context.write("ldr X0, [X0]")
+    push_register_onto_stack(context, "X0")
+
+
+def store_into_memory_from_stack_arguments(context: AARCH64CodegenContext) -> None:
+    """Store value from into memory pointer, pointer and value acquired from stack."""
+    pop_cells_from_stack_into_registers(context, "X0", "X1")
+    context.write("str X0, [X1]")
+
+
+def call_function_block(
+    context: AARCH64CodegenContext,
+    function_name: str,
+    *,
+    abi_ffi_push_retval_onto_stack: bool,
+    abi_ffi_arguments_count: int,
+) -> None:
+    """Call an function with preparing required fields (like stack-pointer).
+
+    Also allows to call ABI/FFI function with providing arguments and return value (retval) via:
+    `abi_ffi_push_retval_onto_stack` / `abi_ffi_arguments_count`
+    """
+    assert abi_ffi_arguments_count >= 0, "FFI arguments count cannot go negative"
+    if abi_ffi_arguments_count:
+        arguments = abi_ffi_arguments_count
+        registers = AARCH64_MACOS_ABI_ARGUMENT_REGISTERS[:arguments][::-1]
+        pop_cells_from_stack_into_registers(context, *registers)
+
+    context.write(f"bl {function_name}")
+
+    if abi_ffi_push_retval_onto_stack:
+        push_register_onto_stack(context, AARCH64_MACOS_ABI_RETVAL_REGISTER)
+
+
+def function_begin_with_prologue(
+    context: AARCH64CodegenContext,
+    *,
+    function_name: str,
+    as_global_linker_symbol: bool,
+) -> None:
+    """Begin an function symbol with prologue with preparing required (like stack-pointer)."""
+    if as_global_linker_symbol:
+        context.fd.write(f".global {function_name}\n")
+    context.fd.write(f".align {AARCH64_STACK_ALINMENT_BIN}\n")
+    context.fd.write(f"{function_name}:\n")
+
+
+def function_end_with_epilogue(context: AARCH64CodegenContext) -> None:
+    """Functions epilogue at the end. Restores required fields (like stack-pointer)."""
+    context.write("ret")

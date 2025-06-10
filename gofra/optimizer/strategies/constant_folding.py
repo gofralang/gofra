@@ -3,6 +3,7 @@ from collections import deque
 from collections.abc import MutableSequence, Sequence
 from typing import Callable
 
+from gofra.context import ProgramContext
 from gofra.lexer import Token, TokenType
 from gofra.parser import Operator, OperatorType
 from gofra.parser.intrinsics import Intrinsic
@@ -24,12 +25,19 @@ BINARY_INT_INTRINSIC_FOLD_PREDICATES: dict[Intrinsic, BinaryIntFoldPredicate] = 
 }
 
 
-def optimize_constant_folding(unoptimized: Sequence[Operator]) -> Sequence[Operator]:
+def optimize_constant_folding(program: ProgramContext) -> None:
     """Optimize given operators so they dont left unfolded into useless operators.
 
     For example: 2 2 + folds into single push 4
     or operations that results into dropping from stack being eliminated
     """
+    # TODO(@kirillzhosul): This should be refactored due to refactoring core.
+    return
+    for function in (*program.functions.values(), program.entry_point):
+        function.source = _fold_operators(function.source)
+
+
+def _fold_operators(unoptimized: Sequence[Operator]) -> Sequence[Operator]:
     non_optimizable_offset = 2
     if len(unoptimized) < non_optimizable_offset:
         return unoptimized
@@ -143,7 +151,7 @@ def optimize_constant_folding(unoptimized: Sequence[Operator]) -> Sequence[Opera
         shift_unoptimized_operator()
 
     if jump_idx_left_shift > 0:
-        return optimize_constant_folding(unoptimized=list(optimized))
+        return _fold_operators(unoptimized=list(optimized))
 
     return optimized
 

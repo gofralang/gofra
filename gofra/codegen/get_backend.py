@@ -1,6 +1,6 @@
-from gofra.targets import TargetArchitecture, TargetOperatingSystem
+from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
 
-from .backends import CodeGeneratorBackend, generate_AARCH64_MacOS_backend
+from .backends import CodeGeneratorBackend, generate_aarch64_macos_backend
 from .exceptions import CodegenUnsupportedBackendTargetPairError
 
 
@@ -8,8 +8,9 @@ def get_backend_for_target_pair(
     architecture: TargetArchitecture,
     operating_system: TargetOperatingSystem,
 ) -> CodeGeneratorBackend:
+    """Get code generator backend for specified ARCHxOS pair."""
     match (architecture, operating_system):
         case (TargetArchitecture.ARM, TargetOperatingSystem.MACOS):
-            return generate_AARCH64_MacOS_backend
+            return generate_aarch64_macos_backend
         case _:
             raise CodegenUnsupportedBackendTargetPairError

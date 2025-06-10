@@ -1,3 +1,5 @@
-from .codegen import generate_AARCH64_MacOS_backend
+"""AARCH64 MacOS code generation backend."""
 
-__all__ = ["generate_AARCH64_MacOS_backend"]
+from .codegen import generate_aarch64_macos_backend
+
+__all__ = ["generate_aarch64_macos_backend"]

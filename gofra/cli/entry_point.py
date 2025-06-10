@@ -6,17 +6,18 @@ from gofra.context import ProgramContext
 from gofra.gofra import process_input_file
 
 from .arguments import CLIArguments, parse_cli_arguments
-from .errors import cli_user_error_handler
+from .errors import cli_gofra_error_handler
 from .output import cli_message
 
 
 def cli_entry_point() -> None:
-    with cli_user_error_handler():
+    """CLI main entry."""
+    with cli_gofra_error_handler():
         args = parse_cli_arguments()
         context = process_input_file(
             args.filepath,
-            optimize=not args.no_optimizations,
-            typecheck=not args.no_typecheck,
+            do_optimize=not args.no_optimizations,
+            do_typecheck=not args.no_typecheck,
             include_search_directories=args.include_search_directories,
         )
         if args.action_compile:

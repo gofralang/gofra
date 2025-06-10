@@ -1,6 +1,4 @@
-from collections.abc import Sequence
-
-from gofra.parser import Operator
+from gofra.context import ProgramContext
 
 from .strategies import (
     optimize_constant_folding,
@@ -8,9 +6,7 @@ from .strategies import (
 )
 
 
-def optimize_operators(unoptimized_operators: Sequence[Operator]) -> Sequence[Operator]:
-    """Apply optimization strategies within given operators."""
-    operators = optimize_constant_folding(unoptimized_operators)
-    operators = optimize_dead_code_elimination(operators)
-
-    return operators  # noqa: RET504
+def optimize_program(program: ProgramContext) -> None:
+    """Apply optimization strategies within given program context."""
+    optimize_constant_folding(program)
+    optimize_dead_code_elimination(program)

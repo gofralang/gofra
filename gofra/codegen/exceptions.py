@@ -1,5 +1,5 @@
+from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
 from gofra.exceptions import GofraError
-from gofra.targets import TargetArchitecture, TargetOperatingSystem
 
 
 class CodegenUnsupportedBackendTargetPairError(GofraError):
