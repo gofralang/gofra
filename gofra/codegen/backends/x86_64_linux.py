@@ -79,7 +79,7 @@ def _write_executable_body_instruction_set(
                 assert isinstance(operator.jumps_to_operator_idx, int)
                 context.write(
                     "popq rax",
-                    "cmpq 1, rax",
+                    "cmpq $1, rax",
                     "jne .ctx_%s_over" % operator.jumps_to_operator_idx,
                 )
             case OperatorType.END | OperatorType.WHILE:
@@ -94,7 +94,7 @@ def _write_executable_body_instruction_set(
                 assert isinstance(operator.jumps_to_operator_idx, int)
                 context.write(
                     "popq rax",
-                    "cmpq 1, rax",
+                    "cmpq $1, rax",
                     "jne .ctx_%s" % operator.jumps_to_operator_idx,
                 )
             case OperatorType.INTRINSIC:
@@ -328,8 +328,9 @@ def _write_program_epilogue(context: CodegenContext, *, debug_comments: bool) ->
             "# (always included)",
         )
     context.write(
-        "movq $60, %eax",
-        "syscall"
+        "movq $60, rax",
+        "xorq rdi, rdi",
+        "syscall",
     )
 
 
@@ -358,7 +359,7 @@ def _write_push_to_stack(
     value_type: Literal["immediate", "register", "address"],
 ):
     if value_type == "immediate":
-        context.write(f"movq #{value}, rax")
+        context.write(f"movq ${value}, rax")
     elif value_type == "register":
         context.write(f"movq {value}, rax")
     elif value_type == "address":

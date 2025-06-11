@@ -110,6 +110,21 @@ def _link_final_executable(
                     *propagated_linker_flags,
                 ],
             )
+        case "Linux":
+            assert architecture == TargetArchitecture.X86
+            assert os == TargetOperatingSystem.LINUX
+
+            check_output(  # noqa: S603
+                [
+                    "/usr/bin/ld",
+                    "-o",
+                    output,
+                    o_filepath,
+                    "-e",
+                    "_start",
+                    *propagated_linker_flags,
+                ],
+            )
         case _:
             raise UnsupportedBuilderOperatingSystemError
 
@@ -146,6 +161,25 @@ def _assemble_object_file(
                     f"error code: {e.returncode}",
                 )
                 sys.exit(1)
+        case "Linux":
+            if architecture != TargetArchitecture.X86:
+                raise UnsupportedBuilderOperatingSystemError
+            command = [
+                "/usr/bin/as",
+                "-o",
+                str(o_filepath),
+                str(asm_filepath),
+            ]
+            try:
+                check_output(command)  # noqa: S603
+            except CalledProcessError as e:
+                cli_message(
+                    "ERROR",
+                    "Failed to generate binary from output assembly, "
+                    f"error code: {e.returncode}",
+                )
+                sys.exit(1)
+
         case _:
             raise UnsupportedBuilderOperatingSystemError
 
@@ -172,6 +206,14 @@ def _validate_toolkit_installation() -> None:
         case "Darwin":
             required_toolkit = ("as", "ld", "xcrun")
 
+            toolkit = {(tk, which(tk) is not None) for tk in required_toolkit}
+            missing_toolkit = {
+                tk for (tk, tk_is_installed) in toolkit if not tk_is_installed
+            }
+            if missing_toolkit:
+                raise NoToolkitForAssemblingError(toolkit_required=missing_toolkit)
+        case "Linux":
+            required_toolkit = ("as", "ld")
             toolkit = {(tk, which(tk) is not None) for tk in required_toolkit}
             missing_toolkit = {
                 tk for (tk, tk_is_installed) in toolkit if not tk_is_installed

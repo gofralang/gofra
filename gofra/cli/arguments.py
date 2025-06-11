@@ -51,8 +51,8 @@ def parse_cli_arguments() -> CLIArguments:
         execute_after_compile=bool(args.execute),
         build_cache_delete_after_run=bool(args.delete_cache),
         build_cache_directory=Path(args.cache_dir) if args.cache_dir else None,
-        target_architecture=TargetArchitecture.ARM,
-        target_os=TargetOperatingSystem.MACOS,
+        target_architecture=TargetArchitecture.X86,
+        target_os=TargetOperatingSystem.LINUX,
         no_optimizations=bool(args.no_optimizations),
         no_typecheck=bool(args.no_typecheck),
         include_search_directories=[
@@ -158,7 +158,7 @@ def _construct_argument_parser() -> ArgumentParser:
 
 
 def _output_filename_fallback(input_filepath: Path) -> Path:
-    assert current_platform_system() == "Darwin"
+    assert current_platform_system() in ["Darwin", "Linux"]
     if input_filepath.suffix == "":
         return input_filepath.with_suffix(input_filepath.suffix + "._")
     return input_filepath.with_suffix("")
