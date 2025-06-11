@@ -76,7 +76,7 @@ def validate_and_pop_entry_point(context: ParserContext) -> Function:
     if GOFRA_ENTRY_POINT not in context.functions:
         raise ParserNoEntryFunctionError
 
-    entry_point = context.functions[GOFRA_ENTRY_POINT]
+    entry_point = context.functions.pop(GOFRA_ENTRY_POINT)
     if entry_point.is_externally_defined or entry_point.emit_inline_body:
         raise ParserEntryPointFunctionModifiersError
 
