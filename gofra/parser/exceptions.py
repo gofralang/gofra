@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.exceptions import GofraError
 
 if TYPE_CHECKING:
@@ -9,14 +10,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from gofra.lexer.tokens import Token, TokenLocation
-
-
-class ParserEmptyInputTokensError(GofraError):
-    def __repr__(self) -> str:
-        return """No input source token. 
-Blank source is not allowed within parser context. 
-
-Did you accidentally pass empty source?"""
+    from gofra.parser.functions.function import FunctionTypeContract
 
 
 class ParserExhaustiveContextStackError(GofraError):
@@ -306,3 +300,48 @@ class ParserEmptyIfBodyError(GofraError):
     def __repr__(self) -> str:
         return f"""If condition at {self.if_token.location} has no body!
 If condition should always have body as otherwise this has no effect!"""
+
+
+class ParserNoEntryFunctionError(GofraError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+    def __repr__(self) -> str:
+        return f"""Expected entry point function '{GOFRA_ENTRY_POINT}' but it does not exists!"""
+
+
+class ParserEntryPointFunctionTypeContractInError(GofraError):
+    def __init__(self, *args: object, type_contract_in: FunctionTypeContract) -> None:
+        super().__init__(*args)
+        self.type_contract_in = type_contract_in
+
+    def __repr__(self) -> str:
+        return f"""Entry point function '{GOFRA_ENTRY_POINT}' violates type contract!
+
+Entry point function cannot have type contract in!
+But currently it have type contract in: {self.type_contract_in}
+"""
+
+
+class ParserEntryPointFunctionTypeContractOutError(GofraError):
+    def __init__(self, *args: object, type_contract_out: FunctionTypeContract) -> None:
+        super().__init__(*args)
+        self.type_contract_out = type_contract_out
+
+    def __repr__(self) -> str:
+        return f"""Entry point function '{GOFRA_ENTRY_POINT}' violates type contract!
+
+Entry point function cannot have type contract out!
+But currently it have type contract out: {self.type_contract_out}
+"""
+
+
+class ParserEntryPointFunctionModifiersError(GofraError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+    def __repr__(self) -> str:
+        return f"""Entry point function '{GOFRA_ENTRY_POINT}' violates modifiers signature!
+
+Entry point function cannot be external or inlined!
+"""

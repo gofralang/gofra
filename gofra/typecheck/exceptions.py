@@ -1,12 +1,13 @@
 from collections.abc import Sequence
 
 from gofra.exceptions import GofraError
+from gofra.parser.functions.function import Function
 from gofra.parser.operators import Operator
 
 from .types import GofraType
 
 
-class TypecheckInvalidArgumentTypeError(GofraError):
+class TypecheckInvalidOperatorArgumentTypeError(GofraError):
     def __init__(
         self,
         *args: object,
@@ -24,6 +25,28 @@ class TypecheckInvalidArgumentTypeError(GofraError):
 
 Expected {self.expected_type.name} but got {self.actual_type.name}
  for '{self.operator.token.text}' at {self.operator.token.location}
+
+Did you miss the types?"""
+
+
+class TypecheckInvalidFunctionArgumentTypeError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        expected_type: GofraType,
+        actual_type: GofraType,
+        function: Function,
+    ) -> None:
+        super().__init__(*args)
+        self.expected_type = expected_type
+        self.actual_type = actual_type
+        self.function = function
+
+    def __repr__(self) -> str:
+        return f"""Type safety check failed!
+
+Expected {self.expected_type.name} but got {self.actual_type.name}
+ for function '{self.function.name}' at {self.function.location}
 
 Did you miss the types?"""
 
@@ -80,24 +103,26 @@ Actual contract: [{self.actual_lhs_type.name}, {self.actual_rhs_type.name}]
 Did you miss the types?"""
 
 
-class TypecheckNonEmptyStackAtEndError(GofraError):
+class TypecheckFunctionTypeContractOutViolatedError(GofraError):
     def __init__(
         self,
         *args: object,
-        stack_size: int,
+        function: Function,
+        type_stack: list[GofraType],
     ) -> None:
         super().__init__(*args)
-        self.stack_size = stack_size
+        self.function = function
+        self.type_stack = type_stack
 
     def __repr__(self) -> str:
         return f"""Type safety check error!
-Got {self.stack_size} stack elements at the end.
-Expected NO elements at the end.
 
-Did you forgot to drop those elements?"""
+Function `{self.function.name}` at {self.function.location} has type contract out {self.function.type_contract_out}
+
+But actual stack at the end is: {self.type_stack}"""
 
 
-class TypecheckNotEnoughArgumentsError(GofraError):
+class TypecheckNotEnoughOperatorArgumentsError(GofraError):
     def __init__(
         self,
         *args: object,
@@ -119,7 +144,35 @@ Expected {self.required_args} arguments on stack but got {len(self.types_on_stac
 Did you miss some arguments?"""
 
 
-class TypecheckStackMismatchError(GofraError):
+class TypecheckNotEnoughFunctionArgumentsError(GofraError):
+    def __init__(
+        self,
+        *args: object,
+        types_on_stack: Sequence[GofraType],
+        function: Function,
+        callee_function: Function,
+        called_from_operator: Operator,
+    ) -> None:
+        super().__init__(*args)
+        self.types_on_stack = types_on_stack
+        self.function = function
+        self.callee_function = callee_function
+        self.called_from_operator = called_from_operator
+
+    def __repr__(self) -> str:
+        return f"""Type safety check failed!
+
+Expected {len(self.function.type_contract_in)} arguments on stack but got {len(self.types_on_stack)}
+For function '{self.function.name}' defined at {self.function.location}
+Called from function `{self.callee_function.name}` with `{self.called_from_operator.token.text}` at `{self.called_from_operator.token.location}`
+
+Function type contract in: {self.function.type_contract_in}
+But types on stack is: {self.types_on_stack}
+
+Did you miss some arguments?"""
+
+
+class TypecheckBlockStackMismatchError(GofraError):
     def __init__(
         self,
         *args: object,

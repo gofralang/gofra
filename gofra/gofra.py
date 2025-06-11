@@ -6,7 +6,7 @@ from pathlib import Path
 from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.context import ProgramContext
 from gofra.optimizer import optimize_program
-from gofra.parser import parse_file_into_operators
+from gofra.parser import parse_file
 from gofra.typecheck import validate_type_safety
 
 
@@ -22,25 +22,15 @@ def process_input_file(
     Compiles given filepath down to `IR` into `ProgramContext`.
     Maybe assembled into executable via `assemble_executable`
     """
-    parse_context = parse_file_into_operators(
-        filepath,
-        include_search_directories=include_search_directories,
-    )
-
-    assert GOFRA_ENTRY_POINT in parse_context.functions
-    context = ProgramContext(
-        functions=parse_context.functions,
-        memories=parse_context.memories,
-        entry_point=parse_context.functions.pop(GOFRA_ENTRY_POINT),
-    )
+    parser_context, entry_point = parse_file(filepath, include_search_directories)
+    context = ProgramContext.from_parser_context(parser_context, entry_point)
 
     if do_optimize:
         optimize_program(context)
 
     if do_typecheck:
         validate_type_safety(
-            entry_point=context.entry_point,
-            functions=context.functions,
+            functions={**context.functions, GOFRA_ENTRY_POINT: context.entry_point},
         )
 
     return context

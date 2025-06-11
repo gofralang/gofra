@@ -33,7 +33,7 @@ AARCH64_SP = "SP"
 # Gofra related
 ####
 
-AARCH64_GOFRA_CONTEXT_LABEL = ".L%s"
+AARCH64_GOFRA_CONTEXT_LABEL = ".L_%s_%s"
 type AARCH64_GOFRA_ON_STACK_OPERATIONS = Literal[
     "+",
     "-",

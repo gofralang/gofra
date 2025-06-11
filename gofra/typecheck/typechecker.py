@@ -7,10 +7,10 @@ from gofra.parser.intrinsics import Intrinsic
 
 from ._context import TypecheckContext
 from .exceptions import (
+    TypecheckBlockStackMismatchError,
+    TypecheckFunctionTypeContractOutViolatedError,
     TypecheckInvalidBinaryMathArithmeticsError,
     TypecheckInvalidPointerArithmeticsError,
-    TypecheckNonEmptyStackAtEndError,
-    TypecheckStackMismatchError,
 )
 from .types import GofraType as T
 
@@ -20,34 +20,45 @@ if TYPE_CHECKING:
     from gofra.parser.functions.function import Function
 
 
-def validate_type_safety(
-    entry_point: Function,
-    functions: MutableMapping[str, Function],
-) -> None:
-    """Validate type safety of an program.
+def validate_type_safety(functions: MutableMapping[str, Function]) -> None:
+    """Validate type safety of an program by type checking all given functions."""
+    for function in functions.values():
+        validate_function_type_safety(
+            function=function,
+            global_functions=functions,
+        )
 
-    Will begin from entry point and emulate type stack for possible code paths.
-    """
-    type_stack = emulate_type_stack_for_operators(
-        operators=entry_point.source,
-        functions=functions,
-        initial_type_stack=[],
+
+def validate_function_type_safety(
+    function: Function,
+    global_functions: MutableMapping[str, Function],
+) -> None:
+    """Emulate and validate function type safety inside."""
+    emulated_type_stack = emulate_type_stack_for_operators(
+        operators=function.source,
+        global_functions=global_functions,
+        initial_type_stack=list(function.type_contract_in),
+        current_function=function,
     )
-    if type_stack:
-        raise TypecheckNonEmptyStackAtEndError(stack_size=len(type_stack))
+    if emulated_type_stack != function.type_contract_out:
+        raise TypecheckFunctionTypeContractOutViolatedError(
+            function=function,
+            type_stack=list(emulated_type_stack),
+        )
 
 
 def emulate_type_stack_for_operators(
     operators: Sequence[Operator],
-    functions: MutableMapping[str, Function],
-    initial_type_stack: MutableSequence[T],
+    global_functions: MutableMapping[str, Function],
+    initial_type_stack: Sequence[T],
+    current_function: Function,
     blocks_idx_shift: int = 0,
 ) -> MutableSequence[T]:
     """Emulate and return resulting type stack from given operators.
 
     Functions are provided so calling it will dereference new emulation type stack.
     """
-    context = TypecheckContext(emulated_stack_types=initial_type_stack)
+    context = TypecheckContext(emulated_stack_types=list(initial_type_stack))
 
     idx_max, idx = len(operators), 0
     while idx < idx_max:
@@ -56,7 +67,7 @@ def emulate_type_stack_for_operators(
             case OperatorType.WHILE | OperatorType.END:
                 ...  # Nothing here as there nothing to typecheck
             case OperatorType.DO | OperatorType.IF:
-                context.raise_for_arguments(operator, T.BOOLEAN)
+                context.raise_for_arguments(operator, current_function, T.BOOLEAN)
 
                 # Acquire where this block jumps, shift due to emulation layers
                 assert operator.jumps_to_operator_idx
@@ -66,13 +77,14 @@ def emulate_type_stack_for_operators(
 
                 type_stack = emulate_type_stack_for_operators(
                     operators=operators[idx:jumps_to_idx],
-                    functions=functions,
+                    global_functions=global_functions,
                     initial_type_stack=context.emulated_stack_types[::],
                     blocks_idx_shift=blocks_idx_shift + idx,
+                    current_function=current_function,
                 )
 
                 if type_stack != context.emulated_stack_types:
-                    raise TypecheckStackMismatchError(
+                    raise TypecheckBlockStackMismatchError(
                         operator_begin=operator,
                         operator_end=operators[jumps_to_idx],
                         stack_before_block=context.emulated_stack_types,
@@ -92,23 +104,36 @@ def emulate_type_stack_for_operators(
             case OperatorType.CALL:
                 assert isinstance(operator.operand, str)
 
-                function = functions[operator.operand]
+                function = global_functions[operator.operand]
                 type_contract_in = function.type_contract_in
 
                 if type_contract_in:
-                    context.raise_for_arguments(operator, *type_contract_in)
+                    context.raise_for_arguments(
+                        function,
+                        current_function,
+                        *type_contract_in,
+                        operator=operator,
+                    )
                 context.push_types(*function.type_contract_out)
             case OperatorType.INTRINSIC:
                 assert isinstance(operator.operand, Intrinsic)
                 match operator.operand:
                     case Intrinsic.INCREMENT | Intrinsic.DECREMENT:
-                        context.raise_for_arguments(operator, T.INTEGER)
+                        context.raise_for_arguments(
+                            operator,
+                            current_function,
+                            T.INTEGER,
+                        )
                         context.push_types(T.INTEGER)
                     case Intrinsic.MULTIPLY | Intrinsic.DIVIDE | Intrinsic.MODULUS:
                         # Math arithmetics operates only on integers
                         # so no pointers/booleans/etc are allowed inside these intrinsics
 
-                        context.raise_for_enough_arguments(operator, required_args=2)
+                        context.raise_for_enough_arguments(
+                            operator,
+                            current_function,
+                            required_args=2,
+                        )
                         b, a = (
                             context.pop_type_from_stack(),
                             context.pop_type_from_stack(),
@@ -123,7 +148,11 @@ def emulate_type_stack_for_operators(
 
                         context.push_types(T.INTEGER)
                     case Intrinsic.MINUS | Intrinsic.PLUS:
-                        context.raise_for_enough_arguments(operator, required_args=2)
+                        context.raise_for_enough_arguments(
+                            operator,
+                            current_function,
+                            required_args=2,
+                        )
 
                         b, a = (
                             context.pop_type_from_stack(),
@@ -143,16 +172,34 @@ def emulate_type_stack_for_operators(
 
                         # Integer math
                         context.push_types(b, a)
-                        context.raise_for_arguments(operator, T.INTEGER, T.INTEGER)
+                        context.raise_for_arguments(
+                            operator,
+                            current_function,
+                            T.INTEGER,
+                            T.INTEGER,
+                        )
                         context.push_types(T.INTEGER)
 
                     case Intrinsic.MEMORY_STORE:
-                        context.raise_for_arguments(operator, T.POINTER, T.INTEGER)
+                        context.raise_for_arguments(
+                            operator,
+                            current_function,
+                            T.POINTER,
+                            T.INTEGER,
+                        )
                     case Intrinsic.MEMORY_LOAD:
-                        context.raise_for_arguments(operator, T.POINTER)
+                        context.raise_for_arguments(
+                            operator,
+                            current_function,
+                            T.POINTER,
+                        )
                         context.push_types(T.INTEGER)
                     case Intrinsic.COPY:
-                        context.raise_for_enough_arguments(operator, required_args=1)
+                        context.raise_for_enough_arguments(
+                            operator,
+                            current_function,
+                            required_args=1,
+                        )
 
                         argument_type = context.pop_type_from_stack()
                         context.push_types(argument_type, argument_type)
@@ -164,10 +211,15 @@ def emulate_type_stack_for_operators(
                         | Intrinsic.GREATER_THAN
                         | Intrinsic.NOT_EQUAL
                     ):
-                        context.raise_for_arguments(operator, T.ANY, T.ANY)
+                        context.raise_for_arguments(
+                            operator,
+                            current_function,
+                            T.ANY,
+                            T.ANY,
+                        )
                         context.push_types(T.BOOLEAN)
                     case Intrinsic.DROP:
-                        context.raise_for_arguments(operator, T.ANY)
+                        context.raise_for_arguments(operator, current_function, T.ANY)
                     case (
                         Intrinsic.SYSCALL0
                         | Intrinsic.SYSCALL1
@@ -182,10 +234,18 @@ def emulate_type_stack_for_operators(
                         args_count = operator.get_syscall_arguments_count()
 
                         argument_types = (T.ANY for _ in range(args_count))
-                        context.raise_for_arguments(operator, *argument_types)
+                        context.raise_for_arguments(
+                            operator,
+                            current_function,
+                            *argument_types,
+                        )
                         context.push_types(T.INTEGER)
                     case Intrinsic.SWAP:
-                        context.raise_for_enough_arguments(operator, required_args=2)
+                        context.raise_for_enough_arguments(
+                            operator,
+                            current_function,
+                            required_args=2,
+                        )
                         b, a = (
                             context.pop_type_from_stack(),
                             context.pop_type_from_stack(),

@@ -75,6 +75,7 @@ class Function:
         type_contract_out: FunctionTypeContract,
         emit_inline_body: bool,
         is_externally_defined: bool,
+        is_global_linker_symbol: bool,
     ) -> None:
         self.location = location
         self.name = name
@@ -83,7 +84,7 @@ class Function:
         self.type_contract_out = type_contract_out
         self.emit_inline_body = emit_inline_body
         self.is_externally_defined = is_externally_defined
-
+        self.is_global_linker_symbol = is_global_linker_symbol
         self._validate()
 
     def _validate(self) -> None:
@@ -91,13 +92,16 @@ class Function:
 
         Actual error handling should be before that and function object should not be created.
         """
-        if self.is_externally_defined and self.emit_inline_body:
-            msg = "Functions cannot be both marked as `inline` and `external`"
-            raise ValueError(msg)
-
-        if self.is_externally_defined and self.source:
-            msg = "Functions that marked as `external` cannot have an body!"
-            raise ValueError(msg)
+        if self.is_externally_defined:
+            if self.emit_inline_body:
+                msg = "Functions cannot be both marked as `inline` and `external`"
+                raise ValueError(msg)
+            if self.source:
+                msg = "Functions that marked as `external` cannot have an body!"
+                raise ValueError(msg)
+            if self.is_global_linker_symbol:
+                msg = "Functions that marked as `global` cannot have be external!"
+                raise ValueError(msg)
 
         if not self.is_externally_defined and not self.source:
             msg = "Functions that not marked as `external` must have an body!"

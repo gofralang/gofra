@@ -74,10 +74,13 @@ def aarch64_macos_instruction_set(
     context: AARCH64CodegenContext,
     operators: Sequence[Operator],
     program: ProgramContext,
+    owner_function_name: str,
 ) -> None:
     """Write executable instructions from given operators."""
     for idx, operator in enumerate(operators):
-        aarch64_macos_operator_instructions(context, operator, program, idx)
+        aarch64_macos_operator_instructions(
+            context, operator, program, idx, owner_function_name
+        )
 
 
 def aarch64_macos_operator_instructions(
@@ -85,6 +88,7 @@ def aarch64_macos_operator_instructions(
     operator: Operator,
     program: ProgramContext,
     idx: int,
+    owner_function_name: str,
 ) -> None:
     match operator.type:
         case OperatorType.INTRINSIC:
@@ -97,13 +101,19 @@ def aarch64_macos_operator_instructions(
             push_integer_onto_stack(context, operator.operand)
         case OperatorType.DO | OperatorType.IF:
             assert isinstance(operator.jumps_to_operator_idx, int)
-            label = AARCH64_GOFRA_CONTEXT_LABEL % operator.jumps_to_operator_idx
+            label = AARCH64_GOFRA_CONTEXT_LABEL % (
+                owner_function_name,
+                operator.jumps_to_operator_idx,
+            )
             evaluate_conditional_block_on_stack_with_jump(context, label)
         case OperatorType.END | OperatorType.WHILE:
             # This also should be refactored into `assembly` layer
-            label = AARCH64_GOFRA_CONTEXT_LABEL % idx
+            label = AARCH64_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
             if isinstance(operator.jumps_to_operator_idx, int):
-                label_to = AARCH64_GOFRA_CONTEXT_LABEL % operator.jumps_to_operator_idx
+                label_to = AARCH64_GOFRA_CONTEXT_LABEL % (
+                    owner_function_name,
+                    operator.jumps_to_operator_idx,
+                )
                 context.write(f"b {label_to}")
             context.fd.write(f"{label}:\n")
         case OperatorType.PUSH_STRING:
@@ -202,13 +212,16 @@ def aarch64_macos_executable_functions(
         [*program.functions.values(), program.entry_point],
     )
     for function in functions:
+        assert not function.is_global_linker_symbol or (
+            not function.type_contract_in and not function.type_contract_out
+        ), "Codegen does not supports global linker symbols that has type contracts"
         function_begin_with_prologue(
             context,
             function_name=function.name,
             as_global_linker_symbol=function.is_global_linker_symbol,
         )
 
-        aarch64_macos_instruction_set(context, function.source, program)
+        aarch64_macos_instruction_set(context, function.source, program, function.name)
         function_end_with_epilogue(context)
 
 

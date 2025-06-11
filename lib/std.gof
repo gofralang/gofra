@@ -10,3 +10,40 @@ macro FD_STD_ERR 2 end
 // Probably, sometime this will be part of an langauge
 macro true 1 1 == end
 macro false 1 0 == end
+
+memory .print_integer_buffer 128
+memory .print_integer_divres 16
+memory .print_integer_idx 16
+inline func void print_integer[int]
+    // Negative numbers not supported for now
+    copy 0 < if
+        FD_STD_OUT "FATAL: print_integer got negative number!\n" sc_write drop
+        1 sc_exit
+    end
+
+    // Straight zero
+    copy 0 == if
+        .print_integer_buffer '0' !<
+        .print_integer_buffer 1 + '\n' !<
+        FD_STD_OUT .print_integer_buffer 2 sc_write drop
+    end
+
+    .print_integer_divres swap !<
+    .print_integer_idx 0 !<
+    
+    while .print_integer_divres ?> 0 > do
+        .print_integer_divres ?> 10 %                     
+        .print_integer_buffer .print_integer_idx ?> + swap 48 + !<
+        .print_integer_idx .print_integer_idx ?> inc !<
+        
+        .print_integer_divres copy ?> 10 / !< 
+    end
+
+    while .print_integer_idx ?> 1 + 0 > do
+        FD_STD_OUT .print_integer_buffer .print_integer_idx ?> + 1 sc_write drop
+        .print_integer_idx copy ?> dec !<
+    end
+
+    .print_integer_buffer '\n' !<
+    FD_STD_OUT .print_integer_buffer 1 sc_write drop
+end

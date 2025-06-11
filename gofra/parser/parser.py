@@ -9,7 +9,6 @@ from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.lexer import (
     Keyword,
     Token,
-    TokenGenerator,
     TokenType,
     load_file_for_lexical_analysis,
 )
@@ -22,6 +21,9 @@ from .exceptions import (
     ParserEmptyIfBodyError,
     ParserEndAfterWhileError,
     ParserEndWithoutContextError,
+    ParserEntryPointFunctionModifiersError,
+    ParserEntryPointFunctionTypeContractInError,
+    ParserEntryPointFunctionTypeContractOutError,
     ParserExhaustiveContextStackError,
     ParserIncludeFileNotFoundError,
     ParserIncludeNonStringNameError,
@@ -30,6 +32,7 @@ from .exceptions import (
     ParserMacroNonWordNameError,
     ParserMacroRedefinesLanguageDefinitionError,
     ParserMacroRedefinitionError,
+    ParserNoEntryFunctionError,
     ParserNoMacroNameError,
     ParserNoWhileBeforeDoError,
     ParserNoWhileConditionOperatorsError,
@@ -42,55 +45,55 @@ from .intrinsics import WORD_TO_INTRINSIC
 from .operators import OperatorType
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, MutableMapping, MutableSequence
-
-    from gofra.parser.macros import Macro
+    from collections.abc import Iterable
 
 
-def parse_file_into_operators(
+def parse_file(
     path: Path,
     include_search_directories: Iterable[Path],
-) -> ParserContext:
+) -> tuple[ParserContext, Function]:
     """Load file for parsing into operators (lex and then parse)."""
-    tokens = load_file_for_lexical_analysis(source_filepath=path)
-    pc = _parse_lexical_tokens_into_operators(
-        path,
-        tokens,
-        include_search_directories=include_search_directories,
+    # Consider reversing at generator side or smth like that
+    tokens = deque(list(load_file_for_lexical_analysis(source_filepath=path))[::-1])
+    context = _parse_from_context_into_operators(
+        context=ParserContext(
+            parsing_from_path=path,
+            tokens=tokens,
+            include_search_directories=include_search_directories,
+            macros={},
+            functions={},
+            memories={},
+        ),
     )
+    assert not context.operators
 
-    if GOFRA_ENTRY_POINT not in pc.functions:
-        raise ValueError("Expected main function at your code...")
-
-    e = pc.functions[GOFRA_ENTRY_POINT]
-    e.is_global_linker_symbol = True
-    if e.is_externally_defined or e.emit_inline_body:
-        raise ValueError("Main entry cannot be external or inlined")
-
-    if e.type_contract_out or e.type_contract_in:
-        raise ValueError("Main function cannot have type contract out/in")
-    return pc
+    entry_point = validate_and_pop_entry_point(context)
+    return context, entry_point
 
 
-def _parse_lexical_tokens_into_operators(
-    parsing_from_path: Path,
-    tokens: TokenGenerator | MutableSequence[Token],
-    include_search_directories: Iterable[Path],
-    *,
-    context_propagated_macros: MutableMapping[str, Macro] | None = None,
-    context_propagated_functions: MutableMapping[str, Function] | None = None,
-    context_propagated_memories: MutableMapping[str, int] | None = None,
-) -> ParserContext:
+def validate_and_pop_entry_point(context: ParserContext) -> Function:
+    """Validate program entry, check its existance and type contracts."""
+    if GOFRA_ENTRY_POINT not in context.functions:
+        raise ParserNoEntryFunctionError
+
+    entry_point = context.functions[GOFRA_ENTRY_POINT]
+    if entry_point.is_externally_defined or entry_point.emit_inline_body:
+        raise ParserEntryPointFunctionModifiersError
+
+    if entry_point.type_contract_out:
+        raise ParserEntryPointFunctionTypeContractOutError(
+            type_contract_out=entry_point.type_contract_out,
+        )
+
+    if entry_point.type_contract_out:
+        raise ParserEntryPointFunctionTypeContractInError(
+            type_contract_in=entry_point.type_contract_in,
+        )
+    return entry_point
+
+
+def _parse_from_context_into_operators(context: ParserContext) -> ParserContext:
     """Consumes token stream into language operators."""
-    context = ParserContext(
-        parsing_from_path=parsing_from_path,
-        tokens=deque(reversed(list(tokens))),
-        include_search_directories=include_search_directories,
-        macros=context_propagated_macros or {},
-        functions=context_propagated_functions or {},
-        memories=context_propagated_memories or {},
-    )
-
     while not context.tokens_exhausted():
         _consume_token_for_parsing(
             token=context.tokens.pop(),
@@ -149,7 +152,7 @@ def _consume_keyword_token(context: ParserContext, token: Token) -> None:
             return _consume_macro_definition_into_token(context, token)
         case Keyword.INCLUDE:
             return _unpack_include_from_token(context, token)
-        case Keyword.INLINE | Keyword.EXTERN | Keyword.FUNCTION:
+        case Keyword.INLINE | Keyword.EXTERN | Keyword.FUNCTION | Keyword.GLOBAL:
             return _unpack_function_definition_from_token(context, token)
         case Keyword.CALL:
             return _unpack_function_call_from_token(context, token)
@@ -271,6 +274,7 @@ def _unpack_function_definition_from_token(
         type_contract_out,
         modifier_is_inline,
         modifier_is_extern,
+        modifier_is_global,
     ) = definition
 
     if modifier_is_extern:
@@ -285,6 +289,7 @@ def _unpack_function_definition_from_token(
             type_contract_out=type_contract_out,
             emit_inline_body=modifier_is_inline,
             is_externally_defined=modifier_is_extern,
+            is_global_linker_symbol=modifier_is_global,
             source=[],
         )
         return
@@ -322,6 +327,14 @@ def _unpack_function_definition_from_token(
             macro_name=function_name,
         )
 
+    new_context = ParserContext(
+        parsing_from_path=context.parsing_from_path,
+        include_search_directories=context.include_search_directories,
+        tokens=function_body_tokens[::-1],  # type: ignore  # noqa: PGH003
+        macros=context.macros,
+        functions=context.functions,
+        memories=context.memories,
+    )
     context.new_function(
         from_token=token,
         name=function_name,
@@ -329,14 +342,8 @@ def _unpack_function_definition_from_token(
         type_contract_out=type_contract_out,
         emit_inline_body=modifier_is_inline,
         is_externally_defined=modifier_is_extern,
-        source=_parse_lexical_tokens_into_operators(
-            context.parsing_from_path,
-            tokens=function_body_tokens,
-            include_search_directories=context.include_search_directories,
-            context_propagated_functions=context.functions,
-            context_propagated_macros=context.macros,
-            context_propagated_memories=context.memories,
-        ).operators,
+        is_global_linker_symbol=modifier_is_global,
+        source=_parse_from_context_into_operators(context=new_context).operators,
     )
 
 

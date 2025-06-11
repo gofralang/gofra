@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 from collections import deque
-from collections.abc import Iterable, MutableMapping, MutableSequence, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from gofra.lexer import Token
 from gofra.parser.functions import Function
-from gofra.typecheck.types import GofraType
 
-from .exceptions import ParserEmptyInputTokensError
 from .macros import Macro
 from .operators import Operator, OperatorOperand, OperatorType
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, MutableMapping, MutableSequence, Sequence
+    from pathlib import Path
+
+    from gofra.lexer import Token
+    from gofra.typecheck.types import GofraType
 
 
 @dataclass(frozen=False)
@@ -21,7 +24,6 @@ class ParserContext:
     parsing_from_path: Path
     include_search_directories: Iterable[Path]
 
-    # Mostly immutable input source tokens
     tokens: deque[Token]
 
     # Resulting operators from parsing
@@ -37,9 +39,7 @@ class ParserContext:
     current_operator: int = field(default=0)
 
     def __post_init__(self) -> None:
-        if not self.tokens:
-            raise ParserEmptyInputTokensError
-
+        assert self.tokens
         self.included_source_paths.add(self.parsing_from_path)
 
     def tokens_exhausted(self) -> bool:
@@ -62,6 +62,7 @@ class ParserContext:
         type_contract_out: Sequence[GofraType],
         emit_inline_body: bool,
         is_externally_defined: bool,
+        is_global_linker_symbol: bool,
         source: Sequence[Operator],
     ) -> Function:
         function = Function(
@@ -72,6 +73,7 @@ class ParserContext:
             type_contract_out=type_contract_out,
             emit_inline_body=emit_inline_body,
             is_externally_defined=is_externally_defined,
+            is_global_linker_symbol=is_global_linker_symbol,
         )
         self.functions[name] = function
         return function
