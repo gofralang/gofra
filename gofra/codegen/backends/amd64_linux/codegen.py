@@ -4,15 +4,20 @@ from __future__ import annotations
 
 from typing import IO, TYPE_CHECKING, assert_never
 
-from gofra.codegen.backends.aarch64_macos._context import AARCH64CodegenContext
-from gofra.codegen.backends.aarch64_macos.assembly import (
+from gofra.consts import GOFRA_ENTRY_POINT
+from gofra.parser.functions.function import Function
+from gofra.parser.intrinsics import Intrinsic
+from gofra.parser.operators import Operator, OperatorType
+
+from ._context import AMD64CodegenContext
+from .assembly import (
     call_function_block,
     drop_cells_from_stack,
     evaluate_conditional_block_on_stack_with_jump,
     function_begin_with_prologue,
     function_end_with_epilogue,
     initialize_static_data_section,
-    ipc_syscall_macos,
+    ipc_syscall_linux,
     load_memory_from_stack_arguments,
     perform_operation_onto_stack,
     pop_cells_from_stack_into_registers,
@@ -21,26 +26,22 @@ from gofra.codegen.backends.aarch64_macos.assembly import (
     push_static_address_onto_stack,
     store_into_memory_from_stack_arguments,
 )
-from gofra.codegen.backends.aarch64_macos.registers import (
-    AARCH64_ENTRY_POINT_SYMBOL,
-    AARCH64_GOFRA_CONTEXT_LABEL,
-    AARCH64_GOFRA_ON_STACK_OPERATIONS,
-    AARCH64_MACOS_EPILOGUE_EXIT_CODE,
-    AARCH64_MACOS_EPILOGUE_EXIT_SYSCALL_NUMBER,
+from .registers import (
+    AMD64_ENTRY_POINT_SYMBOL,
+    AMD64_GOFRA_CONTEXT_LABEL,
+    AMD64_GOFRA_ON_STACK_OPERATIONS,
+    AMD64_LINUX_EPILOGUE_EXIT_CODE,
+    AMD64_LINUX_EPILOGUE_EXIT_SYSCALL_NUMBER,
 )
-from gofra.consts import GOFRA_ENTRY_POINT
-from gofra.parser.functions.function import Function
-from gofra.parser.intrinsics import Intrinsic
-from gofra.parser.operators import Operator, OperatorType
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from gofra.context import ProgramContext
 
-AARCH64_MACOS_INTRINSIC_TO_ASSEMBLY_OPS: dict[
+AMD64_LINUX_INTRINSIC_TO_ASSEMBLY_OPS: dict[
     Intrinsic,
-    AARCH64_GOFRA_ON_STACK_OPERATIONS,
+    AMD64_GOFRA_ON_STACK_OPERATIONS,
 ] = {
     Intrinsic.PLUS: "+",
     Intrinsic.MINUS: "-",
@@ -58,27 +59,27 @@ AARCH64_MACOS_INTRINSIC_TO_ASSEMBLY_OPS: dict[
 }
 
 
-def generate_aarch64_macos_backend(
+def generate_amd64_linux_backend(
     fd: IO[str],
     program: ProgramContext,
 ) -> None:
     """AARCH64 MacOS code generation backend."""
-    context = AARCH64CodegenContext(fd=fd, strings={})
+    context = AMD64CodegenContext(fd=fd, strings={})
 
-    aarch64_macos_executable_functions(context, program)
-    aarch64_macos_program_entry_point(context)
-    aarch64_macos_data_section(context, program)
+    amd64_linux_executable_functions(context, program)
+    amd64_linux_program_entry_point(context)
+    amd64_linux_data_section(context, program)
 
 
-def aarch64_macos_instruction_set(
-    context: AARCH64CodegenContext,
+def amd64_linux_instruction_set(
+    context: AMD64CodegenContext,
     operators: Sequence[Operator],
     program: ProgramContext,
     owner_function_name: str,
 ) -> None:
     """Write executable instructions from given operators."""
     for idx, operator in enumerate(operators):
-        aarch64_macos_operator_instructions(
+        amd64_linux_operator_instructions(
             context,
             operator,
             program,
@@ -87,8 +88,8 @@ def aarch64_macos_instruction_set(
         )
 
 
-def aarch64_macos_operator_instructions(
-    context: AARCH64CodegenContext,
+def amd64_linux_operator_instructions(
+    context: AMD64CodegenContext,
     operator: Operator,
     program: ProgramContext,
     idx: int,
@@ -96,7 +97,7 @@ def aarch64_macos_operator_instructions(
 ) -> None:
     match operator.type:
         case OperatorType.INTRINSIC:
-            aarch64_macos_intrinsic_instructions(context, operator)
+            amd64_linux_intrinsic_instructions(context, operator)
         case OperatorType.PUSH_MEMORY_POINTER:
             assert isinstance(operator.operand, str)
             push_static_address_onto_stack(context, operator.operand)
@@ -105,20 +106,20 @@ def aarch64_macos_operator_instructions(
             push_integer_onto_stack(context, operator.operand)
         case OperatorType.DO | OperatorType.IF:
             assert isinstance(operator.jumps_to_operator_idx, int)
-            label = AARCH64_GOFRA_CONTEXT_LABEL % (
+            label = AMD64_GOFRA_CONTEXT_LABEL % (
                 owner_function_name,
                 operator.jumps_to_operator_idx,
             )
             evaluate_conditional_block_on_stack_with_jump(context, label)
         case OperatorType.END | OperatorType.WHILE:
             # This also should be refactored into `assembly` layer
-            label = AARCH64_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
+            label = AMD64_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
             if isinstance(operator.jumps_to_operator_idx, int):
-                label_to = AARCH64_GOFRA_CONTEXT_LABEL % (
+                label_to = AMD64_GOFRA_CONTEXT_LABEL % (
                     owner_function_name,
                     operator.jumps_to_operator_idx,
                 )
-                context.write(f"b {label_to}")
+                context.write(f"jmp {label_to}")
             context.fd.write(f"{label}:\n")
         case OperatorType.PUSH_STRING:
             assert isinstance(operator.operand, str)
@@ -142,8 +143,8 @@ def aarch64_macos_operator_instructions(
             assert_never(operator.type)
 
 
-def aarch64_macos_intrinsic_instructions(
-    context: AARCH64CodegenContext,
+def amd64_linux_intrinsic_instructions(
+    context: AMD64CodegenContext,
     operator: Operator,
 ) -> None:
     """Write executable body for intrinsic operation."""
@@ -153,13 +154,13 @@ def aarch64_macos_intrinsic_instructions(
         case Intrinsic.DROP:
             drop_cells_from_stack(context, cells_count=1)
         case Intrinsic.COPY:
-            pop_cells_from_stack_into_registers(context, "X0")
-            push_register_onto_stack(context, "X0")
-            push_register_onto_stack(context, "X0")
+            pop_cells_from_stack_into_registers(context, "rax")
+            push_register_onto_stack(context, "rax")
+            push_register_onto_stack(context, "rax")
         case Intrinsic.SWAP:
-            pop_cells_from_stack_into_registers(context, "X0", "X1")
-            push_register_onto_stack(context, "X0")
-            push_register_onto_stack(context, "X1")
+            pop_cells_from_stack_into_registers(context, "rax", "rbx")
+            push_register_onto_stack(context, "rax")
+            push_register_onto_stack(context, "rbx")
         case (
             Intrinsic.PLUS
             | Intrinsic.MINUS
@@ -177,7 +178,7 @@ def aarch64_macos_intrinsic_instructions(
         ):
             perform_operation_onto_stack(
                 context,
-                operation=AARCH64_MACOS_INTRINSIC_TO_ASSEMBLY_OPS[operator.operand],
+                operation=AMD64_LINUX_INTRINSIC_TO_ASSEMBLY_OPS[operator.operand],
             )
         case (
             Intrinsic.SYSCALL0
@@ -189,7 +190,7 @@ def aarch64_macos_intrinsic_instructions(
             | Intrinsic.SYSCALL6
         ):
             assert operator.syscall_optimization_injected_args is None, "TODO: Optimize"
-            ipc_syscall_macos(
+            ipc_syscall_linux(
                 context,
                 arguments_count=operator.get_syscall_arguments_count() - 1,
                 store_retval_onto_stack=not operator.syscall_optimization_omit_result,
@@ -202,8 +203,8 @@ def aarch64_macos_intrinsic_instructions(
             assert_never(operator.operand)
 
 
-def aarch64_macos_executable_functions(
-    context: AARCH64CodegenContext,
+def amd64_linux_executable_functions(
+    context: AMD64CodegenContext,
     program: ProgramContext,
 ) -> None:
     """Define all executable functions inside final executable with their executable body respectuflly.
@@ -225,16 +226,16 @@ def aarch64_macos_executable_functions(
             as_global_linker_symbol=function.is_global_linker_symbol,
         )
 
-        aarch64_macos_instruction_set(context, function.source, program, function.name)
+        amd64_linux_instruction_set(context, function.source, program, function.name)
         function_end_with_epilogue(context)
 
 
-def aarch64_macos_program_entry_point(context: AARCH64CodegenContext) -> None:
+def amd64_linux_program_entry_point(context: AMD64CodegenContext) -> None:
     """Write program entry, used to not segfault due to returning into protected system memory."""
     # This is an executable entry point
     function_begin_with_prologue(
         context,
-        function_name=AARCH64_ENTRY_POINT_SYMBOL,
+        function_name=AMD64_ENTRY_POINT_SYMBOL,
         as_global_linker_symbol=True,
     )
 
@@ -248,13 +249,13 @@ def aarch64_macos_program_entry_point(context: AARCH64CodegenContext) -> None:
 
     # Call syscall to exit without accessing protected system memory.
     # `ret` into return-address will fail with segfault
-    push_integer_onto_stack(context, AARCH64_MACOS_EPILOGUE_EXIT_CODE)
-    push_integer_onto_stack(context, AARCH64_MACOS_EPILOGUE_EXIT_SYSCALL_NUMBER)
-    ipc_syscall_macos(context, arguments_count=1, store_retval_onto_stack=False)
+    push_integer_onto_stack(context, AMD64_LINUX_EPILOGUE_EXIT_CODE)
+    push_integer_onto_stack(context, AMD64_LINUX_EPILOGUE_EXIT_SYSCALL_NUMBER)
+    ipc_syscall_linux(context, arguments_count=1, store_retval_onto_stack=False)
 
 
-def aarch64_macos_data_section(
-    context: AARCH64CodegenContext,
+def amd64_linux_data_section(
+    context: AMD64CodegenContext,
     program: ProgramContext,
 ) -> None:
     """Write program static data section filled with static strings and memory blobs."""
