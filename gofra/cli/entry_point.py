@@ -2,6 +2,7 @@ import sys
 from subprocess import CalledProcessError, run
 
 from gofra.assembler import assemble_program
+from gofra.cli.ir import emit_ir_into_stdout
 from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.gofra import process_input_file
 from gofra.optimizer import optimize_program
@@ -52,6 +53,10 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
         validate_type_safety(
             functions={**context.functions, GOFRA_ENTRY_POINT: context.entry_point},
         )
+
+    if args.ir:
+        emit_ir_into_stdout(context)
+        sys.exit(0)
 
     cli_message(
         level="INFO",

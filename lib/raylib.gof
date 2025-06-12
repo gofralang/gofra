@@ -1,8 +1,8 @@
 // Raylib bindings to Gofra
 
 // void InitWindow(int, int, char[])
-extern func void _InitWindow[int,int,ptr]
-inline func void InitWindow[int,int,ptr] call _InitWindow end
+extern func bool _InitWindow[int,int,ptr]
+inline func bool InitWindow[int,int,ptr] call _InitWindow end
 
 // bool WindowShouldClose()
 extern func bool _WindowShouldClose[]

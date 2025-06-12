@@ -26,6 +26,8 @@ class CLIArguments:
 
     include_paths: list[Path]
 
+    ir: bool
+
     linker_flags: list[str]
     assembler_flags: list[str]
 
@@ -78,6 +80,7 @@ def parse_cli_arguments() -> CLIArguments:
     ]
 
     return CLIArguments(
+        ir=bool(args.ir),
         source_filepaths=source_filepaths,
         output_filepath=output_filepath,
         output_format=args.output_format,
@@ -135,12 +138,19 @@ def _construct_argument_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
+        "-ir",
+        required=False,
+        action="store_true",
+        help="If passed will just emit IR of provided file(s) into stdin.",
+    )
+    parser.add_argument(
         "--verbose",
         "-v",
         required=False,
         action="store_true",
         help="If passed will enable INFO level logs from compiler.",
     )
+
     parser.add_argument(
         "--execute",
         "-e",

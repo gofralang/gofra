@@ -30,6 +30,7 @@ ignore = [
     "W291",
     "E501",
     "UP031",
+    "T201",
 ]
 
 [build-system]
