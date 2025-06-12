@@ -19,21 +19,26 @@ Language follows reverse polish notation (examples can be found below) \
 ---
 
 ### Hello world example
-###### (For now, language is mostly bare-metal so in this example there is raw `write` syscall and file descriptor usage)
+###### (For now, language is mostly bare-metal so in this example there is raw `sc_write` syscall and file descriptor usage)
 ```
 include "std.gof"
-FD_STD_OUT "Hello, World!\n" write
+func void main
+    FD_STD_OUT "Hello, World!\n" sc_write drop
+end
 ```
 
 
 ### Compatibility
-Language currently have codegen only for MacOS ARM64
+Language currently have codegenS only for:
+- AARCH64 MacOS (Darwin)
+- x86_64 Linux
 
 ### Features
-- Native (codegen assembly for ARM64)
-- Type safe (at least somehow, validates stack usage and tries to infer types so you wont mess up)
+- Native (codegen assembly)
+- Type safety (Validates stack usage and tries to infer types so you wont mess up)
 - Mostly self explanation errors (Tries to help you and correct your intentions)
-- Optimizer (Helps optimize resulting assembly for codegen so your default usage will not be overwhelmed by language)
+- Optimizer (DCE, CF, Helps optimize resulting assembly for codegen so your default usage will not be overwhelmed by language)
+- FFI with `global`/`extern` function modifers (there is CLI flags to emit an library/object file)
 - Simple CLI for working with language (simple toolkit)
 
 
@@ -79,30 +84,10 @@ at compilation stage will be converted into simple `4 2 *` (tokens expanded)
 For importing some file (same as macros system but for files) you can use `import "file.gof"`
 
 
-### Command Line Interface (CLI)
-After installation, your way to call `python -m gofra` for this block will be folded into just `gofra`!
-
-For getting help with CLI just use `gofra --help`
-
-CLI accepts single file name with Gofra source code
-And then accepts action (for now, there is only `compile` action (`-c`, `--compile`))
-
-So task for compiling given file is: `gofra ./path_to_your_file -c`
-
-By default toolkit will left cache in `./.build` directory but you may redefine that behavior via `--delete-cache` (`--dc`) and `--cache-dir` (`--cd`)
-
-There is some system that may be disable via `--no-typecheck` (`-nt`) and `--no-optimizations` (`-no`) for current development process they can be disable
-
-For debugging and testing you have flags:
-- `--execute` (`-e`) for running after compilation and do not have scripts
-- `--fall-into-debugger` (`-dbg`) will fall into `lldb` after run
-
-For some import management you may want to add some search directories via `--include-search-dir` (`-isd`) for example `gofra ./src.gof -c -isd ./my_path_for_search/ -isd ./another/path`
 
 ### Milestones and planned features
 
-- Memory management support
-- Function calls and hooking up with native libraries (.dylib, .dll, .so) with calling extern symbols
 - Standard library with not only syscall mapping
-- Support for x86_64 Windows and x86_64 Linux
-- More examples 
+- Stability improvements
+- Support for x86_64 Windows
+- More examples
