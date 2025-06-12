@@ -3,6 +3,6 @@
 Tools used for assembly is different for specified target
 """
 
-from .assembler import assemble_executable
+from .assembler import assemble_program
 
-__all__ = ["assemble_executable"]
+__all__ = ["assemble_program"]

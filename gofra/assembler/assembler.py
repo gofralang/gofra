@@ -7,7 +7,7 @@ from pathlib import Path
 from platform import system as current_platform_system
 from shutil import which
 from subprocess import CalledProcessError, check_output
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from gofra.cli.output import cli_message
 from gofra.codegen import generate_code_for_assembler
@@ -22,10 +22,13 @@ if TYPE_CHECKING:
     from gofra.codegen.targets import TARGET_T
     from gofra.context import ProgramContext
 
+type OUTPUT_FORMAT_T = Literal["library", "executable", "object", "assembly"]
 
-def assemble_executable(  # noqa: PLR0913
+
+def assemble_program(  # noqa: PLR0913
     context: ProgramContext,
     output: Path,
+    output_format: OUTPUT_FORMAT_T,
     target: TARGET_T,
     *,
     build_cache_dir: Path,
@@ -33,7 +36,7 @@ def assemble_executable(  # noqa: PLR0913
     additional_assembler_flags: list[str],
     delete_build_cache_after_compilation: bool,
 ) -> None:
-    """Convert given program into executable using assembly and linker."""
+    """Convert given program into executable/library/etc using assembly and linker."""
     _validate_toolkit_installation()
     _prepare_build_cache_directory(build_cache_dir)
 
@@ -44,6 +47,10 @@ def assemble_executable(  # noqa: PLR0913
         build_cache_dir=build_cache_dir,
     )
 
+    if output_format == "assembly":
+        assembly_filepath.replace(output)
+        return
+
     object_filepath = _assemble_object_file(
         target,
         assembly_filepath,
@@ -51,11 +58,18 @@ def assemble_executable(  # noqa: PLR0913
         additional_assembler_flags=additional_assembler_flags,
         build_cache_dir=build_cache_dir,
     )
+    if output_format == "object":
+        object_filepath.replace(output)
+        if delete_build_cache_after_compilation:
+            assembly_filepath.unlink()
+        return
 
-    _link_final_executable(
+    assert output_format in ("executable", "library")
+    _link_final_output(
         output,
         target,
         object_filepath,
+        output_format=output_format,
         additional_linker_flags=additional_linker_flags,
     )
 
@@ -76,10 +90,11 @@ def _prepare_build_cache_directory(build_cache_directory: Path) -> None:
         f.write("*\n")
 
 
-def _link_final_executable(
+def _link_final_output(
     output: Path,
     target: TARGET_T,
     o_filepath: Path,
+    output_format: Literal["executable", "library"],
     additional_linker_flags: list[str],
 ) -> None:
     """Use linker to link object file into executable."""
@@ -100,24 +115,29 @@ def _link_final_executable(
                 "-syslibroot",
                 str(system_sdk),
             ]
+
+            if output_format == "library":
+                target_linker_flags += ["-dylib"]
         case "Linux":
             assert target == "x86_64-linux"
 
             target_linker_flags = ["-arch", "x86_64"]
+            assert output_format == "executable", (
+                "Libraries on Linux is not implemented"
+            )
         case _:
             raise UnsupportedBuilderOperatingSystemError
 
+    linker_flags = [
+        *target_linker_flags,
+        *additional_linker_flags,
+    ]
+
+    if output_format == "executable":
+        linker_flags += ["-e", CODEGEN_ENTRY_POINT_SYMBOL]
+
     check_output(  # noqa: S603
-        [
-            "/usr/bin/ld",
-            "-o",
-            output,
-            o_filepath,
-            "-e",
-            CODEGEN_ENTRY_POINT_SYMBOL,
-            *target_linker_flags,
-            *additional_linker_flags,
-        ],
+        ["/usr/bin/ld", "-o", output, o_filepath, *linker_flags],
     )
 
 
@@ -129,7 +149,7 @@ def _assemble_object_file(
     build_cache_dir: Path,
     additional_assembler_flags: list[str],
 ) -> Path:
-    """Call assembler to assembly given assembly file from codegen."""
+    """Call assembler to assemble given assembly file from codegen."""
     object_filepath = (build_cache_dir / output.name).with_suffix(".o")
 
     # Assembler is not crossplatform so we expect host has same architecture

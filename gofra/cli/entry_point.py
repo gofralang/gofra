@@ -1,7 +1,7 @@
 import sys
 from subprocess import CalledProcessError, run
 
-from gofra.assembler import assemble_executable
+from gofra.assembler import assemble_program
 from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.gofra import process_input_file
 from gofra.optimizer import optimize_program
@@ -21,6 +21,12 @@ def cli_entry_point() -> None:
         cli_process_toolchain_on_input_files(args)
 
         if args.execute_after_compilation:
+            if args.output_format != "executable":
+                cli_message(
+                    level="ERROR",
+                    text="Cannot execute after compilation due to output format is not set to an executable!",
+                )
+                sys.exit(1)
             cli_execute_after_compilation(args)
 
 
@@ -52,7 +58,8 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
         text="Assemblying final executable...",
         verbose=args.verbose,
     )
-    assemble_executable(
+    assemble_program(
+        output_format=args.output_format,
         context=context,
         output=args.output_filepath,
         target=args.target,
@@ -64,7 +71,7 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
 
     cli_message(
         level="INFO",
-        text=f"Compiled input file down to executable `{args.output_filepath.name}`!",
+        text=f"Compiled input file down to {args.output_format} `{args.output_filepath.name}`!",
         verbose=args.verbose,
     )
 
@@ -93,4 +100,8 @@ def cli_execute_after_compilation(args: CLIArguments) -> None:
         sys.exit(0)
 
     level = "INFO" if exit_code == 0 else "ERROR"
-    cli_message(level, f"Program finished with exit code {exit_code}!")
+    cli_message(
+        level,
+        f"Program finished with exit code {exit_code}!",
+        verbose=args.verbose,
+    )

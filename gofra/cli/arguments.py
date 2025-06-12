@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from gofra.cli.output import cli_message
 
 if TYPE_CHECKING:
+    from gofra.assembler.assembler import OUTPUT_FORMAT_T
     from gofra.codegen.targets import TARGET_T
 
 
@@ -19,6 +20,7 @@ class CLIArguments:
 
     source_filepaths: list[Path]
     output_filepath: Path
+    output_format: OUTPUT_FORMAT_T
 
     execute_after_compilation: bool
 
@@ -65,7 +67,9 @@ def parse_cli_arguments() -> CLIArguments:
 
     source_filepaths = [Path(f) for f in args.source_files]
     output_filepath = (
-        Path(args.output) if args.output else infer_output_filename(source_filepaths)
+        Path(args.output)
+        if args.output
+        else infer_output_filename(source_filepaths, output_format=args.output_format)
     )
     include_paths = [
         Path("./"),
@@ -76,6 +80,7 @@ def parse_cli_arguments() -> CLIArguments:
     return CLIArguments(
         source_filepaths=source_filepaths,
         output_filepath=output_filepath,
+        output_format=args.output_format,
         execute_after_compilation=bool(args.execute),
         delete_build_cache=bool(args.delete_cache),
         build_cache_dir=Path(args.cache_dir),
@@ -108,7 +113,7 @@ def _construct_argument_parser() -> ArgumentParser:
         "-o",
         type=str,
         required=False,
-        help="Path to output executable file to generate, by default will be infered from first input filename, also infers build cache filenames from that",
+        help="Path to output file to generate, by default will be infered from first input filename, also infers build cache filenames from that",
     )
 
     parser.add_argument(
@@ -119,6 +124,16 @@ def _construct_argument_parser() -> ArgumentParser:
         help="Compilation target. Infers codegen to use from that.",
         choices=["x86_64-linux", "aarch64-darwin"],
     )
+    parser.add_argument(
+        "--output-format",
+        "-of",
+        type=str,
+        required=False,
+        help="Compilation output format. Useful if you want to emit '.o' object-file.",
+        default="executable",
+        choices=["object", "executable", "library", "assembly"],
+    )
+
     parser.add_argument(
         "--verbose",
         "-v",
@@ -131,7 +146,7 @@ def _construct_argument_parser() -> ArgumentParser:
         "-e",
         required=False,
         action="store_true",
-        help="If provided, will execute output executable file after compilation",
+        help="If provided, will execute output executable file after compilation. Expects output format to be executable",
     )
 
     parser.add_argument(
@@ -199,20 +214,37 @@ def _construct_argument_parser() -> ArgumentParser:
     return parser
 
 
-def infer_output_filename(source_filepaths: list[Path]) -> Path:
+def infer_output_filename(  # noqa: PLR0911
+    source_filepaths: list[Path],
+    output_format: OUTPUT_FORMAT_T,
+) -> Path:
     """Try to infer filename for output from input source files."""
     assert source_filepaths
 
     source_filepath = source_filepaths[0]
 
+    match output_format:
+        case "library":
+            return source_filepath.with_suffix(".dylib")
+        case "object":
+            return source_filepath.with_suffix(".o")
+        case "assembly":
+            return source_filepath.with_suffix(".s")
+        case _:
+            ...
     match current_platform_system():
-        case "Darwin" | "Linux":
-            if source_filepath.suffix == "":
-                # File already doesnt have suffix so we append _
-                return source_filepath.with_suffix(source_filepath.suffix + "_")
-
-            # We have an input file with extension so we remove that to indicate executable.
-            return source_filepath.with_suffix("")
+        case "Darwin":
+            match output_format:
+                case "executable":
+                    if source_filepath.suffix == "":
+                        return source_filepath.with_suffix(source_filepath.suffix + "_")
+                    return source_filepath.with_suffix("")
+        case "Linux":
+            match output_format:
+                case "executable":
+                    if source_filepath.suffix == "":
+                        return source_filepath.with_suffix(source_filepath.suffix + "_")
+                    return source_filepath.with_suffix("")
         case _:
             cli_message(
                 level="ERROR",

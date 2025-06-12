@@ -14,7 +14,7 @@ def process_input_file(
     """Core entry for Gofra API.
 
     Compiles given filepath down to `IR` into `ProgramContext`.
-    Maybe assembled into executable via `assemble_executable`
+    Maybe assembled into executable/library/object/etc... via `assemble_program`
 
     Does not provide optimizer or type checker.
     """
