@@ -7,7 +7,8 @@ from .output import cli_message
 
 
 @contextmanager
-def cli_user_error_handler() -> Generator[None]:
+def cli_gofra_error_handler() -> Generator[None]:
+    """Wrap function to properly emit Gofra internal errors."""
     try:
         yield
     except GofraError as ge:

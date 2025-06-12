@@ -25,3 +25,5 @@ inline func int sprintf[ptr,ptr,int]
     call _sprintf
     drop
 end
+
+extern func void _exit[int]

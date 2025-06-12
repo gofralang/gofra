@@ -1,11 +1,12 @@
+// Raylib bindings to Gofra
 
 // void InitWindow(int, int, char[])
 extern func void _InitWindow[int,int,ptr]
 inline func void InitWindow[int,int,ptr] call _InitWindow end
 
 // bool WindowShouldClose()
-extern func int _WindowShouldClose[]
-inline func int WindowShouldClose[] call _WindowShouldClose end
+extern func bool _WindowShouldClose[]
+inline func bool WindowShouldClose[] call _WindowShouldClose end
 
 // void CloseWindow()
 extern func void _CloseWindow[]
@@ -33,14 +34,15 @@ inline func void ClearBackground[int] call _ClearBackground end
 extern func void _DrawCircle[int,int,int,ptr]
 inline func void DrawCircle[int,int,int,ptr] call _DrawCircle end
 
-extern func void _DrawRectangle[int,int,int,int,ptr]
-inline func void DrawRectangle[int,int,int,int,ptr] call _DrawRectangle end
-extern func int _IsKeyPressed[int]
-inline func int IsKeyPressed[int] call _IsKeyPressed end
+extern func void _DrawRectangle[int,int,int,int,int]
+inline func void DrawRectangle[int,int,int,int,int] call _DrawRectangle end
+extern func bool _IsKeyPressed[int]
+inline func bool IsKeyPressed[int] call _IsKeyPressed end
 
 // void DrawText(char[], int, int, int, Color)
-extern func void _DrawText[int,int,int,int,int]
-inline func void DrawText[int,int,int,int,int] call _DrawText end
+// TODO: pass color as ptr
+extern func void _DrawText[ptr,int,int,int,int]
+inline func void DrawText[ptr,int,int,int,int] call _DrawText end
 
 // Key codes
 macro KEY_W 87 end

@@ -145,6 +145,16 @@ def _consume_into_string_token(context: LexerContext, location: TokenLocation) -
 
 def _consume_number_into_token(word: str, location: TokenLocation) -> Token | None:
     """Try to consume given word into number token (integer / float) or return nothing."""
+    if word.startswith("0x"):
+        # Hexadecimal number
+        if not all(c in "0123456789abcdefABCDEF" for c in word[2:]):
+            return None
+        return Token(
+            type=TokenType.INTEGER,
+            text=word,
+            value=int(word, 16),
+            location=location,
+        )
     if not word.isdigit() and not (word[0] == "-" and word[1:].isdigit()):
         return None
     return Token(

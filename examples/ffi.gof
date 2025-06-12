@@ -1,3 +1,0 @@
-include "libc.gof"
-
-"FFI LIBC HELLO" puts

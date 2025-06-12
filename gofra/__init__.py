@@ -1,6 +1,11 @@
+"""Gofra programming language.
+
+Provides toolchain including CLI, compiler etc.
+"""
+
 from .assembler import assemble_executable
+from .codegen.targets import TargetArchitecture, TargetOperatingSystem
 from .gofra import process_input_file
-from .targets import TargetArchitecture, TargetOperatingSystem
 
 __all__ = [
     "TargetArchitecture",

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import IntEnum, auto
 from pathlib import Path
 
+from gofra.lexer.keywords import Keyword
+
 type TokenValue = int | float | str
 
 
@@ -33,4 +35,6 @@ class Token:
     location: TokenLocation
 
     def __repr__(self) -> str:
+        if self.type == TokenType.KEYWORD:
+            return f"Token<{self.type.name}, {Keyword(self.value).name}>"
         return f"Token<{self.type.name}, {self.value}>"

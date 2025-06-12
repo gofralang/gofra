@@ -1,7 +1,7 @@
 from pathlib import Path
 
+from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
 from gofra.context import ProgramContext
-from gofra.targets import TargetArchitecture, TargetOperatingSystem
 
 from .get_backend import get_backend_for_target_pair
 
@@ -11,9 +11,8 @@ def generate_code_for_assembler(
     context: ProgramContext,
     architecture: TargetArchitecture,
     operating_system: TargetOperatingSystem,
-    *,
-    debug_comments: bool = True,
 ) -> None:
+    """Generate assembly from given program context and specified ARCHxOS pair into given file."""
     backend = get_backend_for_target_pair(architecture, operating_system)
 
     output_path.parent.mkdir(exist_ok=True)
@@ -24,4 +23,4 @@ def generate_code_for_assembler(
         newline="",
         encoding="UTF-8",
     ) as fd:
-        return backend(fd, context, debug_comments=debug_comments)
+        return backend(fd, context)

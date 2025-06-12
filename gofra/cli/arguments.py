@@ -6,7 +6,7 @@ from pathlib import Path
 from platform import system as current_platform_system
 
 from gofra.cli.output import cli_message
-from gofra.targets import TargetArchitecture, TargetOperatingSystem
+from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,7 @@ def parse_cli_arguments() -> CLIArguments:
         execute_after_compile=bool(args.execute),
         build_cache_delete_after_run=bool(args.delete_cache),
         build_cache_directory=Path(args.cache_dir) if args.cache_dir else None,
-        target_architecture=TargetArchitecture.X86,
+        target_architecture=TargetArchitecture.AMD,
         target_os=TargetOperatingSystem.LINUX,
         no_optimizations=bool(args.no_optimizations),
         no_typecheck=bool(args.no_typecheck),

@@ -33,10 +33,12 @@ from .exceptions import (
 def consume_function_definition(
     context: ParserContext,
     token: Token,
-) -> tuple[Token, str, list[GofraType], list[GofraType], bool, bool]:
-    token, (modifier_is_inline, modifier_is_extern) = consume_function_modifiers(
-        context,
-        token,
+) -> tuple[Token, str, list[GofraType], list[GofraType], bool, bool, bool]:
+    token, (modifier_is_inline, modifier_is_extern, modifier_is_global) = (
+        consume_function_modifiers(
+            context,
+            token,
+        )
     )
     function_name, type_contract_in, type_contract_out = consume_function_signature(
         context,
@@ -50,13 +52,14 @@ def consume_function_definition(
         type_contract_out,
         modifier_is_inline,
         modifier_is_extern,
+        modifier_is_global,
     )
 
 
 def consume_function_modifiers(
     context: ParserContext,
     token: Token,
-) -> tuple[Token, tuple[bool, bool]]:
+) -> tuple[Token, tuple[bool, bool, bool]]:
     """Consume parser context assuming given token is last popped, and it is a function modifier (or base function).
 
     Accepts `inline`, `extern`, `function` keywords as tokens.
@@ -64,10 +67,16 @@ def consume_function_modifiers(
     """
     # Function modifier parsing must be started from modifier or start
     assert token.type == TokenType.KEYWORD
-    assert token.value in (Keyword.INLINE, Keyword.EXTERN, Keyword.FUNCTION)
+    assert token.value in (
+        Keyword.INLINE,
+        Keyword.EXTERN,
+        Keyword.FUNCTION,
+        Keyword.GLOBAL,
+    )
 
     mark_is_extern = False
     mark_is_inline = False
+    mark_is_global = False
 
     while not context.tokens_exhausted():
         if token.type != TokenType.KEYWORD:
@@ -88,6 +97,12 @@ def consume_function_modifiers(
                 mark_is_extern = True
             case Keyword.FUNCTION:
                 break
+            case Keyword.GLOBAL:
+                if mark_is_global:
+                    raise ParserFunctionModifierReappliedError(
+                        modifier_token=token,
+                    )
+                mark_is_global = True
             case _:
                 raise ParserExpectedFunctionKeywordError(token=token)
 
@@ -101,7 +116,7 @@ def consume_function_modifiers(
     if token.type != TokenType.KEYWORD or token.value != Keyword.FUNCTION:
         raise ParserExpectedFunctionAfterFunctionModifiersError(modifier_token=token)
 
-    return token, (mark_is_inline, mark_is_extern)
+    return token, (mark_is_inline, mark_is_extern, mark_is_global)
 
 
 def consume_function_signature(

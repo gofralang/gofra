@@ -1,4 +1,0 @@
-// Example of bare "Hello, World!"
-// Uses native system calls (syscall)
-
-1 "Hello, World!\n" 4 syscall3 drop

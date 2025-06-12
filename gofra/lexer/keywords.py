@@ -18,6 +18,8 @@ class Keyword(IntEnum):
 
     EXTERN = auto()
     INLINE = auto()
+    GLOBAL = auto()
+
     FUNCTION = auto()
     CALL = auto()
 
@@ -34,5 +36,6 @@ WORD_TO_KEYWORD = {
     "func": Keyword.FUNCTION,
     "inline": Keyword.INLINE,
     "memory": Keyword.MEMORY,
+    "global": Keyword.GLOBAL,
 }
 KEYWORD_TO_NAME = {v: k for k, v in WORD_TO_KEYWORD.items()}

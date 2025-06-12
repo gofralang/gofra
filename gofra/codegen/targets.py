@@ -3,7 +3,7 @@ from enum import IntEnum, auto
 
 class TargetArchitecture(IntEnum):
     ARM = auto()
-    X86 = auto()
+    AMD = auto()
 
 
 class TargetOperatingSystem(IntEnum):
