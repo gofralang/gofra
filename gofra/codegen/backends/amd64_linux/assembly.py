@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, assert_never
 
 from .registers import (
-    AMD64_GOFRA_ON_STACK_OPERATIONS,
     AMD64_LINUX_ABI_ARGUMENTS_REGISTERS,
     AMD64_LINUX_ABI_RETVAL_REGISTER,
     AMD64_LINUX_SYSCALL_ARGUMENTS_REGISTERS,
@@ -13,6 +12,8 @@ from .registers import (
 )
 
 if TYPE_CHECKING:
+    from gofra.codegen.backends.general import CODEGEN_GOFRA_ON_STACK_OPERATIONS
+
     from ._context import AMD64CodegenContext
     from .registers import AMD64_GP_REGISTERS
 
@@ -184,7 +185,7 @@ def load_memory_from_stack_arguments(context: AMD64CodegenContext) -> None:
 
 def perform_operation_onto_stack(
     context: AMD64CodegenContext,
-    operation: AMD64_GOFRA_ON_STACK_OPERATIONS,
+    operation: CODEGEN_GOFRA_ON_STACK_OPERATIONS,
 ) -> None:
     """Perform *math* operation onto stack (pop arguments and push back result)."""
     is_unary = operation in ("++", "--")

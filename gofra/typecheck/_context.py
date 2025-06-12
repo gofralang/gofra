@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import MutableSequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from gofra.parser.functions.function import Function
 from gofra.parser.operators import Operator
 
 from .exceptions import (
@@ -13,6 +12,11 @@ from .exceptions import (
     TypecheckNotEnoughOperatorArgumentsError,
 )
 from .types import GofraType as T
+
+if TYPE_CHECKING:
+    from collections.abc import MutableSequence
+
+    from gofra.parser.functions.function import Function
 
 
 @dataclass(frozen=False)

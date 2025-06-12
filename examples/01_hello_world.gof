@@ -1,3 +1,3 @@
+include "std.gof"
 
-
-func void main[] 2 2 + drop end
+func void main[] FD_STD_OUT "Hello, World!\n" sc_write drop end

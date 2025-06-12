@@ -8,8 +8,6 @@ from typing import Literal
 # Bare AARCH64 related
 ####
 
-AARCH64_ENTRY_POINT_SYMBOL = "_start"
-
 # Stack is aligment to specified bytes count
 # Each cell of an stack must be within that size
 # Pushing >2 cells onto stack will lead to cell overflow due to language stack nature.
@@ -27,28 +25,8 @@ type AARCH64_ABI_W_REGISTERS = Literal["W0", "W1", "W2", "W3", "W4", "W5", "W6",
 type AARCH64_ABI_REGISTERS = AARCH64_ABI_X_REGISTERS | AARCH64_ABI_W_REGISTERS
 type AARCH64_IPC_REGISTERS = Literal["X16", "X17"]
 type AARCH64_GP_REGISTERS = AARCH64_ABI_REGISTERS | AARCH64_IPC_REGISTERS
-AARCH64_SP = "SP"
 
-####
-# Gofra related
-####
 
-AARCH64_GOFRA_CONTEXT_LABEL = ".L_%s_%s"
-type AARCH64_GOFRA_ON_STACK_OPERATIONS = Literal[
-    "+",
-    "-",
-    "*",
-    "//",
-    "%",
-    ">",
-    ">=",
-    "<",
-    "<=",
-    "==",
-    "!=",
-    "++",
-    "--",
-]
 ####
 # MacOS related
 ####

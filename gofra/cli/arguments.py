@@ -1,117 +1,106 @@
 from __future__ import annotations
 
+import sys
 from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 from platform import system as current_platform_system
+from typing import TYPE_CHECKING
 
 from gofra.cli.output import cli_message
-from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
+
+if TYPE_CHECKING:
+    from gofra.codegen.targets import TARGET_T
 
 
 @dataclass(frozen=True)
 class CLIArguments:
-    filepath: Path
-    filepath_output: Path
+    """Arguments from argument parser provided for whole Gofra toolchain process."""
 
-    action_compile: bool
+    source_filepaths: list[Path]
+    output_filepath: Path
 
-    execute_after_compile: bool
-    fall_into_debugger: bool
+    execute_after_compilation: bool
 
-    include_search_directories: list[Path]
+    include_paths: list[Path]
+
     linker_flags: list[str]
+    assembler_flags: list[str]
 
-    target_os: TargetOperatingSystem
-    target_architecture: TargetArchitecture
+    verbose: bool
 
-    no_optimizations: bool
-    no_typecheck: bool
+    target: TARGET_T
 
-    build_cache_directory: Path | None
-    build_cache_delete_after_run: bool
+    disable_optimizations: bool
+    skip_typecheck: bool
+
+    build_cache_dir: Path
+    delete_build_cache: bool
 
 
 def parse_cli_arguments() -> CLIArguments:
+    """Parse CLI arguments from argparse into custom DTO."""
     args = _construct_argument_parser().parse_args()
-    filepath_output = (
-        Path(args.output) if args.output else _output_filename_fallback(Path(args.file))
-    )
-    if None in args.include_search_dir:
+
+    if len(args.source_files) > 1:
+        cli_message(
+            level="ERROR",
+            text="Compiling several files not implemented.",
+        )
+        sys.exit(1)
+
+    if None in args.include:
         cli_message(
             level="WARNING",
-            text="One of the include search directories is empty, skipping...",
+            text="One of the include search directories is empty, it will be skipped!",
+        )
+    if args.skip_typecheck:
+        cli_message(
+            level="WARNING",
+            text="Skipping typecheck is unsafe, ensure that you know what you doing",
         )
 
+    target: TARGET_T = args.target or infer_target()
+    assert target in ("x86_64-linux", "aarch64-darwin")
+
+    source_filepaths = [Path(f) for f in args.source_files]
+    output_filepath = (
+        Path(args.output) if args.output else infer_output_filename(source_filepaths)
+    )
+    include_paths = [
+        Path("./"),
+        *[f.parent for f in source_filepaths],
+        *map(Path, [include for include in args.include if include]),
+    ]
+
     return CLIArguments(
-        filepath=Path(args.file),
-        fall_into_debugger=bool(args.fall_into_debugger),
-        filepath_output=filepath_output,
-        action_compile=bool(args.compile),
-        execute_after_compile=bool(args.execute),
-        build_cache_delete_after_run=bool(args.delete_cache),
-        build_cache_directory=Path(args.cache_dir) if args.cache_dir else None,
-        target_architecture=TargetArchitecture.AMD,
-        target_os=TargetOperatingSystem.LINUX,
-        no_optimizations=bool(args.no_optimizations),
-        no_typecheck=bool(args.no_typecheck),
-        include_search_directories=[
-            Path(args.file).parent,
-            Path("./"),
-            *map(Path, [a for a in args.include_search_dir if a]),
-        ],
+        source_filepaths=source_filepaths,
+        output_filepath=output_filepath,
+        execute_after_compilation=bool(args.execute),
+        delete_build_cache=bool(args.delete_cache),
+        build_cache_dir=Path(args.cache_dir),
+        target=target,
+        disable_optimizations=bool(args.disable_optimizations),
+        skip_typecheck=bool(args.skip_typecheck),
+        include_paths=include_paths,
+        verbose=bool(args.verbose),
         linker_flags=args.linker,
+        assembler_flags=args.assembler,
     )
 
 
 def _construct_argument_parser() -> ArgumentParser:
+    """Get argument parser instance to parse incoming arguments."""
     parser = ArgumentParser(
         description="Gofra Toolkit - CLI for working with Gofra programming language",
-    )
-
-    parser.add_argument("file", type=str, help="The input file")
-
-    action_group = parser.add_mutually_exclusive_group(required=True)
-    action_group.add_argument(
-        "--compile",
-        "-c",
-        action="store_true",
-        help="Compile the file into executable",
+        add_help=True,
     )
 
     parser.add_argument(
-        "--linker",
-        "-L",
-        required=False,
-        help="Additional linker flags",
-        action="append",
-        nargs="?",
-        default=[],
-    )
-    parser.add_argument(
-        "--include-search-dir",
-        "-isd",
-        required=False,
-        help="Directories to search for include files",
-        action="append",
-        nargs="?",
-        default=["./", "./lib"],
-    )
-
-    parser.add_argument(
-        "--execute",
-        "-e",
-        required=False,
-        action="store_true",
-        help="If given, will execute output after run",
-    )
-
-    parser.add_argument(
-        "--fall-into-debugger",
-        "-dbg",
-        action="store_true",
-        required=False,
-        help="If passed, will run debugger after compile",
+        "source_files",
+        type=str,
+        help="Source code files in Gofra (`.gof` files)",
+        nargs="+",
     )
 
     parser.add_argument(
@@ -119,7 +108,60 @@ def _construct_argument_parser() -> ArgumentParser:
         "-o",
         type=str,
         required=False,
-        help="Path to output file which will be generated",
+        help="Path to output executable file to generate, by default will be infered from first input filename, also infers build cache filenames from that",
+    )
+
+    parser.add_argument(
+        "--target",
+        "-t",
+        type=str,
+        required=False,
+        help="Compilation target. Infers codegen to use from that.",
+        choices=["x86_64-linux", "aarch64-darwin"],
+    )
+    parser.add_argument(
+        "--verbose",
+        "-v",
+        required=False,
+        action="store_true",
+        help="If passed will enable INFO level logs from compiler.",
+    )
+    parser.add_argument(
+        "--execute",
+        "-e",
+        required=False,
+        action="store_true",
+        help="If provided, will execute output executable file after compilation",
+    )
+
+    parser.add_argument(
+        "--include",
+        "-i",
+        required=False,
+        help="Additional directories to search for include files. Default: ['./', './lib']",
+        action="append",
+        nargs="?",
+        default=["./", "./lib"],
+    )
+
+    parser.add_argument(
+        "--linker",
+        "-Lf",
+        required=False,
+        help="Additional flags passed to linker (`ld`)",
+        action="append",
+        nargs="?",
+        default=[],
+    )
+
+    parser.add_argument(
+        "--assembler",
+        "-Af",
+        required=False,
+        help="Additional flags passed to assembler (`as`)",
+        action="append",
+        nargs="?",
+        default=[],
     )
 
     parser.add_argument(
@@ -139,26 +181,58 @@ def _construct_argument_parser() -> ArgumentParser:
     )
 
     parser.add_argument(
-        "--no-optimizations",
+        "--disable-optimizations",
         "-no",
         action="store_true",
         required=False,
-        help="If passed, will disable optimizer",
+        help="If passed, all optimizations will be disable (DCE, CF)",
     )
 
     parser.add_argument(
-        "--no-typecheck",
+        "--skip-typecheck",
         "-nt",
         action="store_true",
         required=False,
-        help="If passed, will disable type checking",
+        help="If passed, will disable type safety checking",
     )
 
     return parser
 
 
-def _output_filename_fallback(input_filepath: Path) -> Path:
+def infer_output_filename(source_filepaths: list[Path]) -> Path:
+    """Try to infer filename for output from input source files."""
+    assert source_filepaths
+
+    source_filepath = source_filepaths[0]
+
+    match current_platform_system():
+        case "Darwin" | "Linux":
+            if source_filepath.suffix == "":
+                # File already doesnt have suffix so we append _
+                return source_filepath.with_suffix(source_filepath.suffix + "_")
+
+            # We have an input file with extension so we remove that to indicate executable.
+            return source_filepath.with_suffix("")
+        case _:
+            cli_message(
+                level="ERROR",
+                text="Unable to infer output filepath due to no fallback for current operating system",
+            )
+            sys.exit(1)
+
+
+def infer_target() -> TARGET_T:
+    """Try to infer target from current system."""
     assert current_platform_system() in ["Darwin", "Linux"]
-    if input_filepath.suffix == "":
-        return input_filepath.with_suffix(input_filepath.suffix + "._")
-    return input_filepath.with_suffix("")
+
+    match current_platform_system():
+        case "Darwin":
+            return "aarch64-darwin"
+        case "Linux":
+            return "x86_64-linux"
+        case _:
+            cli_message(
+                level="ERROR",
+                text="Unable to infer compilation target due to no fallback for current operating system",
+            )
+            sys.exit(1)

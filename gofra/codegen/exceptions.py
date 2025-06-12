@@ -1,4 +1,4 @@
-from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
+from gofra.codegen.targets import TARGET_T
 from gofra.exceptions import GofraError
 
 
@@ -6,16 +6,14 @@ class CodegenUnsupportedBackendTargetPairError(GofraError):
     def __init__(
         self,
         *args: object,
-        architecture: TargetArchitecture,
-        operating_system: TargetOperatingSystem,
+        target: TARGET_T,
     ) -> None:
         super().__init__(*args)
-        self.architecture = architecture
-        self.operating_system = operating_system
+        self.target = target
 
     def __repr__(self) -> str:
         return f"""Code generation failed
 
-Unsupported backend target pair ({self.architecture.name} x {self.operating_system.name})!
+Unsupported target '{self.target}'!
 Please read documentation to find available target pairs!
 """

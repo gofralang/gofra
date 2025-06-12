@@ -1,11 +1,3 @@
-from enum import IntEnum, auto
+from typing import Literal
 
-
-class TargetArchitecture(IntEnum):
-    ARM = auto()
-    AMD = auto()
-
-
-class TargetOperatingSystem(IntEnum):
-    MACOS = auto()
-    LINUX = auto()
+type TARGET_T = Literal["x86_64-linux", "aarch64-darwin"]

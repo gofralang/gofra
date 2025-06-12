@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from typing import IO, TYPE_CHECKING, assert_never
 
+from gofra.codegen.backends.general import (
+    CODEGEN_ENTRY_POINT_SYMBOL,
+    CODEGEN_GOFRA_CONTEXT_LABEL,
+    CODEGEN_INTRINSIC_TO_ASSEMBLY_OPS,
+)
 from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.parser.functions.function import Function
 from gofra.parser.intrinsics import Intrinsic
@@ -27,9 +32,6 @@ from .assembly import (
     store_into_memory_from_stack_arguments,
 )
 from .registers import (
-    AMD64_ENTRY_POINT_SYMBOL,
-    AMD64_GOFRA_CONTEXT_LABEL,
-    AMD64_GOFRA_ON_STACK_OPERATIONS,
     AMD64_LINUX_EPILOGUE_EXIT_CODE,
     AMD64_LINUX_EPILOGUE_EXIT_SYSCALL_NUMBER,
 )
@@ -38,25 +40,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from gofra.context import ProgramContext
-
-AMD64_LINUX_INTRINSIC_TO_ASSEMBLY_OPS: dict[
-    Intrinsic,
-    AMD64_GOFRA_ON_STACK_OPERATIONS,
-] = {
-    Intrinsic.PLUS: "+",
-    Intrinsic.MINUS: "-",
-    Intrinsic.MULTIPLY: "*",
-    Intrinsic.DIVIDE: "//",
-    Intrinsic.MODULUS: "%",
-    Intrinsic.INCREMENT: "++",
-    Intrinsic.DECREMENT: "--",
-    Intrinsic.NOT_EQUAL: "!=",
-    Intrinsic.GREATER_EQUAL_THAN: ">=",
-    Intrinsic.LESS_EQUAL_THAN: "<=",
-    Intrinsic.LESS_THAN: "<",
-    Intrinsic.GREATER_THAN: ">",
-    Intrinsic.EQUAL: "==",
-}
 
 
 def generate_amd64_linux_backend(
@@ -106,16 +89,16 @@ def amd64_linux_operator_instructions(
             push_integer_onto_stack(context, operator.operand)
         case OperatorType.DO | OperatorType.IF:
             assert isinstance(operator.jumps_to_operator_idx, int)
-            label = AMD64_GOFRA_CONTEXT_LABEL % (
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (
                 owner_function_name,
                 operator.jumps_to_operator_idx,
             )
             evaluate_conditional_block_on_stack_with_jump(context, label)
         case OperatorType.END | OperatorType.WHILE:
             # This also should be refactored into `assembly` layer
-            label = AMD64_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
             if isinstance(operator.jumps_to_operator_idx, int):
-                label_to = AMD64_GOFRA_CONTEXT_LABEL % (
+                label_to = CODEGEN_GOFRA_CONTEXT_LABEL % (
                     owner_function_name,
                     operator.jumps_to_operator_idx,
                 )
@@ -178,7 +161,7 @@ def amd64_linux_intrinsic_instructions(
         ):
             perform_operation_onto_stack(
                 context,
-                operation=AMD64_LINUX_INTRINSIC_TO_ASSEMBLY_OPS[operator.operand],
+                operation=CODEGEN_INTRINSIC_TO_ASSEMBLY_OPS[operator.operand],
             )
         case (
             Intrinsic.SYSCALL0
@@ -235,7 +218,7 @@ def amd64_linux_program_entry_point(context: AMD64CodegenContext) -> None:
     # This is an executable entry point
     function_begin_with_prologue(
         context,
-        function_name=AMD64_ENTRY_POINT_SYMBOL,
+        function_name=CODEGEN_ENTRY_POINT_SYMBOL,
         as_global_linker_symbol=True,
     )
 

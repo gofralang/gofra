@@ -22,11 +22,13 @@ from gofra.codegen.backends.aarch64_macos.assembly import (
     store_into_memory_from_stack_arguments,
 )
 from gofra.codegen.backends.aarch64_macos.registers import (
-    AARCH64_ENTRY_POINT_SYMBOL,
-    AARCH64_GOFRA_CONTEXT_LABEL,
-    AARCH64_GOFRA_ON_STACK_OPERATIONS,
     AARCH64_MACOS_EPILOGUE_EXIT_CODE,
     AARCH64_MACOS_EPILOGUE_EXIT_SYSCALL_NUMBER,
+)
+from gofra.codegen.backends.general import (
+    CODEGEN_ENTRY_POINT_SYMBOL,
+    CODEGEN_GOFRA_CONTEXT_LABEL,
+    CODEGEN_INTRINSIC_TO_ASSEMBLY_OPS,
 )
 from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.parser.functions.function import Function
@@ -37,25 +39,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from gofra.context import ProgramContext
-
-AARCH64_MACOS_INTRINSIC_TO_ASSEMBLY_OPS: dict[
-    Intrinsic,
-    AARCH64_GOFRA_ON_STACK_OPERATIONS,
-] = {
-    Intrinsic.PLUS: "+",
-    Intrinsic.MINUS: "-",
-    Intrinsic.MULTIPLY: "*",
-    Intrinsic.DIVIDE: "//",
-    Intrinsic.MODULUS: "%",
-    Intrinsic.INCREMENT: "++",
-    Intrinsic.DECREMENT: "--",
-    Intrinsic.NOT_EQUAL: "!=",
-    Intrinsic.GREATER_EQUAL_THAN: ">=",
-    Intrinsic.LESS_EQUAL_THAN: "<=",
-    Intrinsic.LESS_THAN: "<",
-    Intrinsic.GREATER_THAN: ">",
-    Intrinsic.EQUAL: "==",
-}
 
 
 def generate_aarch64_macos_backend(
@@ -105,16 +88,16 @@ def aarch64_macos_operator_instructions(
             push_integer_onto_stack(context, operator.operand)
         case OperatorType.DO | OperatorType.IF:
             assert isinstance(operator.jumps_to_operator_idx, int)
-            label = AARCH64_GOFRA_CONTEXT_LABEL % (
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (
                 owner_function_name,
                 operator.jumps_to_operator_idx,
             )
             evaluate_conditional_block_on_stack_with_jump(context, label)
         case OperatorType.END | OperatorType.WHILE:
             # This also should be refactored into `assembly` layer
-            label = AARCH64_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (owner_function_name, idx)
             if isinstance(operator.jumps_to_operator_idx, int):
-                label_to = AARCH64_GOFRA_CONTEXT_LABEL % (
+                label_to = CODEGEN_GOFRA_CONTEXT_LABEL % (
                     owner_function_name,
                     operator.jumps_to_operator_idx,
                 )
@@ -177,7 +160,7 @@ def aarch64_macos_intrinsic_instructions(
         ):
             perform_operation_onto_stack(
                 context,
-                operation=AARCH64_MACOS_INTRINSIC_TO_ASSEMBLY_OPS[operator.operand],
+                operation=CODEGEN_INTRINSIC_TO_ASSEMBLY_OPS[operator.operand],
             )
         case (
             Intrinsic.SYSCALL0
@@ -234,7 +217,7 @@ def aarch64_macos_program_entry_point(context: AARCH64CodegenContext) -> None:
     # This is an executable entry point
     function_begin_with_prologue(
         context,
-        function_name=AARCH64_ENTRY_POINT_SYMBOL,
+        function_name=CODEGEN_ENTRY_POINT_SYMBOL,
         as_global_linker_symbol=True,
     )
 

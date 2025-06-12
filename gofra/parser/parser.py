@@ -279,9 +279,8 @@ def _unpack_function_definition_from_token(
 
     if modifier_is_extern:
         if len(type_contract_out) > 1:
-            raise NotImplementedError(
-                "Extern functions cannot have stack type contract consider using C FFI ABI"
-            )
+            msg = "Extern functions cannot have stack type contract consider using C FFI ABI"
+            raise NotImplementedError(msg)
         context.new_function(
             from_token=token,
             name=function_name,

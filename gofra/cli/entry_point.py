@@ -2,8 +2,10 @@ import sys
 from subprocess import CalledProcessError, run
 
 from gofra.assembler import assemble_executable
-from gofra.context import ProgramContext
+from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.gofra import process_input_file
+from gofra.optimizer import optimize_program
+from gofra.typecheck import validate_type_safety
 
 from .arguments import CLIArguments, parse_cli_arguments
 from .errors import cli_gofra_error_handler
@@ -14,46 +16,70 @@ def cli_entry_point() -> None:
     """CLI main entry."""
     with cli_gofra_error_handler():
         args = parse_cli_arguments()
-        context = process_input_file(
-            args.filepath,
-            do_optimize=not args.no_optimizations,
-            do_typecheck=not args.no_typecheck,
-            include_search_directories=args.include_search_directories,
+        assert len(args.source_filepaths) == 1
+
+        cli_process_toolchain_on_input_files(args)
+
+        if args.execute_after_compilation:
+            cli_execute_after_compilation(args)
+
+
+def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
+    """Process full toolchain onto input source files."""
+    cli_message(level="INFO", text="Parsing input files...", verbose=args.verbose)
+    context = process_input_file(args.source_filepaths[0], args.include_paths)
+
+    if not args.disable_optimizations:
+        cli_message(
+            level="INFO",
+            text="Applying optimizations...",
+            verbose=args.verbose,
         )
-        if args.action_compile:
-            _cli_compile_action(context, args)
+        optimize_program(context)
 
+    if not args.skip_typecheck:
+        cli_message(
+            level="INFO",
+            text="Validating type safety...",
+            verbose=args.verbose,
+        )
+        validate_type_safety(
+            functions={**context.functions, GOFRA_ENTRY_POINT: context.entry_point},
+        )
 
-def _cli_compile_action(context: ProgramContext, args: CLIArguments) -> None:
-    cli_message("INFO", "Trying to compile input file...")
-
+    cli_message(
+        level="INFO",
+        text="Assemblying final executable...",
+        verbose=args.verbose,
+    )
     assemble_executable(
         context=context,
-        output=args.filepath_output,
-        architecture=args.target_architecture,
-        os=args.target_os,
-        propagated_linker_flags=args.linker_flags,
-        build_cache_delete_after_end=args.build_cache_delete_after_run,
-        build_cache_directory=args.build_cache_directory,
+        output=args.output_filepath,
+        target=args.target,
+        additional_linker_flags=args.linker_flags,
+        additional_assembler_flags=args.assembler_flags,
+        build_cache_dir=args.build_cache_dir,
+        delete_build_cache_after_compilation=args.delete_build_cache,
     )
 
     cli_message(
-        "INFO",
-        f"Compiled input file down to executable `{args.filepath_output.name}`!",
+        level="INFO",
+        text=f"Compiled input file down to executable `{args.output_filepath.name}`!",
+        verbose=args.verbose,
     )
 
-    if args.fall_into_debugger:
-        _cli_fall_into_debugger_after_compilation(args)
-    elif args.execute_after_compile:
-        _cli_execute_after_compilation(args)
 
-
-def _cli_execute_after_compilation(args: CLIArguments) -> None:
-    cli_message("INFO", "Trying to execute compiled file due to execute flag...")
+def cli_execute_after_compilation(args: CLIArguments) -> None:
+    """Run executable after compilation if user requested."""
+    cli_message(
+        "INFO",
+        "Trying to execute compiled file due to execute flag...",
+        verbose=args.verbose,
+    )
     exit_code = 0
     try:
         run(  # noqa: S602
-            [args.filepath_output.absolute()],
+            [args.output_filepath.absolute()],
             stdin=sys.stdin,
             stdout=sys.stdout,
             stderr=sys.stderr,
@@ -63,37 +89,8 @@ def _cli_execute_after_compilation(args: CLIArguments) -> None:
     except CalledProcessError as e:
         exit_code = e.returncode
     except KeyboardInterrupt:
-        cli_message("INFO", "Execution was interrupted by user!")
+        cli_message("WARNING", "Execution was interrupted by user!")
         sys.exit(0)
 
     level = "INFO" if exit_code == 0 else "ERROR"
     cli_message(level, f"Program finished with exit code {exit_code}!")
-
-
-def _cli_fall_into_debugger_after_compilation(args: CLIArguments) -> None:
-    cli_message(
-        "INFO",
-        "Trying to fall into debugger for compiled file due to debugger flag...",
-    )
-
-    compiled_target_path = args.filepath_output.absolute()
-
-    cmd_args = ["-o", "run"]
-
-    exit_code = 0
-    try:
-        run(  # noqa: S603
-            ["/usr/bin/lldb", str(compiled_target_path), *cmd_args],
-            stdin=sys.stdin,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            check=True,
-        )
-    except CalledProcessError as e:
-        exit_code = e.returncode
-    except KeyboardInterrupt:
-        cli_message("INFO", "Debugger was interrupted by user!")
-        sys.exit(0)
-
-    level = "INFO" if exit_code == 0 else "ERROR"
-    cli_message(level, f"Debugger finished with exit code {exit_code}!")

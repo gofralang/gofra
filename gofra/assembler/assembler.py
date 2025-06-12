@@ -1,3 +1,5 @@
+"""Assembler module to assemble programs in Gofra language into executables."""
+
 from __future__ import annotations
 
 import sys
@@ -9,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from gofra.cli.output import cli_message
 from gofra.codegen import generate_code_for_assembler
-from gofra.codegen.targets import TargetArchitecture, TargetOperatingSystem
+from gofra.codegen.backends.general import CODEGEN_ENTRY_POINT_SYMBOL
 
 from .exceptions import (
     NoToolkitForAssemblingError,
@@ -17,55 +19,54 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
+    from gofra.codegen.targets import TARGET_T
     from gofra.context import ProgramContext
 
 
 def assemble_executable(  # noqa: PLR0913
     context: ProgramContext,
     output: Path,
-    architecture: TargetArchitecture,
-    os: TargetOperatingSystem,
-    propagated_linker_flags: list[str],
+    target: TARGET_T,
     *,
-    build_cache_directory: Path | None = None,
-    build_cache_delete_after_end: bool = False,
+    build_cache_dir: Path,
+    additional_linker_flags: list[str],
+    additional_assembler_flags: list[str],
+    delete_build_cache_after_compilation: bool,
 ) -> None:
+    """Convert given program into executable using assembly and linker."""
     _validate_toolkit_installation()
+    _prepare_build_cache_directory(build_cache_dir)
 
-    _prepare_build_cache_directory(
-        build_cache_directory=build_cache_directory,
-    )
-
-    asm_filepath = _generate_asm(
+    assembly_filepath = _generate_assembly_file_with_codegen(
         context,
+        target,
         output,
-        architecture,
-        os,
-        build_cache_directory=build_cache_directory,
+        build_cache_dir=build_cache_dir,
     )
 
-    o_filepath = _assemble_object_file(
+    object_filepath = _assemble_object_file(
+        target,
+        assembly_filepath,
         output,
-        architecture,
-        asm_filepath,
-        build_cache_directory=build_cache_directory,
+        additional_assembler_flags=additional_assembler_flags,
+        build_cache_dir=build_cache_dir,
     )
 
     _link_final_executable(
         output,
-        architecture,
-        os,
-        o_filepath,
-        propagated_linker_flags=propagated_linker_flags,
+        target,
+        object_filepath,
+        additional_linker_flags=additional_linker_flags,
     )
 
-    if build_cache_delete_after_end:
-        asm_filepath.unlink()
-        o_filepath.unlink()
+    if delete_build_cache_after_compilation:
+        assembly_filepath.unlink()
+        object_filepath.unlink()
 
 
-def _prepare_build_cache_directory(build_cache_directory: Path | None) -> None:
-    if build_cache_directory is None or build_cache_directory.exists():
+def _prepare_build_cache_directory(build_cache_directory: Path) -> None:
+    """Try to create and fill cache directory with required files."""
+    if build_cache_directory.exists():
         return
 
     build_cache_directory.mkdir(exist_ok=False)
@@ -77,15 +78,14 @@ def _prepare_build_cache_directory(build_cache_directory: Path | None) -> None:
 
 def _link_final_executable(
     output: Path,
-    architecture: TargetArchitecture,
-    os: TargetOperatingSystem,
+    target: TARGET_T,
     o_filepath: Path,
-    propagated_linker_flags: list[str],
+    additional_linker_flags: list[str],
 ) -> None:
+    """Use linker to link object file into executable."""
     match current_platform_system():
         case "Darwin":
-            assert architecture == TargetArchitecture.ARM
-            assert os == TargetOperatingSystem.MACOS
+            assert target == "aarch64-darwin"
 
             system_sdk = Path(
                 check_output(  # noqa: S603
@@ -93,21 +93,20 @@ def _link_final_executable(
                     text=True,
                 ).strip(),
             )
-            propagated_linker_flags = [
+            target_linker_flags = [
                 "-arch",
                 "arm64",
                 "-lSystem",
                 "-syslibroot",
                 str(system_sdk),
-                *propagated_linker_flags,
             ]
         case "Linux":
-            assert architecture == TargetArchitecture.AMD
-            assert os == TargetOperatingSystem.LINUX
+            assert target == "x86_64-linux"
 
-            propagated_linker_flags = ["-arch", "x86_64", *propagated_linker_flags]
+            target_linker_flags = ["-arch", "x86_64"]
         case _:
             raise UnsupportedBuilderOperatingSystemError
+
     check_output(  # noqa: S603
         [
             "/usr/bin/ld",
@@ -115,29 +114,32 @@ def _link_final_executable(
             output,
             o_filepath,
             "-e",
-            "_start",
-            *propagated_linker_flags,
+            CODEGEN_ENTRY_POINT_SYMBOL,
+            *target_linker_flags,
+            *additional_linker_flags,
         ],
     )
 
 
 def _assemble_object_file(
-    output: Path,
-    architecture: TargetArchitecture,
+    target: TARGET_T,
     asm_filepath: Path,
+    output: Path,
     *,
-    build_cache_directory: Path | None = None,
+    build_cache_dir: Path,
+    additional_assembler_flags: list[str],
 ) -> Path:
-    o_filepath = build_cache_directory / "build" if build_cache_directory else output
-    o_filepath = o_filepath.with_suffix(".o")
+    """Call assembler to assembly given assembly file from codegen."""
+    object_filepath = (build_cache_dir / output.name).with_suffix(".o")
 
+    # Assembler is not crossplatform so we expect host has same architecture
     match current_platform_system():
         case "Darwin":
-            if architecture != TargetArchitecture.ARM:
+            if target != "aarch64-darwin":
                 raise UnsupportedBuilderOperatingSystemError
             assembler_flags = ["-arch", "arm64"]
         case "Linux":
-            if architecture != TargetArchitecture.AMD:
+            if target != "x86_64-linux":
                 raise UnsupportedBuilderOperatingSystemError
             assembler_flags = ["-arch", "x86_64"]
         case _:
@@ -146,9 +148,10 @@ def _assemble_object_file(
     command = [
         "/usr/bin/as",
         "-o",
-        str(o_filepath),
+        str(object_filepath),
         str(asm_filepath),
         *assembler_flags,
+        *additional_assembler_flags,
     ]
     try:
         check_output(command)  # noqa: S603
@@ -160,25 +163,25 @@ def _assemble_object_file(
         )
         sys.exit(1)
 
-    return o_filepath
+    return object_filepath
 
 
-def _generate_asm(
+def _generate_assembly_file_with_codegen(
     context: ProgramContext,
+    target: TARGET_T,
     output: Path,
-    architecture: TargetArchitecture,
-    os: TargetOperatingSystem,
     *,
-    build_cache_directory: Path | None = None,
+    build_cache_dir: Path,
 ) -> Path:
-    asm_filepath = build_cache_directory / "build" if build_cache_directory else output
-    asm_filepath = asm_filepath.with_suffix(".s")
+    """Call desired codegen backend for requested target and generate file contains assembly."""
+    assembly_filepath = (build_cache_dir / output.name).with_suffix(".s")
 
-    generate_code_for_assembler(asm_filepath, context, architecture, os)
-    return asm_filepath
+    generate_code_for_assembler(assembly_filepath, context, target)
+    return assembly_filepath
 
 
 def _validate_toolkit_installation() -> None:
+    """Validate that the host system has all requirements installed (linker/assembler)."""
     match current_platform_system():
         case "Darwin":
             required_toolkit = ("as", "ld", "xcrun")

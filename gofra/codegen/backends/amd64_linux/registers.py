@@ -8,8 +8,6 @@ from typing import Literal
 # Bare AMD64 related
 ####
 
-AMD64_ENTRY_POINT_SYMBOL = "_start"
-
 # Registers specification for AMD64
 # Skips some of registers due to currently being unused
 type AMD64_GP_REGISTERS = Literal[
@@ -24,26 +22,6 @@ type AMD64_GP_REGISTERS = Literal[
     "r9",
 ]
 
-####
-# Gofra related
-####
-
-AMD64_GOFRA_CONTEXT_LABEL = ".L_%s_%s"
-type AMD64_GOFRA_ON_STACK_OPERATIONS = Literal[
-    "+",
-    "-",
-    "*",
-    "//",
-    "%",
-    ">",
-    ">=",
-    "<",
-    "<=",
-    "==",
-    "!=",
-    "++",
-    "--",
-]
 
 ####
 # Linux related
