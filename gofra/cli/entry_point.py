@@ -55,7 +55,7 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
 
     cli_message(
         level="INFO",
-        text="Assemblying final executable...",
+        text=f"Assemblying final {args.output_format}...",
         verbose=args.verbose,
     )
     assemble_program(
