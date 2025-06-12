@@ -158,14 +158,28 @@ def ipc_syscall_macos(
     *,
     arguments_count: int,
     store_retval_onto_stack: bool,
+    injected_args: list[int | None] | None,
 ) -> None:
     """Call system (syscall) via supervisor call and apply IPC ABI convention to arguments."""
+    assert not injected_args or len(injected_args) == arguments_count + 1
+
+    if not injected_args:
+        injected_args = [None for _ in range(arguments_count + 1)]
+
     registers_to_load = (
         AARCH64_MACOS_SYSCALL_NUMBER_REGISTER,
         *AARCH64_MACOS_ABI_ARGUMENT_REGISTERS[:arguments_count][::-1],
     )
 
-    for register in registers_to_load:
+    for injected_argument, register in zip(injected_args, registers_to_load):
+        if injected_argument is not None:
+            # Register injected and infered from stack
+            store_integer_into_register(
+                context,
+                register=register,
+                value=injected_argument,
+            )
+            continue
         pop_cells_from_stack_into_registers(context, register)
 
     # Supervisor call (syscall)

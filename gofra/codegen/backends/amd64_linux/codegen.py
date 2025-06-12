@@ -177,6 +177,7 @@ def amd64_linux_intrinsic_instructions(
                 context,
                 arguments_count=operator.get_syscall_arguments_count() - 1,
                 store_retval_onto_stack=not operator.syscall_optimization_omit_result,
+                injected_args=[],
             )
         case Intrinsic.MEMORY_LOAD:
             load_memory_from_stack_arguments(context)
@@ -232,9 +233,15 @@ def amd64_linux_program_entry_point(context: AMD64CodegenContext) -> None:
 
     # Call syscall to exit without accessing protected system memory.
     # `ret` into return-address will fail with segfault
-    push_integer_onto_stack(context, AMD64_LINUX_EPILOGUE_EXIT_CODE)
-    push_integer_onto_stack(context, AMD64_LINUX_EPILOGUE_EXIT_SYSCALL_NUMBER)
-    ipc_syscall_linux(context, arguments_count=1, store_retval_onto_stack=False)
+    ipc_syscall_linux(
+        context,
+        arguments_count=1,
+        store_retval_onto_stack=False,
+        injected_args=[
+            AMD64_LINUX_EPILOGUE_EXIT_CODE,
+            AMD64_LINUX_EPILOGUE_EXIT_SYSCALL_NUMBER,
+        ],
+    )
 
 
 def amd64_linux_data_section(

@@ -176,6 +176,7 @@ def aarch64_macos_intrinsic_instructions(
                 context,
                 arguments_count=operator.get_syscall_arguments_count() - 1,
                 store_retval_onto_stack=not operator.syscall_optimization_omit_result,
+                injected_args=None,
             )
         case Intrinsic.MEMORY_LOAD:
             load_memory_from_stack_arguments(context)
@@ -231,9 +232,15 @@ def aarch64_macos_program_entry_point(context: AARCH64CodegenContext) -> None:
 
     # Call syscall to exit without accessing protected system memory.
     # `ret` into return-address will fail with segfault
-    push_integer_onto_stack(context, AARCH64_MACOS_EPILOGUE_EXIT_CODE)
-    push_integer_onto_stack(context, AARCH64_MACOS_EPILOGUE_EXIT_SYSCALL_NUMBER)
-    ipc_syscall_macos(context, arguments_count=1, store_retval_onto_stack=False)
+    ipc_syscall_macos(
+        context,
+        arguments_count=1,
+        store_retval_onto_stack=False,
+        injected_args=[
+            AARCH64_MACOS_EPILOGUE_EXIT_CODE,
+            AARCH64_MACOS_EPILOGUE_EXIT_SYSCALL_NUMBER,
+        ],
+    )
 
 
 def aarch64_macos_data_section(
