@@ -46,9 +46,10 @@ def generate_amd64_linux_backend(
     fd: IO[str],
     program: ProgramContext,
 ) -> None:
-    """AARCH64 MacOS code generation backend."""
+    """AMD64 Linux code generation backend."""
     context = AMD64CodegenContext(fd=fd, strings={})
 
+    context.write(".att_syntax noprefix")
     amd64_linux_executable_functions(context, program)
     amd64_linux_program_entry_point(context)
     amd64_linux_data_section(context, program)
@@ -238,8 +239,8 @@ def amd64_linux_program_entry_point(context: AMD64CodegenContext) -> None:
         arguments_count=1,
         store_retval_onto_stack=False,
         injected_args=[
-            AMD64_LINUX_EPILOGUE_EXIT_CODE,
             AMD64_LINUX_EPILOGUE_EXIT_SYSCALL_NUMBER,
+            AMD64_LINUX_EPILOGUE_EXIT_CODE,
         ],
     )
 

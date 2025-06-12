@@ -95,7 +95,7 @@ def initialize_static_data_section(
     Data is an string (raw ASCII) or number (zeroed memory blob)
     TODO(@kirillzhosul, @stepanzubkov): Review alignment for data sections.
     """
-    context.fd.write(".section __DATA,__data\n")
+    context.fd.write(".section .data\n")
 
     for name, data in static_data_section:
         if isinstance(data, str):
@@ -221,7 +221,6 @@ def perform_operation_onto_stack(
         case "--":
             context.write("decq rax")
         case "!=" | ">=" | "<=" | "<" | ">" | "==":
-            raise NotImplementedError
             logic_op = {
                 "!=": "ne",
                 ">=": "ge",
@@ -234,7 +233,7 @@ def perform_operation_onto_stack(
             context.write(
                 "cmpq rbx, rax",
                 "xorq rax, rax",
-                f"set{logic_op}b al",
+                f"set{logic_op[operation]}b al",
             )
         case _:
             assert_never()
