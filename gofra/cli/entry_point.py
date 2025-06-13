@@ -64,6 +64,7 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
         verbose=args.verbose,
     )
     assemble_program(
+        verbose=args.verbose,
         output_format=args.output_format,
         context=context,
         output=args.output_filepath,

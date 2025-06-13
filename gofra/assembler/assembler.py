@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Literal
 from gofra.cli.output import cli_message
 from gofra.codegen import generate_code_for_assembler
 from gofra.codegen.backends.general import CODEGEN_ENTRY_POINT_SYMBOL
+from gofra.codegen.get_backend import get_backend_for_target
 
 from .exceptions import (
     NoToolkitForAssemblingError,
@@ -32,6 +33,7 @@ def assemble_program(  # noqa: PLR0913
     target: TARGET_T,
     *,
     build_cache_dir: Path,
+    verbose: bool,
     additional_linker_flags: list[str],
     additional_assembler_flags: list[str],
     delete_build_cache_after_compilation: bool,
@@ -45,6 +47,7 @@ def assemble_program(  # noqa: PLR0913
         target,
         output,
         build_cache_dir=build_cache_dir,
+        verbose=verbose,
     )
 
     if output_format == "assembly":
@@ -57,6 +60,7 @@ def assemble_program(  # noqa: PLR0913
         output,
         additional_assembler_flags=additional_assembler_flags,
         build_cache_dir=build_cache_dir,
+        verbose=verbose,
     )
     if output_format == "object":
         object_filepath.replace(output)
@@ -71,6 +75,7 @@ def assemble_program(  # noqa: PLR0913
         object_filepath,
         output_format=output_format,
         additional_linker_flags=additional_linker_flags,
+        verbose=verbose,
     )
 
     if delete_build_cache_after_compilation:
@@ -90,12 +95,14 @@ def _prepare_build_cache_directory(build_cache_directory: Path) -> None:
         f.write("*\n")
 
 
-def _link_final_output(
+def _link_final_output(  # noqa: PLR0913
     output: Path,
     target: TARGET_T,
     o_filepath: Path,
     output_format: Literal["executable", "library"],
     additional_linker_flags: list[str],
+    *,
+    verbose: bool,
 ) -> None:
     """Use linker to link object file into executable."""
     match current_platform_system():
@@ -136,18 +143,23 @@ def _link_final_output(
     if output_format == "executable":
         linker_flags += ["-e", CODEGEN_ENTRY_POINT_SYMBOL]
 
-    check_output(  # noqa: S603
-        ["/usr/bin/ld", "-o", output, o_filepath, *linker_flags],
+    command = ["/usr/bin/ld", "-o", str(output), str(o_filepath), *linker_flags]
+    cli_message(
+        level="INFO",
+        text=f"Running linker command: `{' '.join(command)}`",
+        verbose=verbose,
     )
+    check_output(command)  # noqa: S603
 
 
-def _assemble_object_file(
+def _assemble_object_file(  # noqa: PLR0913
     target: TARGET_T,
     asm_filepath: Path,
     output: Path,
     *,
     build_cache_dir: Path,
     additional_assembler_flags: list[str],
+    verbose: bool,
 ) -> Path:
     """Call assembler to assemble given assembly file from codegen."""
     object_filepath = (build_cache_dir / output.name).with_suffix(".o")
@@ -173,6 +185,11 @@ def _assemble_object_file(
         *assembler_flags,
         *additional_assembler_flags,
     ]
+    cli_message(
+        level="INFO",
+        text=f"Running command: `{' '.join(command)}`",
+        verbose=verbose,
+    )
     try:
         check_output(command)  # noqa: S603
     except CalledProcessError as e:
@@ -192,10 +209,17 @@ def _generate_assembly_file_with_codegen(
     output: Path,
     *,
     build_cache_dir: Path,
+    verbose: bool,
 ) -> Path:
     """Call desired codegen backend for requested target and generate file contains assembly."""
     assembly_filepath = (build_cache_dir / output.name).with_suffix(".s")
 
+    infered_backend = get_backend_for_target(target).__name__  # type: ignore  # noqa: PGH003
+    cli_message(
+        level="INFO",
+        text=f"Generating assembly using codegen backend (Infered codegen for target `{target}` is `{infered_backend}`)...",
+        verbose=verbose,
+    )
     generate_code_for_assembler(assembly_filepath, context, target)
     return assembly_filepath
 
