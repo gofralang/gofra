@@ -128,7 +128,7 @@ def _link_final_output(  # noqa: PLR0913
         case "Linux":
             assert target == "x86_64-linux"
 
-            target_linker_flags = ["-arch", "x86_64"]
+            target_linker_flags = []
             assert output_format == "executable", (
                 "Libraries on Linux is not implemented"
             )
@@ -173,7 +173,7 @@ def _assemble_object_file(  # noqa: PLR0913
         case "Linux":
             if target != "x86_64-linux":
                 raise UnsupportedBuilderOperatingSystemError
-            assembler_flags = ["-arch", "x86_64"]
+            assembler_flags = []
         case _:
             raise UnsupportedBuilderOperatingSystemError
 
