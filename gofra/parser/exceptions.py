@@ -345,3 +345,14 @@ class ParserEntryPointFunctionModifiersError(GofraError):
 
 Entry point function cannot be external or inlined!
 """
+
+
+class ParserTopLevelError(GofraError):
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+    def __repr__(self) -> str:
+        return f"""Expected
+
+Entry point function cannot be external or inlined!
+"""

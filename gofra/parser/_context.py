@@ -26,6 +26,9 @@ class ParserContext:
 
     tokens: deque[Token]
 
+    # Should be refactored
+    is_top_level: bool
+
     # Resulting operators from parsing
     operators: MutableSequence[Operator] = field(default_factory=lambda: list())  # noqa: C408
 

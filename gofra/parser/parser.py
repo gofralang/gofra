@@ -5,7 +5,6 @@ from difflib import get_close_matches
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from gofra.consts import GOFRA_ENTRY_POINT
 from gofra.lexer import (
     Keyword,
     Token,
@@ -15,15 +14,13 @@ from gofra.lexer import (
 from gofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD
 from gofra.parser.functions import Function
 from gofra.parser.functions.parser import consume_function_definition
+from gofra.parser.validator import validate_and_pop_entry_point
 
 from ._context import ParserContext
 from .exceptions import (
     ParserEmptyIfBodyError,
     ParserEndAfterWhileError,
     ParserEndWithoutContextError,
-    ParserEntryPointFunctionModifiersError,
-    ParserEntryPointFunctionTypeContractInError,
-    ParserEntryPointFunctionTypeContractOutError,
     ParserExhaustiveContextStackError,
     ParserIncludeFileNotFoundError,
     ParserIncludeNonStringNameError,
@@ -32,7 +29,6 @@ from .exceptions import (
     ParserMacroNonWordNameError,
     ParserMacroRedefinesLanguageDefinitionError,
     ParserMacroRedefinitionError,
-    ParserNoEntryFunctionError,
     ParserNoMacroNameError,
     ParserNoWhileBeforeDoError,
     ParserNoWhileConditionOperatorsError,
@@ -57,6 +53,7 @@ def parse_file(
     tokens = deque(list(load_file_for_lexical_analysis(source_filepath=path))[::-1])
     context = _parse_from_context_into_operators(
         context=ParserContext(
+            is_top_level=True,
             parsing_from_path=path,
             tokens=tokens,
             include_search_directories=include_search_directories,
@@ -65,31 +62,12 @@ def parse_file(
             memories={},
         ),
     )
+
+    assert context.is_top_level
     assert not context.operators
 
     entry_point = validate_and_pop_entry_point(context)
     return context, entry_point
-
-
-def validate_and_pop_entry_point(context: ParserContext) -> Function:
-    """Validate program entry, check its existance and type contracts."""
-    if GOFRA_ENTRY_POINT not in context.functions:
-        raise ParserNoEntryFunctionError
-
-    entry_point = context.functions.pop(GOFRA_ENTRY_POINT)
-    if entry_point.is_externally_defined or entry_point.emit_inline_body:
-        raise ParserEntryPointFunctionModifiersError
-
-    if entry_point.type_contract_out:
-        raise ParserEntryPointFunctionTypeContractOutError(
-            type_contract_out=entry_point.type_contract_out,
-        )
-
-    if entry_point.type_contract_out:
-        raise ParserEntryPointFunctionTypeContractInError(
-            type_contract_in=entry_point.type_contract_in,
-        )
-    return entry_point
 
 
 def _parse_from_context_into_operators(context: ParserContext) -> ParserContext:
@@ -145,6 +123,21 @@ def _best_match_for_word(context: ParserContext, word: str) -> str | None:
 
 def _consume_keyword_token(context: ParserContext, token: Token) -> None:
     assert isinstance(token.value, Keyword)
+    TOP_LEVEL_KEYWORD = (  # noqa: N806
+        Keyword.INCLUDE,
+        Keyword.INLINE,
+        Keyword.EXTERN,
+        Keyword.FUNCTION,
+        Keyword.GLOBAL,
+        Keyword.MEMORY,
+        Keyword.MACRO,
+    )
+    if context.is_top_level and token.value not in (*TOP_LEVEL_KEYWORD, Keyword.END):
+        msg = f"{token.value.name} expected to be not at top level! (temp-assert)"
+        raise NotImplementedError(msg)
+    if not context.is_top_level and token.value in TOP_LEVEL_KEYWORD:
+        msg = f"{token.value.name} expected to be at top level! (temp-assert)"
+        raise NotImplementedError(msg)
     match token.value:
         case Keyword.IF | Keyword.DO | Keyword.WHILE | Keyword.END:
             return _consume_conditional_keyword_from_token(context, token)
@@ -335,6 +328,7 @@ def _unpack_function_definition_from_token(
 
     new_context = ParserContext(
         parsing_from_path=context.parsing_from_path,
+        is_top_level=False,
         include_search_directories=context.include_search_directories,
         tokens=function_body_tokens[::-1],  # type: ignore  # noqa: PGH003
         macros=context.macros,
