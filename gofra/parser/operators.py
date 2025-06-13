@@ -25,7 +25,8 @@ class OperatorType(IntEnum):
     DO = auto()
     END = auto()
 
-    CALL = auto()
+    FUNCTION_RETURN = auto()
+    FUNCTION_CALL = auto()
 
 
 @dataclass(frozen=False)

@@ -103,7 +103,9 @@ def emulate_type_stack_for_operators(
                 assert not operator.has_optimizations, "TBD"
                 assert not operator.infer_type_after_optimization, "TBD"
                 context.push_types(T.INTEGER)
-            case OperatorType.CALL:
+            case OperatorType.FUNCTION_RETURN:
+                return context.emulated_stack_types
+            case OperatorType.FUNCTION_CALL:
                 assert isinstance(operator.operand, str)
 
                 function = global_functions[operator.operand]

@@ -68,6 +68,8 @@ def aarch64_macos_instruction_set(
             idx,
             owner_function_name,
         )
+        if operator.type == OperatorType.FUNCTION_RETURN:
+            break
 
 
 def aarch64_macos_operator_instructions(
@@ -110,7 +112,9 @@ def aarch64_macos_operator_instructions(
                 segment=context.load_string(operator.token.text[1:-1]),
             )
             push_integer_onto_stack(context, value=len(operator.operand))
-        case OperatorType.CALL:
+        case OperatorType.FUNCTION_RETURN:
+            function_end_with_epilogue(context)
+        case OperatorType.FUNCTION_CALL:
             assert isinstance(operator.operand, str)
 
             function = program.functions[operator.operand]
@@ -210,6 +214,8 @@ def aarch64_macos_executable_functions(
         )
 
         aarch64_macos_instruction_set(context, function.source, program, function.name)
+
+        # TODO(@kirillzhosul): This is included even after explicit return after end
         function_end_with_epilogue(context)
 
 

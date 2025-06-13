@@ -21,7 +21,8 @@ class Keyword(IntEnum):
     GLOBAL = auto()
 
     FUNCTION = auto()
-    CALL = auto()
+    FUNCTION_RETURN = auto()
+    FUNCTION_CALL = auto()
 
 
 WORD_TO_KEYWORD = {
@@ -32,7 +33,8 @@ WORD_TO_KEYWORD = {
     "include": Keyword.INCLUDE,
     "macro": Keyword.MACRO,
     "extern": Keyword.EXTERN,
-    "call": Keyword.CALL,
+    "call": Keyword.FUNCTION_CALL,
+    "return": Keyword.FUNCTION_RETURN,
     "func": Keyword.FUNCTION,
     "inline": Keyword.INLINE,
     "memory": Keyword.MEMORY,

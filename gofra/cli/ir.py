@@ -46,7 +46,7 @@ def emit_ir_operator(operator: Operator, context_block_shift: int) -> None:  # n
             return print(f"{shift}" + "}" + f"{operator.type.name}" + "{")
         case OperatorType.END:
             return print(f"{shift}" + "}")
-        case OperatorType.CALL:
+        case OperatorType.FUNCTION_CALL:
             return print(f"{shift}{operator.operand}()")
         case _:
             return print(f"{shift}{operator.type.name}<{operator.operand}>")

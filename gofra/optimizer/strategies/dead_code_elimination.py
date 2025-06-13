@@ -30,6 +30,9 @@ def _is_function_was_called(program: ProgramContext, function: Function) -> bool
     """Check is given function was called atleast once in whole program."""
     for possible_caller in [*program.functions.values(), program.entry_point]:
         for operator in possible_caller.source:
-            if operator.type == OperatorType.CALL and operator.operand == function.name:
+            if (
+                operator.type == OperatorType.FUNCTION_CALL
+                and operator.operand == function.name
+            ):
                 return True
     return False

@@ -69,6 +69,8 @@ def amd64_linux_instruction_set(
             idx,
             owner_function_name,
         )
+        if operator.type == OperatorType.FUNCTION_RETURN:
+            break
 
 
 def amd64_linux_operator_instructions(
@@ -111,7 +113,7 @@ def amd64_linux_operator_instructions(
                 segment=context.load_string(operator.token.text[1:-1]),
             )
             push_integer_onto_stack(context, value=len(operator.operand))
-        case OperatorType.CALL:
+        case OperatorType.FUNCTION_CALL:
             assert isinstance(operator.operand, str)
 
             function = program.functions[operator.operand]
@@ -121,7 +123,8 @@ def amd64_linux_operator_instructions(
                 abi_ffi_push_retval_onto_stack=function.abi_ffi_push_retval_onto_stack(),
                 abi_ffi_arguments_count=len(function.type_contract_in),
             )
-
+        case OperatorType.FUNCTION_RETURN:
+            function_end_with_epilogue(context)
         case _:
             assert_never(operator.type)
 

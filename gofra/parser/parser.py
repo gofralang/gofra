@@ -154,8 +154,15 @@ def _consume_keyword_token(context: ParserContext, token: Token) -> None:
             return _unpack_include_from_token(context, token)
         case Keyword.INLINE | Keyword.EXTERN | Keyword.FUNCTION | Keyword.GLOBAL:
             return _unpack_function_definition_from_token(context, token)
-        case Keyword.CALL:
+        case Keyword.FUNCTION_CALL:
             return _unpack_function_call_from_token(context, token)
+        case Keyword.FUNCTION_RETURN:
+            return context.push_new_operator(
+                OperatorType.FUNCTION_RETURN,
+                token,
+                None,
+                is_contextual=False,
+            )
         case Keyword.MEMORY:
             return _unpack_memory_segment_from_token(context, token)
 
@@ -255,7 +262,7 @@ def _unpack_function_call_from_token(context: ParserContext, token: Token) -> No
         return
 
     context.push_new_operator(
-        OperatorType.CALL,
+        OperatorType.FUNCTION_CALL,
         token,
         extern_call_name,
         is_contextual=False,
