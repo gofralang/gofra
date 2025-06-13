@@ -36,14 +36,6 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
     cli_message(level="INFO", text="Parsing input files...", verbose=args.verbose)
     context = process_input_file(args.source_filepaths[0], args.include_paths)
 
-    if not args.disable_optimizations:
-        cli_message(
-            level="INFO",
-            text="Applying optimizations...",
-            verbose=args.verbose,
-        )
-        optimize_program(context)
-
     if not args.skip_typecheck:
         cli_message(
             level="INFO",
@@ -53,6 +45,14 @@ def cli_process_toolchain_on_input_files(args: CLIArguments) -> None:
         validate_type_safety(
             functions={**context.functions, GOFRA_ENTRY_POINT: context.entry_point},
         )
+
+    if not args.disable_optimizations:
+        cli_message(
+            level="INFO",
+            text="Applying optimizations...",
+            verbose=args.verbose,
+        )
+        optimize_program(context)
 
     if args.ir:
         emit_ir_into_stdout(context)

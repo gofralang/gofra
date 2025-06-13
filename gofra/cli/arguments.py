@@ -23,6 +23,7 @@ class CLIArguments:
     output_format: OUTPUT_FORMAT_T
 
     execute_after_compilation: bool
+    debug_symbols: bool
 
     include_paths: list[Path]
 
@@ -79,7 +80,12 @@ def parse_cli_arguments() -> CLIArguments:
         *map(Path, [include for include in args.include if include]),
     ]
 
+    assembler_flags = args.assembler
+    if bool(args.debug_symbols):
+        assembler_flags += ["-g"]
+
     return CLIArguments(
+        debug_symbols=bool(args.debug_symbols),
         ir=bool(args.ir),
         source_filepaths=source_filepaths,
         output_filepath=output_filepath,
@@ -93,7 +99,7 @@ def parse_cli_arguments() -> CLIArguments:
         include_paths=include_paths,
         verbose=bool(args.verbose),
         linker_flags=args.linker,
-        assembler_flags=args.assembler,
+        assembler_flags=assembler_flags,
     )
 
 
@@ -142,6 +148,13 @@ def _construct_argument_parser() -> ArgumentParser:
         required=False,
         action="store_true",
         help="If passed will just emit IR of provided file(s) into stdin.",
+    )
+    parser.add_argument(
+        "--debug-symbols",
+        "-g",
+        required=False,
+        action="store_true",
+        help="If passed will provide debug symbols into final target output.",
     )
     parser.add_argument(
         "--verbose",
