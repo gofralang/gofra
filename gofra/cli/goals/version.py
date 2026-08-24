@@ -3,7 +3,7 @@ from platform import platform, python_implementation, python_version
 from typing import Literal, NoReturn
 
 from gofra.cli.parser.arguments import CLIArguments
-from libgofra.assembler.drivers._get_assembler_driver import get_assembler_driver
+from libgofra.assembler.drivers._get_assembler_driver import try_get_assembler_driver
 from libgofra.feature_flags import (
     FEATURE_ALLOW_FPU,
     FEATURE_ALLOW_MODULES,
@@ -19,7 +19,7 @@ def cli_perform_version_goal(args: CLIArguments) -> NoReturn:
         .removesuffix("_command")
     )
 
-    assembler_driver = get_assembler_driver(args.target)
+    assembler_driver = try_get_assembler_driver(args.target)
     assembler_driver_name = assembler_driver.name if assembler_driver else "No suitable"
 
     print("[Gofra toolchain]")

@@ -15,7 +15,7 @@ from gofra.cli.mod_hashing import (
 from gofra.cli.output import cli_fatal_abort, cli_linter_warning, cli_message
 from gofra.execution.execution import execute_native_binary_executable
 from gofra.execution.permissions import apply_file_executable_permissions
-from libgofra.assembler.assembler import assemble_object_file
+from libgofra.assembler.assembler import assemble_object_file, assemble_object_files
 from libgofra.codegen.generator import generate_code_for_assembler
 from libgofra.gofra import process_input_file
 from libgofra.lexer.tokens import TokenLocation
@@ -157,7 +157,7 @@ def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
             modules_assembly[mod.path] = mod_assembly_path
 
     if args.output_format == "assembly":
-        assembly_filepath.replace(args.output_filepath)
+        _ = assembly_filepath.replace(args.output_filepath)
 
     object_filepath = (cache_dir / output.name).with_suffix(
         args.target.file_object_suffix,
@@ -219,23 +219,11 @@ def _perform_assembler(  # noqa: PLR0913, PLR0917
     modules_objects: dict[Path, Path] = {}
 
     with wrap_with_perf_time_taken("Assembler", verbose=args.verbose):
-
-        def _perform_assembler_driver(in_path: Path, out_path: Path) -> None:
-            process = assemble_object_file(
-                in_assembly_file=in_path,
-                out_object_file=out_path,
-                target=args.target,
-                extra_flags=args.assembler_flags,
-                debug_information=args.debug_symbols,
-            )
-            process.check_returncode()
-            log_command(args, process)
+        assembly_targets: list[tuple[Path, Path]] = []
 
         if is_module_needs_rebuild(args, root_module, rebuild_artifact=object_filepath):
-            _perform_assembler_driver(
-                in_path=assembly_filepath,
-                out_path=object_filepath,
-            )
+            assembly_targets.append((assembly_filepath, object_filepath))
+
         for mod in root_module.visit_dependencies(include_self=False):
             mod_object_path = (
                 modules_dependencies_dir / get_module_hash(mod)
@@ -243,11 +231,24 @@ def _perform_assembler(  # noqa: PLR0913, PLR0917
             if not is_module_needs_rebuild(args, mod, rebuild_artifact=mod_object_path):
                 modules_objects[mod.path] = mod_object_path
                 continue
-            _perform_assembler_driver(
-                in_path=modules_assembly[mod.path],
-                out_path=mod_object_path,
-            )
+            assembly_targets.append((modules_assembly[mod.path], mod_object_path))
             modules_objects[mod.path] = mod_object_path
+
+        # We discovered pairs ready to be assembled
+        cli_message(
+            "INFO",
+            f"Performing batch assembler for {len(assembly_targets)} artifacts...",
+            verbose=args.verbose,
+        )
+        assembler_processes = assemble_object_files(
+            file_pairs=assembly_targets,
+            target=args.target,
+            extra_flags=args.assembler_flags,
+            debug_information=args.debug_symbols,
+        )
+        for process in assembler_processes:
+            process.check_returncode()
+            log_command(args, process)
 
     if args.target.architecture == "WASM32":
         cli_message(

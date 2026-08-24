@@ -1,6 +1,7 @@
 from collections.abc import Iterable
 
 from libgofra.assembler.drivers.wabt import WabtAssemblerDriver
+from libgofra.assembler.errors import NoAssemblerDriverError
 from libgofra.targets.target import Target
 
 from ._driver_protocol import AssemblerDriverProtocol
@@ -9,7 +10,7 @@ from .clang import ClangAssemblerDriver
 _drivers = [ClangAssemblerDriver, WabtAssemblerDriver]
 
 
-def get_assembler_driver(
+def try_get_assembler_driver(
     target: Target,
     *,
     installed_only: bool = True,
@@ -23,6 +24,20 @@ def get_assembler_driver(
             continue
         return driver()
     return None
+
+
+def get_assembler_driver(
+    target: Target,
+    *,
+    installed_only: bool = True,
+) -> AssemblerDriverProtocol:
+    driver = try_get_assembler_driver(target, installed_only=installed_only)
+    if driver is None:
+        raise NoAssemblerDriverError(
+            target,
+            supported_drivers=get_supported_drivers(target),
+        )
+    return driver
 
 
 def get_supported_drivers(target: Target) -> list[type[AssemblerDriverProtocol]]:
