@@ -362,7 +362,7 @@ class WASM32CodegenBackend:
             node = _get_wasm_internal_function_decl_spec(function)
 
             node.add_nodes(
-                self._function_prologue_load_params(function.parameter_types)
+                self._function_prologue_load_params(function.parameter_types),
             )
 
             spilled_mem_vars = self._function_allocate_spilled_stack_var_slots(

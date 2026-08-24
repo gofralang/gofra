@@ -27,7 +27,7 @@ exclude = ["gofra/testkit"]
 mkdocs = "^1.6.1"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.15.9"
+ruff = "^0.16.1"
 pytest = "^9.0.1"
 
 [tool.ruff.lint]
@@ -37,6 +37,8 @@ ignore = [
     "A005",
     "D105",
     "D100",
+    "CPY001",
+    "INP001",
     "D103",
     "PLR0912",
     "PLR0915",

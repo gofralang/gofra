@@ -10,7 +10,7 @@ from libgofra.linker.profile import LinkerProfile
 from libgofra.targets.target import Target
 
 
-def compose_gnu_linker_command(  # noqa: PLR0913
+def compose_gnu_linker_command(  # noqa: PLR0913, PLR0917
     objects: Iterable[Path],
     output: Path,
     target: Target,

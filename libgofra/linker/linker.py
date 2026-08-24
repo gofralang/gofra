@@ -11,7 +11,7 @@ from libgofra.linker.profile import LinkerProfile
 from libgofra.targets.target import Target
 
 
-def link_object_files(  # noqa: PLR0913
+def link_object_files(  # noqa: PLR0913, PLR0917
     objects: Iterable[Path],
     output: Path,
     target: Target,

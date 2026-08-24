@@ -201,7 +201,7 @@ def validate_function_type_safety(
     return func_block
 
 
-def emulate_type_stack_for_operators(  # noqa: PLR0913
+def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
     operators: Sequence[Operator],
     module: Module,
     initial_type_stack: Sequence[Type],
@@ -290,7 +290,7 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913
     )
 
 
-def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913
+def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
     operators: Sequence[Operator],
     current_function: Function,
     module: Module,

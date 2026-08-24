@@ -26,7 +26,7 @@ from libgofra.targets.target import Target
 APPLE_LD_DEFAULT_PATH = Path("ld")
 
 
-def compose_apple_linker_command(  # noqa: PLR0913
+def compose_apple_linker_command(  # noqa: PLR0913, PLR0917
     objects: Iterable[Path],
     output: Path,
     target: Target,

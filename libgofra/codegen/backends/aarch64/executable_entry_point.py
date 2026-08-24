@@ -16,7 +16,7 @@ AARCH64_MACOS_EPILOGUE_EXIT_CODE = 0
 AARCH64_MACOS_EPILOGUE_EXIT_SYSCALL_NUMBER = 1
 
 
-def aarch64_program_entry_point(  # noqa: PLR0913
+def aarch64_program_entry_point(  # noqa: PLR0913, PLR0917
     writer: WriterProtocol,
     abi: AARCH64ABI,
     system_entry_point_name: str,

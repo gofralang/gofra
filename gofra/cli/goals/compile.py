@@ -205,7 +205,7 @@ def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
     return sys.exit(0)
 
 
-def _perform_assembler(  # noqa: PLR0913
+def _perform_assembler(  # noqa: PLR0913, PLR0917
     args: CLIArguments,
     root_module: Module,
     modules_dependencies_dir: Path,

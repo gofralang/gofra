@@ -62,7 +62,7 @@ def _push_variable_address(
     push_address_of_label_onto_stack(writer, label=variable)
 
 
-def aarch64_instruction_set(  # noqa: PLR0913
+def aarch64_instruction_set(  # noqa: PLR0913, PLR0917
     writer: WriterProtocol,
     abi: AARCH64ABI,
     string_pool: StringPool,
@@ -89,7 +89,7 @@ def aarch64_instruction_set(  # noqa: PLR0913
         )
 
 
-def aarch64_operator_instructions(  # noqa: PLR0913
+def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
     writer: WriterProtocol,
     abi: AARCH64ABI,
     string_pool: StringPool,

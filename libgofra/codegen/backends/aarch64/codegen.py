@@ -122,7 +122,7 @@ class AARCH64CodegenBackend:
             self.writer.full_buffer_flush()
 
 
-def function_define_with_instruction_set(  # noqa: PLR0913
+def function_define_with_instruction_set(  # noqa: PLR0913, PLR0917
     writer: WriterProtocol,
     abi: AARCH64ABI,
     string_pool: StringPool,

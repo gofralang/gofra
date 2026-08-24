@@ -2,7 +2,7 @@ from pathlib import Path
 from subprocess import CompletedProcess
 from typing import Any
 
-from pytest import MonkeyPatch
+import pytest  # noqa: TC002
 
 from libgofra.assembler.drivers._get_assembler_driver import get_assembler_driver
 from libgofra.targets.target import Target
@@ -45,7 +45,7 @@ def test_get_assembler_driver_unknown() -> None:
     assert driver is None
 
 
-def test_mocked_subprocess_run(monkeypatch: "MonkeyPatch") -> None:
+def test_mocked_subprocess_run(monkeypatch: "pytest.MonkeyPatch") -> None:
     calls: list[tuple[tuple[list[str], ...], dict[str, object]]] = []
 
     def mock_run(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401

@@ -11,7 +11,7 @@ from libgofra.targets.target import Target
 
 class LinkerCommandComposer(Protocol):
     @staticmethod
-    def __call__(  # noqa: PLR0913
+    def __call__(  # noqa: PLR0913, PLR0917
         objects: Iterable[Path],
         output: Path,
         target: Target,
