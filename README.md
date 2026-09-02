@@ -7,18 +7,22 @@
 [![Compiler Testkit](https://github.com/kirillzhosul/gofra/actions/workflows/testkit.yml/badge.svg)](https://github.com/kirillzhosul/gofra/actions/workflows/testkit.yml)
 
 ---
+
 #### [Documentation and information is available here](https://kirillzhosul.github.io/gofra)
+
 ---
 
 ## Overview
-Gofra is a **concatenative** (stack-based) programming language that compiles to native code. 
+
+Gofra is a **concatenative** (stack-based) programming language that compiles to native code.
 Programs are written using [Reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation), where operations follow their operands (e.g `2 + 2` is `2 2 +`).
 
-![Pong Example Screenshot](./docs/pong_preview.png)
+![Pong Example Screenshot](https://raw.githubusercontent.com/gofralang/docs/refs/heads/main/docs/pong_preview.png)
 
-## Quick start 
+## Quick start
 
 Here's a simple **"Hello, World!"** example:
+
 ```gofra
 include "std"
 
@@ -28,15 +32,17 @@ end
 ```
 
 ## Features
-- *Native* - Compiles to native machine code
-- *C*-like - Close to C, but has a few more high-level abstraction (`for in`, `type generics`)
-- *C FFI* - Seamless integration with **C**-FFI libraries
-- *Low-level* - Write unsafe, low-level code with direct memory access
-- *Type System* - Validate types at compile time, has compile-time warnings (Generics supports, typechecker)
-- *Library* - By default has support for `math`, `random`, `network` and other libraries
-- *First class functions* - Has support, and lambda definitions (no closures/capturing yet)
+
+- _Native_ - Compiles to native machine code
+- _C_-like - Close to C, but has a few more high-level abstraction (`for in`, `type generics`)
+- _C FFI_ - Seamless integration with **C**-FFI libraries
+- _Low-level_ - Write unsafe, low-level code with direct memory access
+- _Type System_ - Validate types at compile time, has compile-time warnings (Generics supports, typechecker)
+- _Library_ - By default has support for `math`, `random`, `network` and other libraries
+- _First class functions_ - Has support, and lambda definitions (no closures/capturing yet)
 
 ## More complex examples
+
 ```gofra
 #include "std"
 
@@ -51,27 +57,28 @@ end
 ```
 
 ## Showcase
+
 - Pong Game ([`examples/03_pong`](./examples/03_pong.gof))
 - Simple HTTP server ([`examples/04_http_server`](./examples/04_http_server.gof))
 
 ## Platform Support
 
-| ARCH    | OS      | Support                    | Tested hardware      |
-|---------|---------|----------------------------|----------------------|
-| Aarch64 | Darwin  | :white_check_mark:*        | M1, MacOS Tahoe 26.1 |
-| WASM    | **-**   | :heavy_exclamation_mark:** | Node.js v22, Safari  |
-| x86_64  | Linux   | :heavy_exclamation_mark:** |                      |
+| ARCH    | OS     | Support                    | Tested hardware      |
+| ------- | ------ | -------------------------- | -------------------- |
+| Aarch64 | Darwin | :white_check_mark:*        | M1, MacOS Tahoe 26.1 |
+| WASM    | **-**  | :heavy_exclamation_mark:** | Node.js v22, Safari  |
+| x86_64  | Linux  | :heavy_exclamation_mark:** |                      |
 
-| ARCH    | OS      | Support                    | Tested hardware      |
-|---------|---------|----------------------------|----------------------|
-| Aarch64 | Windows | :x:                        |
-| Aarch64 | Linux   | :x:                        |
-| x86_64  | Darwin  | :x:                        |
-| x86_64  | Windows | :bangbang:***              |
+| ARCH    | OS      | Support       | Tested hardware |
+| ------- | ------- | ------------- | --------------- |
+| Aarch64 | Windows | :x:           |
+| Aarch64 | Linux   | :x:           |
+| x86_64  | Darwin  | :x:           |
+| x86_64  | Windows | :bangbang:*** |
 
-\* Main workflow of development, has *all* features \
+\* Main workflow of development, has _all_ features \
 ** Incomplete, has bugs and not all features \
-*** Windows x86_64 is not implemented, but has general wrappers for system calls and possibly can be compiled with some headache 
+*** Windows x86_64 is not implemented, but has general wrappers for system calls and possibly can be compiled with some headache
 
 ## Pre requirements
 
@@ -88,14 +95,17 @@ Before installing Gofra, ensure you have the following tools available system-wi
 [Gofra](https://github.com/kirillzhosul/gofra) is distributed as single Python-based toolchain. To install:
 
 (Step 1): Install toolchain
+
 ```bash
 pip install gofra
 ```
+
 (Step 2): Verify Installation
+
 ```bash
 gofra --help
 ```
 
 ## More information and next steps
 
-Please refer to actual [documentation](https://kirillzhosul.github.io/gofra)!
+Please refer to actual [documentation](https://gofralang.github.io/docs)!

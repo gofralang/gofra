@@ -14,17 +14,14 @@ gofra = "gofra.cli.__main__:cli_entry_point"
 gofra-testkit = "gofra.testkit.__main__:main"
 
 [project.urls]
-documentation = "https://kirillzhosul.github.io/gofra"
-repository = "https://github.com/kirillzhosul/gofra"
+documentation = "https://gofralang.github.io/docs"
+repository = "https://github.com/gofralang/gofra"
 
 [tool.poetry]
 package-mode = true
 packages = [{ include = "gofra" }]
 include = ["gofra/_distlib/**/*.gof"]
 exclude = ["gofra/testkit"]
-
-[tool.poetry.group.docs.dependencies]
-mkdocs = "^1.6.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.16.1"
