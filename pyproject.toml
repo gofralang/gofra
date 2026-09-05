@@ -1,6 +1,6 @@
 [project]
 name = "gofra"
-version = "0.0.5"
+version = "0.1.0"
 description = "A Stack-based compiled programming language"
 requires-python = ">=3.12,<4.0"
 license = "MIT"
@@ -16,10 +16,14 @@ gofra-testkit = "gofra.testkit.__main__:main"
 [project.urls]
 documentation = "https://gofralang.github.io/docs"
 repository = "https://github.com/gofralang/gofra"
+issues = "https://github.com/gofralang/gofra/issues"
 
 [tool.poetry]
 package-mode = true
-packages = [{ include = "gofra" }]
+packages = [
+  { include = "gofra" }, 
+  { include = "libgofra" },
+]
 include = ["gofra/_distlib/**/*.gof"]
 exclude = ["gofra/testkit"]
 

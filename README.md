@@ -58,8 +58,8 @@ end
 
 ## Showcase
 
-- Pong Game ([`examples/03_pong`](./examples/03_pong.gof))
-- Simple HTTP server ([`examples/04_http_server`](./examples/04_http_server.gof))
+- Pong Game ([`examples/pong_game`](./examples/pong_game))
+- Simple HTTP server ([`examples/http_server`](./examples/http_server))
 
 ## Platform Support
 

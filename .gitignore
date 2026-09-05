@@ -10,8 +10,4 @@
 
 # Building artifacts
 dist
-site
 gofra/_distlib
-
-# Additional
-.VSCodeCounter
