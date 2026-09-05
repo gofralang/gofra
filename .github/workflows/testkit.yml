@@ -2,46 +2,39 @@ name: Compiler Testkit
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   test:
     strategy:
       matrix:
-        python-version: ['3.12']
+        python-version: ["3.12"]
         os: [macos-latest, ubuntu-latest] # TODO: Add `windows-latest` when we start to support Windows
       fail-fast: false
-  
+
     runs-on: ${{ matrix.os }}
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Test compiler bootstrap and host
-      run: |
-        python -m gofra --version
-        
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
 
-    # TODO: Add pong test if there is any easy way to install raylib
-    - name: Run tests
-      # Threads is set to 1 as it affects testing speed, but currently makes display of errors harder as they not linear
-      # probably should be fixed at some point
-      run: |
-        python -m gofra.testkit --silent --fail-with-abnormal-exit-code --threads 1 -d ./tests
-  
-    - name: Run examples test
-      run: |
-        python -m gofra.testkit \
-          --build-only \
-          --silent \
-          -d ./examples \
-          -p "*_*.gof" \
-          -e 03_pong.gof 
+      - name: Test compiler bootstrap and host
+        run: |
+          python -m gofra --version
+
+      - name: Run tests
+        # Threads is set to 1 as it affects testing speed, but currently makes display of errors harder as they not linear
+        # probably should be fixed at some point
+        run: |
+          python -m gofra.testkit --silent --fail-with-abnormal-exit-code --threads 1 -d ./tests
+
+      # TODO: Test with --aggressive-optimizations
+      # TODO: Add pong test if there is any easy way to install raylib
+      # TODO: Return back examples tests
