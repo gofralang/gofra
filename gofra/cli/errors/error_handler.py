@@ -21,7 +21,7 @@ def cli_gofra_error_handler(
             return cli_fatal_abort(repr(ge))
         raise  # re-throw exception due to unfriendly flag set for debugging
     except CalledProcessError as pe:
-        command = " ".join(pe.cmd)
+        command = " ".join(pe.cmd)  # pyright: ignore[reportAny]
         cli_message(
             "ERROR",
             f"""Command process with cmd: {command} failed with exit code {pe.returncode}""",

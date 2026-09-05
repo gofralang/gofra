@@ -24,7 +24,6 @@ class CLIArguments:
     definitions: dict[str, str]
 
     version: bool
-    repl: bool
     hir: bool
     preprocess_only: bool
     call_graph_only: bool

@@ -27,13 +27,6 @@ def build_cli_parser(prog: str) -> ArgumentParser:
         help="Show version info",
     )
 
-    parser.add_argument(
-        "--repl",
-        default=False,
-        action="store_true",
-        help="Step into REPL",
-    )
-
     groups.add_target_group(parser)
     groups.add_output_group(parser)
     groups.add_logging_group(parser)

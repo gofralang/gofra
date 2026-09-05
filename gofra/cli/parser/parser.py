@@ -43,7 +43,6 @@ def parse_cli_arguments(args: Namespace) -> CLIArguments:
     return CLIArguments(
         # Goals.
         version=bool(args.version),
-        repl=bool(args.repl),
         hir=bool(args.hir),
         preprocess_only=bool(args.preprocess_only),
         # Rest of these are mostly goal-specific
@@ -131,7 +130,7 @@ def _process_linker_executable(args: Namespace) -> Path | None:
 
 def _validate_mutually_exclusive_goals(args: Namespace) -> None:
     """Validate that goal flags is not present as mutually exclusive."""
-    if sum([args.version, args.preprocess_only, args.hir, args.repl]) in (0, 1):
+    if sum([args.version, args.preprocess_only, args.hir]) in (0, 1):
         return None
 
     return cli_fatal_abort("Goal flags is mutually exclusive!")
@@ -174,7 +173,7 @@ def _process_definitions(args: Namespace) -> dict[str, str]:
 
 def _process_source_filepaths(args: Namespace) -> list[Path]:
     """Process input source files as paths and validate it."""
-    goal_requires_source = not args.version and not args.repl
+    goal_requires_source = not args.version
     paths = [Path(f) for f in args.source_files]
     if not goal_requires_source:
         return paths
