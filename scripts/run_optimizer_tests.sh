@@ -2,6 +2,6 @@
 
 # Migrate to `set -xe` after fix with colors, TODO!
 set -e
-gofra-testkit -d examples --build-only -p "*_*.gof" -e 03_pong.gof -s --aggressive-optimizations
+gofra-testkit -d examples --build-only -p "*/main.gof" -e pong_game -s --aggressive-optimizations
 gofra-testkit -d tests -s --aggressive-optimizations
-gofra ./examples/03_pong.gof -lraylib -O1
+gofra ./examples/pong_game/main.gof -lraylib -O1
