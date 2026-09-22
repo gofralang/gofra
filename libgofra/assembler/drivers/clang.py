@@ -4,7 +4,7 @@ from pathlib import Path
 from platform import system
 from shutil import which
 from subprocess import CalledProcessError, CompletedProcess, TimeoutExpired, run
-from typing import TYPE_CHECKING, Final, assert_never
+from typing import TYPE_CHECKING, Final, assert_never, override
 
 from libgofra.assembler.drivers._driver_protocol import AssemblerDriverProtocol
 from libgofra.assembler.errors import ClangDoesNotSupportWasmError
@@ -25,17 +25,21 @@ class ClangAssemblerDriver(AssemblerDriverProtocol):
     __cached_is_apple_clang: bool | None = None
 
     @property
+    @override
     def name(self) -> str:
         return "clang"
 
     @classmethod
+    @override
     def is_installed(cls, *, executable: Path = CLANG_DEFAULT_PATH) -> bool:
         return which(executable) is not None
 
     @classmethod
+    @override
     def is_supported(cls, target: Target) -> bool:
         return target.architecture in ("ARM64", "AMD64")
 
+    @override
     def assemble(
         self,
         target: Target,

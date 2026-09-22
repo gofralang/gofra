@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from shutil import which
 from subprocess import CompletedProcess, run
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from libgofra.assembler.drivers._driver_protocol import AssemblerDriverProtocol
 
@@ -17,10 +17,12 @@ class WabtAssemblerDriver(AssemblerDriverProtocol):
     """Driver for WABT wat2wasm assembler (transpiler)."""
 
     @property
+    @override
     def name(self) -> str:
         return "wabt{wat2wasm}"
 
     @classmethod
+    @override
     def is_installed(cls) -> bool:
         return cls.find_wat2wasm_tool_path() is not None
 
@@ -31,14 +33,19 @@ class WabtAssemblerDriver(AssemblerDriverProtocol):
         for path in paths:
             if not path:
                 continue
-            return Path(path)
+            p = Path(path)
+            if not p.exists():
+                continue
+            return p
 
         return None
 
     @classmethod
+    @override
     def is_supported(cls, target: Target) -> bool:
         return target.architecture in ("WASM32")
 
+    @override
     def assemble(
         self,
         target: Target,

@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
 from libgofra.assembler.drivers._get_assembler_driver import get_assembler_driver
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from pathlib import Path
     from subprocess import CompletedProcess
 
@@ -74,6 +74,7 @@ def assemble_object_files(  # noqa: PLR0913
     driver = driver or get_assembler_driver(target)
     flags = extra_flags or []
 
+    # TODO(@kirillzhosul): Assembler allows to gather multiple files in single process, must check that is supported?
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
             executor.submit(
