@@ -70,11 +70,6 @@ def consume_function_definition(
     if function_name == "_":
         raise WildcardCannotBeUsedAsSymbolNameError(at=token.location)
 
-    param_names = [p[0] for p in parameters]
-    if not all(param_names):
-        msg = f"Found legacy unnamed param! {token.location}"
-        raise ValueError(msg)
-
     return FunctionHeaderDefinition(
         token,
         function_name,

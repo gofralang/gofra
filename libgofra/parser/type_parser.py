@@ -215,18 +215,19 @@ def parse_function_type_parameters(context: ParserScope) -> list[tuple[str, Type
     while token := context.peek_token():
         if token.type == TokenType.RBRACKET:
             break
-        parameters.append(("", parse_concrete_type_from_tokenizer(context)))
-        t = context.peek_token()
-        if t.type == TokenType.RBRACKET:
+
+        var_t = parse_concrete_type_from_tokenizer(context)
+
+        context.expect_token(TokenType.IDENTIFIER)
+        t = context.next_token()
+        parameters.append((t.text, var_t))
+        if context.peek_token().type == TokenType.RBRACKET:
             break
-        if t.type == TokenType.IDENTIFIER:
-            parameters[-1] = (t.text, parameters[-1][1])
-            context.next_token()
-            if context.peek_token().type == TokenType.RBRACKET:
-                break
+
         context.expect_token(TokenType.COMMA)
         _ = context.next_token()
     _ = context.next_token()
+
     return parameters
 
 
