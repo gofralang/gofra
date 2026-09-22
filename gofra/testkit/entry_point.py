@@ -180,8 +180,14 @@ def search_test_case_files(
     pattern: str,
     excluded_filenames: list[str],
 ) -> list[Path]:
-    return [
-        p
-        for p in directory.glob(pattern, case_sensitive=False)
-        if p.name not in excluded_filenames
-    ]
+    results: list[Path] = []
+    for p in directory.glob(pattern, case_sensitive=False):
+        if p.name in excluded_filenames:
+            continue
+
+        if any(part in excluded_filenames for part in p.parts):
+            continue
+
+        results.append(p)
+
+    return results

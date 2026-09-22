@@ -11,8 +11,11 @@ def cli_get_executable_program() -> str:
     return Path(sys.argv[0]).name
 
 
-def warn_on_improper_installation(executable: str) -> None:
+def warn_on_improper_installation(executable: str | None) -> None:
     """Warn if user is calling CLI as Python module, e.g __main__.py."""
+    if executable is None:
+        executable = cli_get_executable_program()
+
     if not executable.endswith(".py"):
         return
     cli_message(

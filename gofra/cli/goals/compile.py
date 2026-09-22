@@ -15,7 +15,7 @@ from gofra.cli.mod_hashing import (
 from gofra.cli.output import cli_fatal_abort, cli_linter_warning, cli_message
 from gofra.execution.execution import execute_native_binary_executable
 from gofra.execution.permissions import apply_file_executable_permissions
-from libgofra.assembler.assembler import assemble_object_file, assemble_object_files
+from libgofra.assembler.assembler import assemble_object_files
 from libgofra.codegen.generator import generate_code_for_assembler
 from libgofra.gofra import process_input_file
 from libgofra.lexer.tokens import TokenLocation
