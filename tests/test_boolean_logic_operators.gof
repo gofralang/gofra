@@ -18,7 +18,7 @@ func void main[]
     false typecast int 
     "(true and false) must equal false" assert
 
-    true false || typecast int 
+    true false || typecast int
     true typecast int 
     "(true or false) must equal true" assert
 
