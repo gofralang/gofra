@@ -45,7 +45,6 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
         hir=bool(args.hir),
         preprocess_only=bool(args.preprocess_only),
         # Rest of these are mostly goal-specific
-        execute_after_compilation=bool(args.execute),
         delete_build_cache=bool(args.delete_cache),
         debug_symbols=bool(args.debug_symbols),
         skip_typecheck=bool(args.skip_typecheck),
@@ -75,7 +74,6 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
         display_lint_warnings=bool(args.display_lint_warnings),
         codegen_config=codegen_config,
         runtime_array_oob_checks=bool(args.runtime_array_oob_checks),
-        propagate_execute_child_exit_code=bool(args.propagate_execute_child_exit_code),
         call_graph_only=bool(args.call_graph_only),
         executable_entry_point=args.executable_entry_point,
     )

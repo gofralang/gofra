@@ -206,22 +206,6 @@ def add_output_group(parser: ArgumentParser) -> None:
     )
 
     group.add_argument(
-        "--execute",
-        "-x",
-        required=False,
-        action="store_true",
-        help="If provided, will execute output executable file after compilation. Expects output format to be executable",
-    )
-
-    group.add_argument(
-        "--propagate-execute-child-exit-code",
-        "--prop-child-ec",
-        required=False,
-        action="store_true",
-        help="If specified and execute flag is passed, will propagate exit status of child to parent compiler process",
-    )
-
-    group.add_argument(
         "--entry-point",
         type=str,
         required=False,

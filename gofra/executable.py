@@ -21,5 +21,4 @@ def warn_on_improper_installation(executable: str | None) -> None:
     cli_message(
         level="WARNING",
         text=f"Running with prog == '{executable}', consider proper installation!",
-        verbose=True,  # Treat as always verbose - as this cannot be inferred from configuration sources.
     )

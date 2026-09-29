@@ -6,13 +6,11 @@ from time import perf_counter_ns
 from typing import TYPE_CHECKING, NoReturn
 
 from gofra.cache.directory import prepare_build_cache_directory
-from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.mod_hashing import (
     get_module_hash,
     is_module_needs_rebuild,
 )
 from gofra.cli.output import cli_fatal_abort, cli_linter_warning, cli_message
-from gofra.execution.execution import execute_native_binary_executable
 from gofra.execution.permissions import apply_file_executable_permissions
 from libgofra.assembler.assembler import assemble_object_files
 from libgofra.codegen.generator import generate_code_for_assembler
@@ -202,8 +200,6 @@ def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
         verbose=args.verbose,
     )
 
-    # Parent may also exit with children exit code?
-    _execute_after_compilation(args)
     _cleanup_cache_gc(cache_gc, args)
     return sys.exit(0)
 
@@ -353,49 +349,6 @@ def get_host_compliance(args: CLIArguments) -> bool:
     )
 
 
-def _execute_after_compilation(args: CLIArguments) -> None:
-    """Run executable after compilation if user requested."""
-    if not args.execute_after_compilation:
-        return None
-    if args.output_format != "executable":
-        return cli_fatal_abort(
-            text="Cannot execute after compilation due to output format is not set to an executable!",
-        )
-
-    host_target = infer_host_target()
-    assert host_target
-    host_compliance = (
-        args.target.architecture == host_target.architecture
-        and args.target.operating_system == host_target.operating_system
-    )
-
-    if not host_compliance:
-        cli_fatal_abort(
-            "Target differs from host target, cannot execute on current host without emulation layer, please execute on your own!\nFile was compiled, please remove execute flag!",
-        )
-
-    cli_message(
-        "INFO",
-        "Trying to execute compiled file due to execute flag...",
-        verbose=args.verbose,
-    )
-
-    with wrap_with_perf_time_taken("Execution", verbose=args.verbose):
-        try:
-            process = execute_native_binary_executable(args.output_filepath, args=[])
-            log_command(args, process)
-            exit_code = process.returncode
-        except KeyboardInterrupt:
-            if not args.cli_debug_user_friendly_errors:
-                raise
-            cli_message("WARNING", "Execution was interrupted by user!")
-            sys.exit(0)
-        _log_child_exit_code(args, exit_code)
-        if args.propagate_execute_child_exit_code:
-            sys.exit(exit_code)
-    return None
-
-
 def _perform_typechecker(args: CLIArguments, root_module: Module) -> None:
     if args.skip_typecheck:
         return
@@ -433,24 +386,3 @@ def _perform_optimizer(args: CLIArguments, root_module: Module) -> None:
 
         # Perform root optimizations last - high level optimizations after dependencies
         cli_process_optimization_pipeline(root_module, args)
-
-
-def _log_child_exit_code(args: CLIArguments, exit_code: int) -> None:
-    if exit_code == 0:
-        return cli_message(
-            "INFO",
-            f"Program finished with exit code {exit_code}!",
-            verbose=args.verbose,
-        )
-
-    if is_segmentation_fault(exit_code):
-        return cli_message(
-            "ERROR",
-            f"Program finished with segmentation fault exit code (SIGSEGV, {exit_code})!",
-        )
-
-    return cli_message(
-        "ERROR",
-        f"Program finished with fail exit code {exit_code}!",
-        verbose=args.verbose,
-    )

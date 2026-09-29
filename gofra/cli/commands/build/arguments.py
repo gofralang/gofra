@@ -17,9 +17,6 @@ class BuildArguments:
     output_format: Literal["library", "object", "executable", "assembly"]
     output_file_is_specified: bool  # Internal flag
 
-    execute_after_compilation: bool
-    propagate_execute_child_exit_code: bool
-
     include_paths: list[Path]
     definitions: dict[str, str]
 
