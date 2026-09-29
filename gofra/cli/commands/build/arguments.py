@@ -9,8 +9,8 @@ from libgofra.targets.target import Target
 
 
 @dataclass(slots=True, frozen=True)
-class CLIArguments:
-    """Arguments from argument parser provided for whole Gofra toolchain process."""
+class BuildArguments:
+    """Arguments from argument parser provided for build command."""
 
     source_filepaths: list[Path]
     output_filepath: Path
@@ -23,7 +23,6 @@ class CLIArguments:
     include_paths: list[Path]
     definitions: dict[str, str]
 
-    version: bool
     hir: bool
     preprocess_only: bool
     call_graph_only: bool

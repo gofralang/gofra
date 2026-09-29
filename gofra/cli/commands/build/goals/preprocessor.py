@@ -11,10 +11,10 @@ from libgofra.preprocessor.macros.registry import registry_from_raw_definitions
 from libgofra.preprocessor.preprocessor import preprocess_file
 
 if TYPE_CHECKING:
-    from gofra.cli.parser.arguments import CLIArguments
+    from gofra.cli.commands.build.arguments import BuildArguments
 
 
-def cli_perform_preprocess_goal(args: CLIArguments) -> NoReturn:
+def cli_perform_preprocess_goal(args: BuildArguments) -> NoReturn:
     """Perform preprocess only goal that emits preprocessed tokens into stdout."""
     assert args.preprocess_only, (
         "Cannot perform preprocessor goal with no preprocessor flag set!"

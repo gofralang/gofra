@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast, get_args, get_type_hints
 
+from gofra.cli.commands.build.arguments import BuildArguments
 from gofra.cli.output import cli_fatal_abort
-from gofra.cli.parser.arguments import CLIArguments
 from libgofra.codegen.config import CodegenConfig
 from libgofra.linker.profile import LinkerProfile
 from libgofra.optimizer.config import (
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from argparse import Namespace
 
 
-def parse_cli_arguments(args: Namespace) -> CLIArguments:
+def parse_cli_arguments(args: Namespace) -> BuildArguments:
     """Parse CLI arguments from argparse into custom DTO."""
     _validate_mutually_exclusive_goals(args)
     target = _process_target(args)
@@ -40,9 +40,8 @@ def parse_cli_arguments(args: Namespace) -> CLIArguments:
     optimizer = _process_optimizer_config(args, output_format)
     codegen_config = _process_codegen_config(args, optimizer)
 
-    return CLIArguments(
+    return BuildArguments(
         # Goals.
-        version=bool(args.version),
         hir=bool(args.hir),
         preprocess_only=bool(args.preprocess_only),
         # Rest of these are mostly goal-specific
@@ -109,7 +108,7 @@ def _process_output_format(
     args: Namespace,
 ) -> Literal["library", "object", "executable", "assembly"]:
     """Validate and process output format as type safe value."""
-    allowed_formats = get_args(get_type_hints(CLIArguments)["output_format"])
+    allowed_formats = get_args(get_type_hints(BuildArguments)["output_format"])
     assert args.output_format in (*allowed_formats, None), (
         f"{args.target} not in {allowed_formats}"
     )
@@ -130,7 +129,7 @@ def _process_linker_executable(args: Namespace) -> Path | None:
 
 def _validate_mutually_exclusive_goals(args: Namespace) -> None:
     """Validate that goal flags is not present as mutually exclusive."""
-    if sum([args.version, args.preprocess_only, args.hir]) in (0, 1):
+    if sum([args.preprocess_only, args.hir]) in (0, 1):
         return None
 
     return cli_fatal_abort("Goal flags is mutually exclusive!")
@@ -173,10 +172,7 @@ def _process_definitions(args: Namespace) -> dict[str, str]:
 
 def _process_source_filepaths(args: Namespace) -> list[Path]:
     """Process input source files as paths and validate it."""
-    goal_requires_source = not args.version
     paths = [Path(f) for f in args.source_files]
-    if not goal_requires_source:
-        return paths
 
     if len(args.source_files) == 0:
         return cli_fatal_abort("Expected source files to compile!")

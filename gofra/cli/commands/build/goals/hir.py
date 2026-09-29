@@ -4,7 +4,6 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
 
-from gofra.cli.goals._optimization_pipeline import cli_process_optimization_pipeline
 from gofra.cli.output import cli_fatal_abort
 from libgofra.gofra import process_input_file
 from libgofra.hir.function import Function
@@ -12,15 +11,17 @@ from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.preprocessor.macros.registry import registry_from_raw_definitions
 
+from ._optimization_pipeline import cli_process_optimization_pipeline
+
 if TYPE_CHECKING:
-    from gofra.cli.parser.arguments import CLIArguments
+    from gofra.cli.commands.build.arguments import BuildArguments
     from libgofra.hir.module import Module
 
 FULL_DEPENDENCY_GRAPH_HIR = True
 DISPLAY_FUNCTION_BODY = True
 
 
-def cli_perform_hir_goal(args: CLIArguments) -> NoReturn:
+def cli_perform_hir_goal(args: BuildArguments) -> NoReturn:
     """Perform HIR display only goal that emits HIR operators into stdout."""
     assert args.hir, "Cannot perform HIR goal with no HIR flag set!"
 

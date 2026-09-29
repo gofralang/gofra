@@ -1,12 +1,12 @@
+from gofra.cli.commands.build.arguments import BuildArguments
 from gofra.cli.output import cli_message
-from gofra.cli.parser.arguments import CLIArguments
 from libgofra.hir.module import Module
 from libgofra.optimizer.pipeline import create_optimizer_pipeline
 
 
 def cli_process_optimization_pipeline(
     module: Module,
-    args: CLIArguments,
+    args: BuildArguments,
 ) -> None:
     """Apply optimization pipeline for program according to CLI arguments."""
     pipeline = create_optimizer_pipeline(args.optimizer)

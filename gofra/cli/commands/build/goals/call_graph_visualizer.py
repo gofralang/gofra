@@ -4,19 +4,20 @@ import sys
 from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, NoReturn
 
-from gofra.cli.goals._optimization_pipeline import cli_process_optimization_pipeline
 from gofra.cli.output import cli_fatal_abort
 from libgofra.gofra import process_input_file
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.optimizer.helpers.call_graph import CallGraph, CallGraphNode, CallSite
 from libgofra.preprocessor.macros.registry import registry_from_raw_definitions
 
+from ._optimization_pipeline import cli_process_optimization_pipeline
+
 if TYPE_CHECKING:
-    from gofra.cli.parser.arguments import CLIArguments
+    from gofra.cli.commands.build.arguments import BuildArguments
     from libgofra.hir.function import Function
 
 
-def cli_perform_call_graph_goal(args: CLIArguments) -> NoReturn:
+def cli_perform_call_graph_goal(args: BuildArguments) -> NoReturn:
     """Perform call graph display only goal that emits call graph graphviz dot format into stdout."""
     assert args.call_graph_only, (
         "Cannot perform call graph goal with no call graph flag set!"

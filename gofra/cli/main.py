@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from gofra.cli.errors.error_handler import cli_gofra_error_handler
-from gofra.cli.goals import perform_desired_toolchain_goal
+from sys import argv
+
+from gofra.cli.commands import clean, version
+from gofra.cli.commands.build import command as build
 from gofra.cli.parser.builder import build_cli_parser
-from gofra.cli.parser.parser import parse_cli_arguments
 from gofra.executable import cli_get_executable_program, warn_on_improper_installation
 
-from .output import cli_fatal_abort, cli_message
+from .output import cli_fatal_abort
 
 
 def cli_entry_point() -> None:
@@ -15,22 +16,23 @@ def cli_entry_point() -> None:
     warn_on_improper_installation(prog)
 
     parser = build_cli_parser(prog)
-    args = parse_cli_arguments(parser.parse_args())
-    wrapper = cli_gofra_error_handler(
-        debug_user_friendly_errors=args.cli_debug_user_friendly_errors,
-    )
+    raw_args = parser.parse_args()
 
-    if args.incremental_compilation:
-        cli_message(
-            "WARNING",
-            "Incremental compilation may skip changes in dependant files due to using raw include!",
-        )
-    with wrapper:
-        # Wrap goal into error handler as in unwraps errors into user-friendly ones (except internal ones as bugs)
-        perform_desired_toolchain_goal(args)
+    match raw_args.command:
+        case "version":
+            version.execute(version.parse_arguments(raw_args))
+        case "clean":
+            clean.execute(clean.parse_arguments(raw_args))
+        case "build":
+            build.execute(build.parse_arguments(raw_args))
+        case _:
+            cli_fatal_abort(f"Unknown command: {raw_args.command}")
 
-    # This is unreachable but error wrapper must fail
-    cli_fatal_abort("Bug in a CLI: toolchain must perform at least one goal!")
+
+def cli_compiler_entry_point() -> None:
+    # Backward compatibility
+    argv.insert(1, "build")
+    cli_entry_point()
 
 
 if __name__ == "__main__":

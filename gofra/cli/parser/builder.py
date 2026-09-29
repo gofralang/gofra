@@ -1,42 +1,28 @@
 from argparse import ArgumentParser
 
-from gofra.cli.parser import groups
+from gofra.cli.commands import clean, version
+from gofra.cli.commands.build import command as build
 
 
 def build_cli_parser(prog: str) -> ArgumentParser:
     """Get argument parser instance to parse incoming arguments."""
-    parser = ArgumentParser(
+    core_parser = ArgumentParser(
         description="Gofra Toolkit - CLI for working with Gofra programming language",
-        usage=f"{prog} files... [options] [-h]",
         add_help=True,
         allow_abbrev=False,
         prog=prog,
     )
 
-    parser.add_argument(
-        "source_files",
-        help="Input source code files in Gofra to process (`.gof` files)",
-        nargs="*",
-        default=[],
+    subparsers = core_parser.add_subparsers(
+        dest="command",
+        title="Commands",
+        description="Available commands",
+        help="Command to execute",
+        required=True,
     )
 
-    parser.add_argument(
-        "--version",
-        default=False,
-        action="store_true",
-        help="Show version info",
-    )
+    version.build_parser(subparsers)
+    clean.build_parser(subparsers)
+    build.build_parser(subparsers)
 
-    groups.add_target_group(parser)
-    groups.add_output_group(parser)
-    groups.add_logging_group(parser)
-
-    groups.add_debug_group(parser)
-    groups.add_preprocessor_group(parser)
-    groups.add_cache_group(parser)
-    groups.add_linker_group(parser)
-    groups.add_optimizer_group(parser)
-    groups.add_toolchain_debug_group(parser)
-    groups.add_codegen_group(parser)
-    groups.add_additional_group(parser)
-    return parser
+    return core_parser

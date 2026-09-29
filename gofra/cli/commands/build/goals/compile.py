@@ -6,7 +6,6 @@ from time import perf_counter_ns
 from typing import TYPE_CHECKING, NoReturn
 
 from gofra.cache.directory import prepare_build_cache_directory
-from gofra.cli.goals._optimization_pipeline import cli_process_optimization_pipeline
 from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.mod_hashing import (
     get_module_hash,
@@ -31,12 +30,14 @@ from libgofra.targets.infer_host import infer_host_target
 from libgofra.typecheck import validate_type_safety
 from libgofra.typecheck.typechecker import on_lint_warning_suppressed
 
+from ._optimization_pipeline import cli_process_optimization_pipeline
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator, MutableSequence, Sequence
     from pathlib import Path
     from subprocess import CompletedProcess
 
-    from gofra.cli.parser.arguments import CLIArguments
+    from gofra.cli.commands.build.arguments import BuildArguments as CLIArguments
     from libgofra.hir.module import Module
 
 # Must refactor and move somewhere else?
@@ -72,7 +73,11 @@ def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
             "Compiling several files not implemented, you may want to use modules system.",
         )
     cli_message(level="INFO", text="Parsing input files...", verbose=args.verbose)
-
+    if args.incremental_compilation:
+        cli_message(
+            "WARNING",
+            "Incremental compilation may skip changes in dependant files due to using raw include!",
+        )
     macros_registry = registry_from_raw_definitions(
         location=TokenLocation.cli(),
         definitions=args.definitions,
@@ -123,8 +128,7 @@ def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
     )
 
     with wrap_with_perf_time_taken("Codegen", verbose=args.verbose):
-        if is_module_needs_rebuild(
-            args,
+        if not args.incremental_compilation or is_module_needs_rebuild(
             root_module,
             rebuild_artifact=assembly_filepath,
         ):
@@ -140,8 +144,7 @@ def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
             mod_assembly_path = (
                 modules_dependencies_dir / get_module_hash(mod)
             ).with_suffix(args.target.file_assembly_suffix)
-            if not is_module_needs_rebuild(
-                args,
+            if not args.incremental_compilation or not is_module_needs_rebuild(
                 mod,
                 rebuild_artifact=mod_assembly_path,
             ):
@@ -221,14 +224,20 @@ def _perform_assembler(  # noqa: PLR0913, PLR0917
     with wrap_with_perf_time_taken("Assembler", verbose=args.verbose):
         assembly_targets: list[tuple[Path, Path]] = []
 
-        if is_module_needs_rebuild(args, root_module, rebuild_artifact=object_filepath):
+        if not args.incremental_compilation or is_module_needs_rebuild(
+            root_module,
+            rebuild_artifact=object_filepath,
+        ):
             assembly_targets.append((assembly_filepath, object_filepath))
 
         for mod in root_module.visit_dependencies(include_self=False):
             mod_object_path = (
                 modules_dependencies_dir / get_module_hash(mod)
             ).with_suffix(args.target.file_object_suffix)
-            if not is_module_needs_rebuild(args, mod, rebuild_artifact=mod_object_path):
+            if not args.incremental_compilation or not is_module_needs_rebuild(
+                mod,
+                rebuild_artifact=mod_object_path,
+            ):
                 modules_objects[mod.path] = mod_object_path
                 continue
             assembly_targets.append((modules_assembly[mod.path], mod_object_path))

@@ -11,6 +11,7 @@ keywords = ["compiler", "language"]
 
 [project.scripts]
 gofra = "gofra.cli.__main__:cli_entry_point"
+gofrac = "gofra.cli.__main__:cli_compiler_entry_point"
 gofra-testkit = "gofra.testkit.__main__:main"
 
 [project.urls]

@@ -32,6 +32,10 @@ class Target:
     file_assembly_suffix: Literal[".s", ".asm", ".wat"]
     file_object_suffix: Literal[".o", ".obj", ".wasm"]
 
+    @property
+    def simple_name(self) -> str:
+        return f"{self.operating_system.lower()}/{self.architecture.lower()}"
+
     @staticmethod
     def from_triplet(triplet: Triplet) -> "Target":
         match triplet:

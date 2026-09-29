@@ -1,7 +1,6 @@
 from hashlib import md5
 from pathlib import Path
 
-from gofra.cli.parser.arguments import CLIArguments
 from libgofra.hir.module import Module
 
 
@@ -13,14 +12,11 @@ def _is_file_modified_after(a: Path, b: Path) -> bool:
 
 
 def is_module_needs_rebuild(
-    args: CLIArguments,
     mod: Module,
     rebuild_artifact: Path,
 ) -> bool:
     # Possibly, this may fail due to incremental compilation
     # if some dependency was invalidated ?
-    if not args.incremental_compilation:
-        return True
     if not rebuild_artifact.exists(follow_symlinks=False):
         return True
     return _is_file_modified_after(rebuild_artifact, mod.path)
