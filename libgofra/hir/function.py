@@ -12,6 +12,7 @@ from libgofra.types.primitive.void import VoidType
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableSequence, Sequence
 
+    from libgofra.hir.initializer import T_AnyVariableInitializer
     from libgofra.hir.module import Module
     from libgofra.hir.operator import Operator
     from libgofra.hir.variable import Variable
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
     from libgofra.types import Type
 
 
-type PARAMS_T = Sequence[tuple[str, Type]]
+type PARAMS_T = Sequence[FunctionParameter]
 
 
 class Visibility(Enum):
@@ -31,6 +32,23 @@ class Visibility(Enum):
 
     PUBLIC = auto()  # Allowed from everywhere
     PRIVATE = auto()  # Only inside current module
+
+
+@dataclass
+class FunctionParameter:
+    # TODO(@kirillzhosul): May rework this via variable HIR ?
+    name: str
+    type: Type
+
+    # Anything parsed that comes after = (e.g default value)
+    # actually means default value but uses initializer logic behind
+    initializer: T_AnyVariableInitializer | None = None
+
+    def __repr__(self) -> str:
+        if self.initializer:
+            return f"{self.type} {self.name} = {self.initializer}"
+
+        return f"{self.type} {self.name}"
 
 
 class FunctionInlineAttribute(Enum):
@@ -90,7 +108,7 @@ class Function:
 
     # fmt: off
     name:        str                           = field(repr=True)
-    defined_at:   TokenLocation                 = field(repr=True)
+    defined_at:   TokenLocation                = field(repr=True)
     parameters:  PARAMS_T                      = field(repr=True)
     return_type: Type                          = field(repr=True) # Void -> no return
 
@@ -104,8 +122,13 @@ class Function:
     # fmt: on
 
     @property
+    def parameter_map(self) -> dict[str, FunctionParameter]:
+        return {v.name: v for v in self.parameters}
+
+    @property
     def parameter_types(self) -> list[Type]:
-        return [p[1] for p in self.parameters]
+        # should be refactored in general?
+        return [p.type for p in self.parameters]
 
     def has_return_value(self) -> bool:
         """Check is given function returns an void type (e.g no return type)."""

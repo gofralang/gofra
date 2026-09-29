@@ -47,6 +47,7 @@ class OperatorType(Enum):
     # Internal operation when function has parameters
     # Specifies that parameter local variable must be loaded right now
     # (moved from stack, registers) into local argument variable location
+    # If there is default value for param - this opcode must be skipped
     LOAD_PARAM_ARGUMENT = auto()
 
     # Shift current pointer to an struct for given structure field

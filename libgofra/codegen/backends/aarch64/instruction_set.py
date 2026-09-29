@@ -224,6 +224,10 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             load_memory_from_stack_arguments(writer)
         case OperatorType.LOAD_PARAM_ARGUMENT:
             assert isinstance(operator.operand, str)
+
+            param_ref = owner_function.parameter_map[operator.operand]
+            _ = param_ref.initializer
+
             # TODO(@kirillzhosul): This was merged from two operations - must be refactored (and also optimized)
             _push_variable_address(writer, owner_function, operator.operand)
 

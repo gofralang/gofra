@@ -16,6 +16,7 @@ Extern functions cannot have a body so they do not have `end` block (assuming th
 from collections.abc import Generator
 from dataclasses import dataclass
 
+from libgofra.hir.function import FunctionParameter
 from libgofra.lexer import Token
 from libgofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD, Keyword
 from libgofra.lexer.tokens import TokenLocation, TokenType
@@ -51,7 +52,7 @@ class FunctionHeaderQualifiers:
 class FunctionHeaderDefinition:
     at: Token
     name: str
-    parameters: list[tuple[str, Type]]
+    parameters: list[FunctionParameter]
     return_type: Type
 
     qualifiers: FunctionHeaderQualifiers

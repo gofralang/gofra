@@ -1,11 +1,13 @@
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from libgofra.hir.function import FunctionParameter
 from libgofra.lexer.keywords import Keyword
 from libgofra.lexer.tokens import Token, TokenType
 from libgofra.parser._context import ParserScope
 from libgofra.parser.errors.unknown_primitive_type import UnknownPrimitiveTypeError
 from libgofra.parser.functions.exceptions import ParserFunctionNoNameError
+from libgofra.parser.variable_initializer import consume_variable_initializer
 from libgofra.types import Type
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.function import FunctionType
@@ -53,10 +55,10 @@ def parse_concrete_type_from_tokenizer(
             token=_token,
         )
 
-        anonymous_function_params = [t for _, t in function_params]
+        function_param_types = [p.type for p in function_params]
         return FunctionType(
             return_type=function_return_type,
-            parameter_types=anonymous_function_params,
+            parameter_types=function_param_types,
         )
     context.expect_token(TokenType.IDENTIFIER)
     t = context.next_token()
@@ -112,7 +114,7 @@ def parse_concrete_type_from_tokenizer(
 def consume_concrete_function_signature(
     context: ParserScope,
     token: Token,
-) -> tuple[str, list[tuple[str, Type]], Type]:
+) -> tuple[str, list[FunctionParameter], Type]:
     """Consume parser context into function signature assuming given token is `function` keyword.
 
     Returns function name and signature types (`in` and `out).
@@ -205,8 +207,10 @@ def parse_generic_function_type_parameters(
     return parameters
 
 
-def parse_function_type_parameters(context: ParserScope) -> list[tuple[str, Type]]:
-    parameters: list[tuple[str, Type]] = []
+def parse_function_type_parameters(
+    context: ParserScope,
+) -> list[FunctionParameter]:
+    parameters: list[FunctionParameter] = []
 
     if (paren_token := context.next_token()) and paren_token.type != TokenType.LBRACKET:
         msg = f"Expected LBRACKET `[` after function name for parameters but got {paren_token.type.name}"
@@ -220,12 +224,29 @@ def parse_function_type_parameters(context: ParserScope) -> list[tuple[str, Type
 
         context.expect_token(TokenType.IDENTIFIER)
         t = context.next_token()
-        parameters.append((t.text, var_t))
-        if context.peek_token().type == TokenType.RBRACKET:
-            break
 
-        context.expect_token(TokenType.COMMA)
-        _ = context.next_token()
+        parameters.append(FunctionParameter(t.text, var_t, initializer=None))
+
+        if context.peek_token().type == TokenType.COMMA:
+            _ = context.next_token()  # Next
+        elif context.peek_token().type == TokenType.ASSIGNMENT:
+            _ = context.next_token()  # consume =
+
+            # Parse value and infer type from that
+            # `var_t` can be changed if it is inferred type
+            # Or initializer modifies type (e.g incomplete array type)
+            # TODO(@kirillzhosul): Refactor general mix with variables?
+            initial_value, var_t = consume_variable_initializer(
+                context,
+                var_t,
+                varname_token=context.peek_token(),
+            )
+            parameters[-1].type = var_t
+            parameters[-1].initializer = initial_value
+
+        elif context.peek_token().type == TokenType.RBRACKET:
+            break  # Finished decl
+
     _ = context.next_token()
 
     return parameters

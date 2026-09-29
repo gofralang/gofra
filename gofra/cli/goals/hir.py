@@ -148,15 +148,16 @@ def _emit_ir_operator(  # noqa: PLR0911
 
 def _emit_ir_function_signature(function: Function) -> None:
     if function.attrs.external:
-        print(f"[external function symbol '{function.name}'", end=" ")
+        print(f"[External func '{function.name}'", end=" ")
         print(f"({function.parameters} -> {function.return_type})")
         return
-    print(f"[function symbol '{function.name}'", end=" ")
-    print(f"({function.parameters} -> {function.return_type})", end=" ")
+    print(f"[Func '{function.name}", end="")
+    print(f"({', '.join(map(str, function.parameters))}", end="")
+    print(f") -> {function.return_type}'", end=" ")
     print(f"(public={function.is_public})]", end=" ")
-    print(f"({len(function.variables)} local variables)", end=" ")
+    print(f"({len(function.variables)} locals)", end=" ")
     if function.attrs.leaf:
-        print("[has_leaf_property]", end="")
+        print("[A.L]", end="")
     if function.outer_function:
-        print("[is_enclosure]", end="")
+        print("[A.OF]", end="")
     print("", function.defined_at)

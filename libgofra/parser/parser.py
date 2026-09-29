@@ -4,8 +4,9 @@ from difflib import get_close_matches
 from pathlib import Path
 from typing import TYPE_CHECKING, assert_never
 
+from libgofra.exceptions import GofraError
 from libgofra.feature_flags import FEATURE_ALLOW_FPU, FEATURE_ALLOW_MODULES
-from libgofra.hir.function import Function, Visibility
+from libgofra.hir.function import Function, FunctionParameter, Visibility
 from libgofra.hir.operator import FunctionCallOperand
 from libgofra.hir.variable import Variable, VariableScopeClass, VariableStorageClass
 from libgofra.lexer import (
@@ -77,7 +78,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
     from libgofra.hir.module import Module
-    from libgofra.types._base import Type
 
 
 TOP_LEVEL_KEYWORD = (
@@ -348,33 +348,32 @@ def _consume_keyword_token(context: ParserScope, token: Token) -> None:  # noqa:
 def _new_function_scope(
     parent: ParserScope,
     token: Token,
-    parameters: list[tuple[str, Type]],
+    parameters: list[FunctionParameter],
 ) -> ParserScope:
     new_scope = ParserScope.from_parent(
         parent,
         tokenizer=consume_function_body_tokens(parent),
     )
 
-    for param_name, param_type in reversed(parameters):
-        if not param_name:
-            continue
-        if param_name == "_":
+    for param in reversed(parameters):
+        assert param.name
+        if param.name == "_":
             new_scope.push_new_operator(OperatorType.STACK_DROP, token=token)
             continue
-        new_scope.variables[param_name] = Variable(
-            name=param_name,
+        new_scope.variables[param.name] = Variable(
+            name=param.name,
             defined_at=token.location,
             is_constant=False,
             storage_class=VariableStorageClass.STACK,
             scope_class=VariableScopeClass.FUNCTION,
-            type=param_type,
-            initial_value=None,
+            type=param.type,
+            initial_value=None,  # Default values propagated by caller
         )
 
         new_scope.push_new_operator(
             OperatorType.LOAD_PARAM_ARGUMENT,
             token,
-            operand=param_name,
+            operand=param.name,
         )
     _parse_from_context_into_operators(context=new_scope)
 
@@ -405,6 +404,10 @@ def _unpack_anonymous_lambda_function_from_token(
         if context.query_name_holder(f_header_def.name):
             msg = f"Function name {f_header_def.name} is already taken by other definition"
             raise ValueError(msg)
+
+        if any(p.initializer is not None for p in f_header_def.parameters):
+            msg = f"{token.location}: Lambda cannot have default values for parameters for now."
+            raise GofraError(msg)
 
         new_context = _new_function_scope(context, token, f_header_def.parameters)
 
@@ -636,6 +639,10 @@ def _unpack_function_definition_from_token(
             conflicting_holder=f"Function '{f_header_def.name}' at {token.location}",
             name_holder=name_holder,
         )
+
+    if any(p.initializer is not None for p in f_header_def.parameters):
+        msg = f"{token.location}: Functions cannot have default values for parameters for now due to call expansion logic."
+        raise GofraError(msg)
 
     new_context = _new_function_scope(context, token, f_header_def.parameters)
 
