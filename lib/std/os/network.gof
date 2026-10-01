@@ -9,18 +9,75 @@
 
 // --- Network constants ---
 // Address family
+#define AF_UNSPEC  0
 #define AF_UNIX    1
 #define AF_INET    2
-#define AF_INET6   10
-// Socket type
-#define SOCK_STREAM 1
-#define SOCK_DGRAM  2 
-#define SOCK_RAW    3
+#define AF_INET6   30
+#define AF_NETBIOS 33
+
+// Socket types
+#define SOCK_STREAM    1 
+#define SOCK_DGRAM     2
+#define SOCK_RAW       3
+#define SOCK_RDM       4
+#define SOCK_SEQPACKET 5
+
+// Socket option flags
+#define SO_DEBUG        0x0001
+#define SO_ACCEPTCONN   0x0002
+#define SO_REUSEADDR    0x0004
+#define SO_KEEPALIVE    0x0008
+#define SO_REUSEPORT    0x0200
+
 // Other
 #ifdef OS_LINUX   #define SOMAXCONN 128        #endif
 #ifdef OS_DARWIN  #define SOMAXCONN 128        #endif
 #ifdef OS_WINDOWS #define SOMAXCONN 0x7FFFFFFF #endif
 
+pub func int htons[int port]
+    port 0x00FF & 8 <<
+    port 0xFF00 & 8 >> 
+    | return
+end
+
+pub func int htonl[int port]
+    port 0x000000FF & 24 <<
+    port 0x0000FF00 & 8  << |
+    port 0x00FF0000 & 8  >> |
+    port 0xFF000000 & 24 >> |
+    return
+end
+
+
+pub func int parse_ipv4_address[*string ipv4]
+    var host int  = 0;
+    var octet int = 0;
+    var shift int = 24;
+
+    var addr_len int;
+    &addr_len ipv4.len !<
+
+    var cchar char;
+    for c in 0..addr_len do
+        &cchar ipv4.data c + ?>  typecast int 0x00000000FF & !<
+
+        cchar typecast int '.' == if
+            &host octet shift << host | !<
+            &octet 0 !<
+            &shift shift 8 - !<
+        end
+        cchar typecast int '.' != if
+            &octet
+                octet 10 * 
+                cchar typecast int '0' - 
+                + 
+            !<
+        end
+    end
+
+    &host octet shift << host | !<
+    host return
+end
 
 #ifdef OS_DARWIN
     // System call wrappers
