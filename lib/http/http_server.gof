@@ -8,26 +8,33 @@
 // TODO: Add async/thread support
 
 // IO RX/TX buffer capacity expected
-#define HTTP_IO_BUFFER_CAP 4096
-
-struct HTTPServer
-    // HTTP Server instance for HTTP library
-
-    socket  int // System socket opened for listening
-    port    int // Port on which server is listening
-    backlog int // Backlog -  maximum length for the queue of pending connections
-
-    // Internal fields
-    net_addr sockaddr_in // Addr as `sockaddr_in` to listen on
-end
+#define HTTP_IO_BUFFER_CAP 128
 
 struct HTTPIncomingRequest
     // Request for HTTP server from client
 
     socket int // System socket bound for that client
 
-    io_rx_buffer *char[HTTP_IO_BUFFER_CAP] // Buffer for reading request
-    io_tx_buffer *char[HTTP_IO_BUFFER_CAP] // Buffer for writing request
+    io_rx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for reading request
+    io_tx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for writing request
+end
+
+type HTTPRequestHandler func void _[*HTTPIncomingRequest request]
+struct HTTPServer
+    // HTTP Server instance for HTTP library
+
+    socket  int // System socket opened for listening
+    port    int // Port on which server is listening
+
+    backlog int // Backlog -  maximum length for the queue of pending connections
+
+    pre_handler HTTPRequestHandler
+    handler HTTPRequestHandler 
+    post_handler HTTPRequestHandler 
+
+    // Internal fields
+    raw_addr int
+    net_addr sockaddr_in // Addr as `sockaddr_in` to listen on
 end
 
 // Open system socket for server, internal function
@@ -40,13 +47,21 @@ end
 
 // Bind system socket for server, internal function
 func void _http_server_bind_socket[*HTTPServer server]
-    &server.socket ?>
-    &server.net_addr // *sock_addr_in
-    sizeof sockaddr_in
-    call net_bind
-    
-    -1 == if
-        "Unable to bind HTTP server socket\n" eprint_fatal
+    var errno int;
+
+    //&server.net_addr typecast *int ?> breakpoint drop
+
+    &errno
+        &server.socket ?>
+        &server.net_addr // *sock_addr_in
+        sizeof sockaddr_in
+        call net_bind
+    !<
+
+    errno 0 < if
+        "FATAL: Unable to bind HTTP server socket: " eprint
+        errno darwin_strerror eprint "\n" eprint
+        abort
     end
 end
 
@@ -54,7 +69,7 @@ end
 func void _http_server_listen_socket[*HTTPServer server]
         server.socket
         server.backlog
-    call net_listen 
+    call net_listen
 
     -1 == if
         "Unable to listen to HTTP server socket\n" eprint_fatal
@@ -70,11 +85,95 @@ func int _http_server_net_write_bytes[int fd, *string sv]
     end
 end
 
+func void pack_sockaddr[*HTTPServer server]
+    var so_in *sockaddr_in;
+    &so_in &server.net_addr !<
+    
+    var hport int;
+    var hhost int;
+    &hport server.port call htons !<
+    &hhost server.raw_addr call htonl !<
+
+    &so_in.sin_family AF_INET !<
+    &so_in.sin_port   hport   !<
+    &so_in.sin_addr   hhost   !<
+    &so_in.sin_zero   0       !<
+end
+
+
+
+func void http_server_init[*HTTPServer server, int port, int backlog, *string addr]
+    &server.port port !<
+    &server.backlog backlog !<
+
+    &server.raw_addr 0x7F000001 !< // localhost
+    &server.raw_addr addr parse_ipv4_address !<
+
+    server call pack_sockaddr
+end
+
+func void http_server_default_pre_handler[*HTTPIncomingRequest request]
+    "Got connection!" println
+
+    // Read request
+    request call http_server_read_request
+    "Bytes read: " print print_int "\n" print
+end
+
+func void http_server_default_post_handler[*HTTPIncomingRequest request]
+    // Finish request
+    request call http_server_close_request
+    "Closed connection!" println
+end
+
+
 // Bootstrap HTTP server
-func void http_server_start[*HTTPServer server]
+func void http_server_start[
+    *HTTPServer server, 
+    HTTPRequestHandler handler,
+]
+    server 
+        NULL typecast HTTPRequestHandler // pre handler
+        handler // handler
+        NULL typecast HTTPRequestHandler // post handler
+    call http_server_start_configurable
+end
+func void http_server_start_configurable[
+    *HTTPServer server, 
+    HTTPRequestHandler pre_handler, 
+    HTTPRequestHandler handler,
+    HTTPRequestHandler post_handler
+]
     server call _http_server_open_socket
     server call _http_server_bind_socket
     server call _http_server_listen_socket
+
+    pre_handler typecast int NULL == if
+        &pre_handler pointer_of_proc http_server_default_pre_handler !<
+    end
+    post_handler typecast int NULL == if
+        &post_handler pointer_of_proc http_server_default_post_handler !<
+    end
+    &server.pre_handler pre_handler !<
+    &server.handler handler !<
+    &server.post_handler post_handler !<
+
+    "Listening..." println
+
+    var request HTTPIncomingRequest;
+    while true do
+        &request.socket
+            server.socket call net_accept_sink 
+        !<
+ 
+        request.socket -1 == if
+            "Unable to accept to client socket on HTTP server socket\n" eprint_fatal
+        end
+
+        &request call pre_handler
+        &request call handler
+        &request call post_handler
+    end
 end
 
 // Send given string payload as HTML to client
@@ -103,13 +202,16 @@ end
 func int http_server_read_request[*HTTPIncomingRequest request]
     var bytes_read int = 0
 
+    &bytes_read
         request.socket
-        request.io_rx_buffer 
+        &request.io_rx_buffer 
         HTTP_IO_BUFFER_CAP
-    net_read &bytes_read swap !<
+    call net_read !<
 
-    bytes_read -1 == if
-        "Unable to read response from client socket on HTTP server socket\n" eprint_fatal
+    bytes_read 0 <  if
+        "FATAL: Unable to read HTTP request: " eprint
+        bytes_read darwin_strerror eprint "\n" eprint
+        abort
     end
 
     bytes_read return
