@@ -61,6 +61,22 @@ type fd_t int
 #endif // ARCH_ARM64
 
 
+#define EADDRNOTAVAIL 49
+#define EADDRINUSE    48
+#define EPERM          1
+#define ENOENT         2
+
+pub func *string darwin_strerror[int errno]
+    &errno errno call abs !<
+
+    errno EADDRNOTAVAIL == if "Can't assign requested address" return end
+    errno EADDRINUSE == if "Address already in use" return end
+    errno EPERM == if "Operation not permitted" return end
+    errno ENOENT == if "No such file or directory" return end
+
+    "Unknown error" return
+end
+
 // ---  Syscall Wrappers ---
 // These are the preferred way to make syscalls.
 #ifdef ARCH_ARM64

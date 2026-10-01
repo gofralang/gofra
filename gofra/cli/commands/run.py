@@ -112,7 +112,8 @@ def _execute_after_compilation(args: RunArguments) -> NoReturn:
     with wrap_with_perf_time_taken("Execution", verbose=args.parent.verbose):
         try:
             process = execute_native_binary_executable(
-                args.parent.output_filepath, args=[]
+                args.parent.output_filepath,
+                args=[],
             )
             log_command(args.parent, process)
             exit_code = process.returncode
