@@ -246,8 +246,8 @@ class DWARF(DWARFFieldWriter):
                         self.byte_field(1, comment=attr.name)
                         self.byte_field(0x50, comment=attr.name)
                     case DWARFAttribute.DW_AT_declaration_line:
-                        assert form == DWARFForm.DW_FORM_data1
-                        self.byte_field(
+                        assert form == DWARFForm.DW_FORM_data2
+                        self.short_field(
                             variable.defined_at.line_number,
                             comment=attr.name,
                         )
@@ -304,8 +304,8 @@ class DWARF(DWARFFieldWriter):
                         assert form == DWARFForm.DW_FORM_data1
                         self.byte_field(declaration_file_idx, comment=attr.name)
                     case DWARFAttribute.DW_AT_declaration_line:
-                        assert form == DWARFForm.DW_FORM_data1
-                        self.byte_field(hir.defined_at.line_number, comment=attr.name)
+                        assert form == DWARFForm.DW_FORM_data2
+                        self.short_field(hir.defined_at.line_number, comment=attr.name)
                     case DWARFAttribute.DW_AT_external:
                         assert form == DWARFForm.DW_FORM_flag
                         self.byte_field(int(hir.attrs.external), comment=attr.name)

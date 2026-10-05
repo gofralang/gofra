@@ -33,7 +33,7 @@ DWARF_SUBPROGRAM_ABBREVIATION = DWARFAbbreviation(
         (DWARFAttribute.DW_AT_high_pc, DWARFForm.DW_FORM_addr),
         (DWARFAttribute.DW_AT_name, DWARFForm.DW_FORM_strp),
         (DWARFAttribute.DW_AT_declaration_file, DWARFForm.DW_FORM_data1),
-        (DWARFAttribute.DW_AT_declaration_line, DWARFForm.DW_FORM_data1),
+        (DWARFAttribute.DW_AT_declaration_line, DWARFForm.DW_FORM_data2),
         (DWARFAttribute.DW_AT_external, DWARFForm.DW_FORM_flag),
     ],
 )
@@ -56,7 +56,7 @@ DWARF_VARIABLE_ABBREVIATION = DWARFAbbreviation(
         (DWARFAttribute.DW_AT_type, DWARFForm.DW_FORM_ref4),
         (DWARFAttribute.DW_AT_external, DWARFForm.DW_FORM_flag),
         (DWARFAttribute.DW_AT_declaration_file, DWARFForm.DW_FORM_data1),
-        (DWARFAttribute.DW_AT_declaration_line, DWARFForm.DW_FORM_data1),
+        (DWARFAttribute.DW_AT_declaration_line, DWARFForm.DW_FORM_data2),
         (DWARFAttribute.DW_AT_location, DWARFForm.DW_FORM_exprloc),
     ],
 )
