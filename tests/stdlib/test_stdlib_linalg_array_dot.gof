@@ -1,0 +1,12 @@
+/// Test array_dot
+#include "std/linalg.gof"
+
+var a int[3] = [1, 2, 3]
+var b int[3] = [4, 5, 6]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 32
+
+func int main[]
+    &a &b 3 call array_dot
+    return
+end

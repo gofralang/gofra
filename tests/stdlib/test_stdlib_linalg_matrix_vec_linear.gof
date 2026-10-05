@@ -1,0 +1,17 @@
+/// Test matrix_vec_linear
+#include "std/linalg.gof"
+
+var W int[6] = [
+    1, 2, 3, 
+    4, 5, 6
+]  // 2×3
+var x int[3] = [1, 1, 1]
+var b int[2] = [10, 20]
+var y int[2]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 16
+
+func int main[]
+    &W &x 3 &b &y 2 call matrix_vec_linear
+    y[0] return   // y[0] = 1+2+3+10 = 16
+end

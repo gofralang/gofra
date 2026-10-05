@@ -1,5 +1,6 @@
 /// Test that booleans are working and logic operators too
 
+#include "std"
 #include "std/types.gof"
 #include "std/assert.gof"
 

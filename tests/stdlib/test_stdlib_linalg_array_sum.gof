@@ -1,0 +1,11 @@
+/// Test array_sum
+#include "std/linalg.gof"
+
+var a int[3] = [1, 2, 3]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 6
+
+func int main[]
+    &a 3 call array_sum
+    return
+end

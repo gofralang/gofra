@@ -1,0 +1,250 @@
+// ==============================================
+// Linear algebra functions for vectors and matrices
+// TODO: Generic function with container type holders
+// TODO: Vectors as array
+// ==============================================
+
+/// =====
+/// Array methods
+/// =====
+
+pub func void array_add[*int[] a, *int[] b, *int[] c, int n]
+    for i in 0..n do
+        c 8 i * + a 8 i * + ?> b 8 i * + ?> + !<
+    end
+end
+
+pub func void array_scale[*int[] a, int s, int n]
+    for i in 0..n do
+        a 8 i * + a 8 i * + ?> s * !<
+    end
+end
+
+pub func int array_sum[*int[] A, int n]
+    // Sum each element of integer array and return total sum
+    var sum int = 0;
+
+    for i in 0..n do
+        &sum sum A sizeof int i * + ?> + !< // sum = sum + A[i]
+    end
+
+    sum return
+end
+
+pub func int array_product[*int[] A, int n]
+    // Product each element of integer array and return total product
+    var sum int = 1;
+
+    for i in 0..n do
+        &sum sum A sizeof int i * + ?> * !< // sum = sum * A[i]
+    end
+
+    sum return
+end
+
+pub func int array_dot[*int[] A, *int[] B, int n]
+    // Dot product
+    var s int = 0;
+
+    for i in 0..n do
+        &s // s = s + a[i] * b[i]
+            s 
+            A sizeof int i * + ?> 
+            B sizeof int i * + ?> 
+            * + 
+        !<
+    end
+
+    s return
+end
+
+pub func int array_mean[*int[] A, int n]
+    A n call array_sum n / return
+end
+
+pub func int array_max[*int[] A, int n]
+    // Maximum value in array
+    var best int;
+    var v int;
+
+    &best A ?> !<
+    for i in 1..n do
+        &v A sizeof int i * + ?> !<
+        v best > if
+            &best v !<
+        end
+    end
+    best return
+end
+
+pub func int array_min[*int[] A, int n]
+    // Minimum value in array
+    var best int;
+    var v int;
+
+    &best A ?> !<
+    for i in 1..n do
+        &v A sizeof int i * + ?> !<
+        v best < if
+            &best v !<
+        end
+    end
+
+    best return
+end
+
+pub func int array_argmax[*int[] arr, int n]
+    // Return index of maximal value in integer array
+    var best_idx int = 0;
+    var best_val int;
+    var v int;
+    
+    &best_val arr ?> !<
+    for i in 1..n do
+        &v arr sizeof int i * + ?> !<
+        v best_val > if
+            &best_idx i !<
+            &best_val v !<
+        end
+    end
+    best_idx return
+end
+
+pub func int array_argmin[*int[] arr, int n]
+    // Index of minimum value (first occurrence)
+    var best_idx int = 0;
+    var best_val int;
+    var v int;
+
+    &best_val arr ?> !<
+    for i in 1..n do
+        &v arr sizeof int i * + ?> !<
+        v best_val < if
+            &best_idx i !<
+            &best_val v !<
+        end
+    end
+    best_idx return
+end
+
+pub func int array_linear[*int[] w, *int[] x, int n, int b]
+    // y = w · x + b
+    w x n array_dot
+    b + return
+end
+
+pub func int array_var[*int[] A, int n]
+    // Variance: Σ(A[i] - mean)² / n
+    var mean int;
+    &mean A n array_mean !<
+    
+    var sum int = 0;
+    var d int;
+    for i in 0..n do
+        &d A 8 i * + ?> mean - !<
+        &sum sum d d * + !<
+    end
+
+    sum n / return
+end
+
+pub func void array_fill[*int[] a, int v, int n]
+    for i in 0..n do
+        a 8 i * + v !<
+    end
+end
+
+pub func void array_zero[*int[] a, int n]
+    a 0 n array_fill
+end
+
+pub func void array_copy[*int[] src, *int[] dst, int n]
+    for i in 0..n do
+        dst 8 i * + src 8 i * + ?> !<
+    end
+end
+
+/// =====
+/// Matrix methods
+/// =====
+
+
+pub func void matrix_transpose[*int[] A, *int[] B, int M, int N]
+    // Transpone matrix A (MxN) into matrix B (NxM)
+    // B = A^T
+    for i in 0..M do
+        for j in 0..N do
+            B 8 j M * i + * + // B[j][i]
+                A 8 i N * j + * + ?>  // A[i][j]
+            !<
+        end
+    end
+end
+
+pub func void matrix_mul[*int[] A, *int[] B, *int[] C, int M, int N, int K]
+    // Matrix multiplication: C = A * B, where A is MxK, B is KxN, and C is MxN
+    // C = A · B
+    var sum int = 0;
+
+    for i in 0..M do
+        for j in 0..N do
+            &sum 0 !<
+            for k in 0..K do
+                &sum 
+                    sum 
+                    A 8 i K * k + * + ?> 
+                    B 8 k N * j + * + ?> 
+                    * + 
+                !<
+            end
+            C 8 i N * j + * + sum !<
+        end
+    end
+end
+
+pub func void matrix_scale[*int[] matrix, int rows, int cols, int multiplier]
+    // Multiply each element of 2D matrix by scalar
+    var v int;
+    var i int;
+
+    for row in 0..rows do
+    for col in 0..cols do
+        &i row cols * col + !<
+        &v matrix sizeof int i * + ?> !<
+
+        matrix sizeof int i * + v multiplier * !<
+    end end
+end
+
+func *int[] matrix_ptr_of[*int[] A, int i, int j, int cols]
+    // Get pointer to A[i][j] (row-major)
+    A sizeof int i cols * j + * + return
+end
+
+pub func void matrix_vec_mul[*int[] W, *int[] x, *int[] y, int M, int N]
+    // y = W · x
+    // W: M×N, x: N, y: M
+
+    var p *int[];
+
+    for i in 0..M do
+        y sizeof int i * + 
+            W i 0 N matrix_ptr_of
+            x
+            N call array_dot 
+        !<
+    end
+end
+
+pub func void matrix_vec_linear[*int[] W, *int[] x, int N, *int[] b, *int[] y, int M]
+    // y = W · x + b
+    // W: M×N, x: N, b: M, y: M
+    for i in 0..M do
+        y sizeof int i * + 
+            W i 0 N matrix_ptr_of 
+            x 
+            N call array_dot 
+            b sizeof int i * + ?> + 
+        !<
+    end
+end

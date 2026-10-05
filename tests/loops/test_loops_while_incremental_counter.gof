@@ -1,4 +1,5 @@
 /// Test simple N iterations with while loop
+#include "std"
 #include "std/os/general.gof"
 #include "std/assert.gof"
 

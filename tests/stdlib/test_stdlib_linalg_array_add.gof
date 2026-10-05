@@ -1,0 +1,13 @@
+/// Test array_add
+#include "std/linalg.gof"
+
+var a int[3] = [1, 2, 3]
+var b int[3] = [4, 5, 6]
+var c int[3]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 5
+
+func int main[]
+    &a &b &c 3 call array_add
+    c[0] return
+end

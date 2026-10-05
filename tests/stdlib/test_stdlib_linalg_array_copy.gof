@@ -1,0 +1,12 @@
+/// Test array_copy
+#include "std/linalg.gof"
+
+var a int[3] = [1, 2, 3]
+var b int[3]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 2
+
+func int main[]
+    &a &b 3 call array_copy
+    b[1] return
+end

@@ -1,4 +1,5 @@
 /// Test clamp value function from math library
+#include "std"
 #include "std/os/io"
 #include "std/math.gof"
 

@@ -1,5 +1,6 @@
 /// Tests that align-of works
 
+#include "std"
 #include "std/assert.gof"
 
 struct Foo

@@ -5,9 +5,13 @@
 
 // TODO: Gofra does not have FP so this is only integer-math library
 
-// Calculate base in power of exponent
-pub func int pow[int base, int exponent]
+#include "std"
+
+pub func int ipow[int base, int exponent]
+    // Integer power (base^exponent) for integer values
     var result int = 1;
+
+    exponent 0 < if 0 return end // TODO: Probably should be error, but for now just return 0
 
     // TODO: This is not performant way to calculate power, but this is enough for now
     while exponent 0 > do
@@ -17,9 +21,10 @@ pub func int pow[int base, int exponent]
 
     result return
 end
+#define pow ipow // Alias for integer power
 
-// Calculate integer square root for an value (e.g floor Babylonian method)
-pub func int sqrt[int n]
+pub func int isqrt[int n]
+    // Calculate integer square root for an value (e.g floor Babylonian method)
     var y int = 1;
     var x int;
 
@@ -33,9 +38,10 @@ pub func int sqrt[int n]
 
     x return
 end
+#define sqrt isqrt // Alias for integer square root
 
-// Return absolute value of an negative/positive integer
 pub func int abs[int x]
+    // Return absolute value of an negative/positive integer
     x 0 < if
         // TODO: Will be optimized into negation ? 
         x -1 * return // (-n) * -1 => n
@@ -43,27 +49,34 @@ pub func int abs[int x]
     x return // Positive by default
 end
 
-// Return minimum value from two values
 pub func int min[int a, int b]
+    // Return minimum value from two values
     a b <= if a return end
     b return
 end
 
-// Return maximals value from two values
 pub func int max[int a, int b]
+    // Return maximal value from two values
     a b >= if a return end
     b return
 end
 
-// Clamp given value between two constraints
+pub func int sign[int x]
+    // Return sign of an integer value (-1, 0, 1)
+    x 0 < if -1 return end
+    x 0 > if 1 return end
+    0 return
+end
+
 pub func int clamp[int n, int a, int b]
+    // Clamp given value between two constraints
     n a < if a return end
     n b > if b return end
     n return
 end
 
-// Factorial (n!) of value
 pub func int factorial[int n]
+    // Factorial (n!) of value
     var r = 1;
     var i = 2;
 
@@ -73,18 +86,4 @@ pub func int factorial[int n]
     end
 
     r return
-end
-
-// Multiply each element of 2D matrix by scalar
-pub func void matrix_scalar_mul[*int matrix, int w, int h, int multiplier]
-    var v int;
-    var i int;
-
-    for row in 0..w do
-    for col in 0..h do
-        &i col w * row + !<
-        &v matrix sizeof int i * + ?> !<
-
-        matrix sizeof int i * + v multiplier * !<
-    end end
 end

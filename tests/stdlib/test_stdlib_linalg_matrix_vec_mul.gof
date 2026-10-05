@@ -1,0 +1,16 @@
+/// Test matrix_vec_mul
+#include "std/linalg.gof"
+
+var W int[6] = [
+    1, 2, 3, 
+    4, 5, 6
+]  // 2×3
+var x int[3] = [1, 1, 1]
+var y int[2]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 6
+
+func int main[]
+    &W &x &y 2 3 call matrix_vec_mul
+    y[0] return   // y[0] = 1+2+3 = 6
+end

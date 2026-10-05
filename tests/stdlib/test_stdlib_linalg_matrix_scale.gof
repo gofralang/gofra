@@ -1,0 +1,11 @@
+/// Test matrix_scale
+#include "std/linalg.gof"
+
+var A int[4] = [1, 2, 3, 4]  // 2×2
+
+#define TESTKIT_EXPECTED_EXIT_CODE 5
+
+func int main[]
+    &A 2 2 5 call matrix_scale
+    A[0] return   // A[0][0] = 1*5 = 5
+end

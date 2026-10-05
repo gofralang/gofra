@@ -1,0 +1,11 @@
+/// Test array_scale
+#include "std/linalg.gof"
+
+var a int[3] = [1, 2, 3]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 2
+
+func int main[]
+    &a 2 3 call array_scale
+    a[0] return
+end

@@ -1,5 +1,5 @@
 /// Test random number generation from standard library
-#include "std/os/general.gof"
+#include "std"
 #include "std/random.gof"
 #include "std/os/time.gof"
 

@@ -1,7 +1,6 @@
 /// Test that storing an word in array as characters and printing it shows that word
 
-#include "std/os/io/output.gof"
-#include "std/os/general.gof"
+#include "std"
 #define TESTKIT_EXPECTED_EXIT_CODE 0
 #define TESTKIT_EXPECTED_STDOUT "Global\nLocal\n"
 

@@ -1,0 +1,11 @@
+/// Test array_product
+#include "std/linalg.gof"
+
+var a int[3] = [2, 3, 4]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 24
+
+func int main[]
+    &a 3 call array_product
+    return
+end
