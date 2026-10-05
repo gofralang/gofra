@@ -159,7 +159,7 @@ def perform_operation_onto_stack(
         case OperatorType.ARITHMETIC_DIVIDE:
             writer.instruction("sdiv X0, X1, X0")
         case OperatorType.ARITHMETIC_MODULUS:
-            writer.instruction("udiv X2, X1, X0")
+            writer.instruction("sdiv X2, X1, X0")
             writer.instruction("mul X2, X2, X0")
             writer.instruction("sub X0, X1, X2")
         case OperatorType.LOGICAL_OR | OperatorType.BITWISE_OR:
