@@ -1,0 +1,11 @@
+/// Test neuron
+#include "std/nn.gof"
+
+var w int[3] = [1, 0, -1]
+var x int[3] = [1, 2, 3]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0  // relu(-2) = 0
+
+func int main[]
+    &w &x 3 0 call neuron return
+end

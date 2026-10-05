@@ -1,0 +1,14 @@
+/// Test layer
+#include "std/nn.gof"
+
+var W int[6] = [1, 0, -1, 0, 1, 1]
+var x int[3] = [1, 2, 3]
+var b int[2] = [0, 0]
+var y int[2]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 5
+
+func int main[]
+    &W &x 3 &b &y 2 call layer
+    y[1] return   // y[1] = 5
+end

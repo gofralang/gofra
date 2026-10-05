@@ -1,0 +1,39 @@
+/// Test softmax
+#include "std/nn.gof"
+
+var a int[3] = [1000, 1000, 1000]
+var b int[3] = [0, 0, 10000]
+var c int[3] = [1000, 2000, 3000]
+var d int[3] = [-1000, -2000, -3000]
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    // Test 1: equal logits -> [333, 333, 333]
+    &a 3 call softmax
+    a[0] 333 != if 1 return end
+    a[1] 333 != if 1 return end
+    a[2] 333 != if 1 return end
+
+    // Test 2: dominant logit -> a[2] > 900
+    &b 3 call softmax
+    b[2] 900 < if 2 return end
+
+    // Test 3: sum = 1000 (approximately)
+    &c 3 call softmax
+    var s int;
+    &s c[0] c[1] + c[2] + !<
+    s 950 < if 3 return end
+    s 1050 > if 3 return end
+
+    // Test 4: order preserved
+    c[0] c[1] >= if 4 return end
+    c[1] c[2] >= if 4 return end
+
+    // Test 5: negative logits, order preserved
+    &d 3 call softmax
+    d[0] d[1] <= if 5 return end
+    d[1] d[2] <= if 5 return end
+
+    0 return
+end

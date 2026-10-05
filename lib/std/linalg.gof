@@ -4,9 +4,14 @@
 // TODO: Vectors as array
 // ==============================================
 
+// Internal
+type _IVec *int[]
+type _IMatrix *int[]
+
 /// =====
 /// Array methods
 /// =====
+
 
 pub func void array_add[*int[] a, *int[] b, *int[] c, int n]
     for i in 0..n do
@@ -225,8 +230,6 @@ pub func void matrix_vec_mul[*int[] W, *int[] x, *int[] y, int M, int N]
     // y = W · x
     // W: M×N, x: N, y: M
 
-    var p *int[];
-
     for i in 0..M do
         y sizeof int i * + 
             W i 0 N matrix_ptr_of
@@ -246,5 +249,18 @@ pub func void matrix_vec_linear[*int[] W, *int[] x, int N, *int[] b, *int[] y, i
             N call array_dot 
             b sizeof int i * + ?> + 
         !<
+    end
+end
+
+pub func void matrix_add_bias[_IMatrix M, _IVec b, int T, int d]
+    // M[i][j] += b[j] for all i, j
+    for i in 0..T do
+        for j in 0..d do
+            M i j d matrix_ptr_of           // адрес M[i][j]
+                M i j d matrix_ptr_of ?>     // значение M[i][j]
+                b sizeof int j * + ?>        // b[j]
+                + 
+            !<
+        end
     end
 end

@@ -1,0 +1,8 @@
+/// Test relu
+#include "std/nn.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 5
+
+func int main[]
+    5 relu return
+end

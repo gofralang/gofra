@@ -1,0 +1,272 @@
+// ==============================================
+// Neural network primitives
+// ==============================================
+
+#include "math.gof"
+#include "linalg.gof"
+
+/// === Extra linear algebra ===
+
+pub func void matrix_mul_scaled[_IMatrix A, _IMatrix B, _IMatrix C, int M, int N, int K]
+    // C = A · B / 1000
+    var sum int = 0;
+    for i in 0..M do
+        for j in 0..N do
+            &sum 0 !<
+            for k in 0..K do
+                &sum 
+                    sum 
+                    A 8 i K * k + * + ?> 
+                    B 8 k N * j + * + ?> 
+                    * + 
+                !<
+            end
+            C 8 i N * j + * + sum 1000 / !<
+        end
+    end
+end
+
+pub func int array_linear_scaled[_IVec w, _IVec x, int n, int b]
+    w x n array_dot 1000 / b + return
+end
+
+pub func int exp_approx[int x]
+    var x2 int;
+
+    x -10000 < if 0 return end   // exp(-10) ≈ 0
+    x 0 > if 0 return end
+    
+    x -100 > if
+        &x2 x x * 2000 / !<
+        1000 x + x2 + return
+    end
+    
+
+    var count int = 0;
+    var cur int;
+    &cur x !<
+    
+    while cur -100 < do
+        &cur cur 2 / !<
+        &count count 1 + !<
+    end
+    
+    &x2 cur cur * 2000 / !<
+    var result int;
+    &result 1000 cur + x2 + !<
+    
+    var i int = 0;
+    while i count < do
+        &result result result * 1000 / !<
+        &i i 1 + !<
+    end
+    
+    result return
+end
+
+/// === Activations ===
+
+pub func int relu[int x]
+    // Rectified Linear Unit: max(0, x)
+    0 x call max return
+end
+
+// === Neuron ==
+
+pub func int neuron[_IVec w, _IVec x, int n, int b]
+    w x n b call array_linear_scaled call relu return
+end
+
+/// === Normalization === 
+
+pub func void softmax[_IVec x, int n]
+    var M int;
+    &M x n call array_max !<
+
+    // 2. exp(x[i] - max) and sum
+    var sum int = 0;
+    var d int;
+    var e int;
+    for i in 0..n do
+        &d x sizeof int i * + ?> M - !<
+
+        &e d call exp_approx !<
+
+        x sizeof int i * + e !<
+        &sum sum e + !<
+    end
+    
+    // 3. Normalize
+    for i in 0..n do
+        x sizeof int i * + 
+            x sizeof int i * + ?> 1000 * sum / 
+        !<
+    end
+end
+
+pub func void softmax_strided[_IVec x, int n, int stride]
+    var sum int = 0;
+    var M int;
+    var v int;
+    var d int;
+    var e int;
+
+    &M x 0 + ?> !<
+
+    for i in 1..n do
+        &v x sizeof int stride i * * + ?> !<
+        v M > if &M v !< end
+    end
+
+    for i in 0..n do
+        &d x sizeof int stride i * * + ?> M - !<
+        &e d call exp_approx !<
+        x sizeof int stride i * * + e !<
+        &sum sum e + !<
+    end
+
+    for i in 0..n do
+        x sizeof int stride i * * + 
+            x sizeof int stride i * * + ?> 1000 * sum / 
+        !<
+    end
+end
+
+pub func void softmax_rows[_IMatrix M, int T]
+    for i in 0..T do
+        M i 0 T matrix_ptr_of
+        T 1 call softmax_strided
+    end
+end
+
+pub func void layernorm[_IVec x, _IVec g, _IVec b, _IVec out, int n]
+    var mean int;
+    &mean x n call array_mean !<
+    
+    var variance int;
+    &variance x n call array_var !<
+    
+    var std int;
+    &std variance call isqrt !<
+    
+    std 0 == if
+        &std 1 !<
+    end
+    
+    for i in 0..n do
+        out sizeof int i * + 
+            x sizeof int i * + ?> mean - 
+            1000 *
+            std / 
+            g sizeof int i * + ?> * 
+            1000 /
+            b sizeof int i * + ?> + 
+        !<
+    end
+end
+
+pub func void layernorm_rows[_IMatrix X, _IVec g, _IVec b, _IMatrix out, int T, int d]
+    for i in 0..T do
+        X i 0 d matrix_ptr_of
+        g
+        b
+        out i 0 d matrix_ptr_of
+        d
+        call layernorm
+    end
+end
+
+// === Attention === 
+
+pub func void attention_q[_IMatrix x, _IMatrix Wq, _IVec bq, _IMatrix Q, int T, int d]
+    // Q = x · Wq / 1000 + bq
+    x Wq Q T d d matrix_mul_scaled
+    Q bq T d matrix_add_bias
+end
+
+pub func void attention_k[_IMatrix x, _IMatrix Wk, _IVec bk, _IMatrix K, int T, int d]
+    // K = x · Wk / 1000 + bk
+    x Wk K T d d matrix_mul_scaled
+    K bk T d matrix_add_bias
+end
+
+pub func void attention_v[_IMatrix x, _IMatrix Wv, _IVec bv, _IMatrix V, int T, int d]
+    // V = x · Wv / 1000 + bv
+    x Wv V T d d matrix_mul_scaled
+    V bv T d matrix_add_bias
+end
+
+pub func void attention_scores[_IMatrix Q, _IMatrix K, _IMatrix KT, _IMatrix scores, int T, int d]
+    // KT = K^T
+    K KT T d matrix_transpose
+    // scores = Q · KT / 1000
+    Q KT scores T T d matrix_mul_scaled
+    // softmax_rows(scores)
+    scores T softmax_rows
+end
+
+pub func void attention_out[_IMatrix attn, _IMatrix V, _IMatrix out, int T, int d]
+    // out = attn · V / 1000
+    attn V out T d T matrix_mul_scaled
+end
+
+/// === Embeddings === 
+
+pub func void embedding_lookup[_IMatrix table, int d, _IVec tokens, _IMatrix out, int T]
+    var tok int;
+
+    for i in 0..T do
+        &tok tokens sizeof int i * + ?> !<
+        for j in 0..d do
+            out sizeof int i d * j + * + 
+                table sizeof int tok d * j + * + ?> 
+            !<
+        end
+    end
+end
+
+/// === Layer === 
+
+pub func void layer[_IMatrix W, _IVec x, int n, _IVec b, _IVec y, int m]
+    for i in 0..m do
+        y sizeof int i * + // y[i]
+            W 8 n * i * + x n b 8 i * + ?> neuron 
+        !<
+    end
+end
+
+pub func void linear_layer[_IMatrix W, _IVec x, int n, _IVec b, _IVec y, int m]
+    // Linear layer without activation: y[i] = W[i] · x + b[i]
+    for i in 0..m do
+        y sizeof int i * + 
+            W 8 n * i * + x n b 8 i * + ?> array_linear_scaled 
+        !<
+    end
+end
+
+
+pub func void layer_rows[_IMatrix X, _IMatrix W, _IVec b, _IMatrix Y, int T, int n, int m]
+    for i in 0..T do
+        X i 0 n matrix_ptr_of
+        W
+        n
+        b
+        Y i 0 m matrix_ptr_of
+        m
+        call layer
+    end
+end
+
+pub func void linear_layer_rows[_IMatrix X, _IMatrix W, _IVec b, _IMatrix Y, int T, int n, int m]
+    for i in 0..T do
+        X i 0 n matrix_ptr_of
+        W
+        n
+        b
+        Y i 0 m matrix_ptr_of
+        m
+        call linear_layer
+    end
+end
+
+
