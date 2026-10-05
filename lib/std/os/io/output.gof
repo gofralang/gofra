@@ -114,10 +114,11 @@ pub func void print_int64_fd[int fd, int num]
         &idx idx 1 + !< // Increment IDX
     end
 
-    is_negative if
+    is_negative true ==  if
         &print_int64_buf[idx] '-' !<
         &idx idx 1 + !< // Increment IDX
     end
+
     // Number: 1234
     // After block above buffer will become: [4321]
     // we iterate from right to left so emitting an '1234' string
@@ -198,12 +199,12 @@ end
             &idx idx 1 + !< // Increment IDX
         end
 
-        is_negative if
+        is_negative true == if
             &print_int64_hex_buf[idx] '-' !<
             &idx idx 1 + !< // Increment IDX
         end
 
-        show_hex_prefix if
+        show_hex_prefix true == if
             &print_int64_hex_buf[idx] 'x' !<
             &idx idx 1 + !<
             &print_int64_hex_buf[idx] '0' !<
