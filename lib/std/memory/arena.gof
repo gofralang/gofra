@@ -1,0 +1,66 @@
+// ==============================================
+// Arena allocator
+// ==============================================
+
+#include "./base.gof"
+
+#define ARENA_ALIGNMENT sizeof *void
+
+type struct Arena
+    /// Data holder of allocated arena
+
+    base *void[]
+    size int
+    offset int
+end
+
+pub func void arena_init[*Arena a, int size]
+    /// Init given arena with allocating default chunk
+    /// must destroy arena after
+
+    var aligned_size int;
+    &aligned_size size ARENA_ALIGNMENT call align_up !<
+
+    var allocated *void;
+    &allocated 
+        aligned_size
+        call memory_allocate 
+    !<
+
+    &a.base allocated !<
+    &a.size aligned_size !<
+    &a.offset 0 !<
+end
+
+pub func *void arena_alloc[*Arena a, int size]
+    /// Get pointer of memory chunk of given size that belongs to arena
+    var aligned_size int;
+    &aligned_size size ARENA_ALIGNMENT call align_up !<
+    
+    a.offset aligned_size + a.size > if
+        NULL_PTR return
+    end
+    
+    var ptr *void;
+    &ptr a.base a.offset + !<
+    
+    &a.offset a.offset aligned_size + !<
+    
+    ptr return
+end
+
+pub func void arena_reset[*Arena a]
+    /// Start reusing allocated memory (restart arena)
+    &a.offset 0 !<
+end
+
+pub func void arena_destroy[*Arena a]
+    /// Free specified memory used by arena if any
+    a.base
+    a.size 
+    call memory_free
+
+    &a.base 0 typecast *void[] !<
+    &a.size 0 !<
+    &a.offset 0 !<
+end

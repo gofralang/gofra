@@ -15,6 +15,20 @@
 #define O_WRONLY   0x0001  // Open for writing only
 #define O_RDWR     0x0002  // Open for reading and writing O_RDONLY | O_WRONLY
 
+// Memory protection flags (mmap)
+#define PROT_READ  0x0001
+#define PROT_WRITE 0x0002
+
+// mmap flags
+#define MAP_SHARED  0x0001
+#define MAP_PRIVATE 0x0002
+#define MAP_ANONYMOUS 0x1000  // Darwin
+
+// lseek whence
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
+
 // Standard file descriptors
 #define STD_IN_FD  0
 #define STD_OUT_FD 1
@@ -52,6 +66,7 @@ type fd_t int
     #define DARWIN_SYSCALL_ACCEPT       30
     #define DARWIN_SYSCALL_GETPPID      39
     #define DARWIN_SYSCALL_EXECVE       59
+    #define DARWIN_SYSCALL_MUNMAP       73
     #define DARWIN_SYSCALL_SELECT       93
     #define DARWIN_SYSCALL_SOCKET       97
     #define DARWIN_SYSCALL_CONNECT      98
@@ -59,6 +74,7 @@ type fd_t int
     #define DARWIN_SYSCALL_LISTEN       106
     #define DARWIN_SYSCALL_GETTIMEOFDAY 116
     #define DARWIN_SYSCALL_MMAP         197
+    #define DARWIN_SYSCALL_LSEEK        199
 #endif // ARCH_ARM64
 
 
@@ -152,8 +168,16 @@ end
     // Map memory (allocate it)
     // Signature: [address, size, prot, flags, fd, offset]
     // TODO!: Return at the end as parser/lexer eats some identifiers...
-    pub func *void sc_mmap[int address, int size, int prot, int flags, int fd , int offset] 
+    pub func *void sc_mmap[int address, int size, int prot, int flags, int fd, int offset] 
         address size prot flags fd offset DARWIN_SYSCALL_MMAP syscall6 
         typecast *void return 
+    end
+
+    pub func int sc_lseek[fd_t fd, int offset, int whence]
+        fd offset whence DARWIN_SYSCALL_LSEEK syscall3
+    end
+
+    pub func int sc_munmap[*void addr, int length]
+        addr length DARWIN_SYSCALL_MUNMAP syscall2
     end
 #endif // ARCH_ARM64

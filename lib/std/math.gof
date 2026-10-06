@@ -87,3 +87,11 @@ pub func int factorial[int n]
 
     r return
 end
+
+pub func int align_up[int size, int alignment]
+    size alignment 1 - + alignment / alignment * return
+end
+
+pub func int align_down[int size, int alignment]
+    size alignment / alignment * return
+end

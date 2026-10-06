@@ -1,0 +1,22 @@
+// Depends on 
+#ifdef OS_DARWIN
+    pub func *void memory_allocate[int size]
+            0
+            size
+            PROT_READ PROT_WRITE +
+            MAP_PRIVATE MAP_ANONYMOUS +
+            -1
+            0
+        call sc_mmap 
+    end
+    
+    pub func void memory_free[*void ptr, int size]
+        ptr
+        size
+        call sc_munmap drop
+    end
+#endif
+
+#ifndef OS_DARWIN
+    compile_error "Expected to be ran on Darwin!"
+#endif
