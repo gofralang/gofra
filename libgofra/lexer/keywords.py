@@ -54,6 +54,9 @@ class Keyword(Enum):
     DROP = auto()
     SWAP = auto()
 
+    TRUE = auto()
+    FALSE = auto()
+
     DEBUGGER_BREAKPOINT = auto()
 
 
@@ -84,8 +87,11 @@ WORD_TO_KEYWORD: dict[str, Keyword | PreprocessorKeyword] = {
     "pub": Keyword.ATTR_FUNC_PUBLIC,
     "no_return": Keyword.ATTR_FUNC_NO_RETURN,
     "extern": Keyword.ATTR_FUNC_EXTERN,
-    "as": Keyword.AS,
+    # Boolean
+    "true": Keyword.TRUE,
+    "false": Keyword.FALSE,
     # Other definition
+    "as": Keyword.AS,
     "const": Keyword.CONST_DEFINE,
     "struct": Keyword.STRUCT,
     "var": Keyword.VARIABLE_DEFINE,

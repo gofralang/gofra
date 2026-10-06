@@ -60,6 +60,7 @@ from libgofra.parser.variable_accessor import try_push_variable_reference
 from libgofra.parser.variable_definition import (
     unpack_variable_definition_from_token,
 )
+from libgofra.types import BoolType
 from libgofra.types.composite.function import FunctionType
 from libgofra.types.composite.structure import StructureType
 
@@ -309,6 +310,30 @@ def _consume_keyword_token(context: ParserScope, token: Token) -> None:  # noqa:
             )
         case Keyword.SIZEOF:
             return _unpack_sizeof_from_token(context, token)
+        case Keyword.TRUE:
+            context.push_new_operator(
+                OperatorType.PUSH_INTEGER,
+                token=token,
+                operand=1,
+            )
+            return context.push_new_operator(
+                OperatorType.STATIC_TYPE_CAST,
+                token,
+                BoolType(),
+                is_contextual=False,
+            )
+        case Keyword.FALSE:
+            context.push_new_operator(
+                OperatorType.PUSH_INTEGER,
+                token=token,
+                operand=0,
+            )
+            return context.push_new_operator(
+                OperatorType.STATIC_TYPE_CAST,
+                token,
+                BoolType(),
+                is_contextual=False,
+            )
         case Keyword.OFFSET_OF:
             return _unpack_offset_of_from_token(context, token)
         case Keyword.POINTER_OF_PROC:

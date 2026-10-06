@@ -8,12 +8,6 @@ type Pointer{T} *T
 type NullPtr *void
 type CStr *char[]
 
-// Boolean bindings for type-safety
-// Under optimizer this resolves into single boolean push onto stack
-// Probably, sometime this will be part of an language
-#define true    1 1 ==
-#define false   1 0 ==
-
 // Somewhere using terminology of NULL is more readable
 #define NULL     0
 #define NULL_PTR 0 typecast NullPtr
