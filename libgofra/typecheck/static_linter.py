@@ -102,7 +102,8 @@ def lint_unused_function_local_variables(
 ) -> None:
     func_vars = set(function.variables.keys())
     ref_vars = set(references_variables.keys())
-    unused_variables = func_vars.difference(ref_vars)
+    param_vars = set(function.parameter_map.keys())
+    unused_variables = func_vars.difference(ref_vars) - param_vars
     for varname in unused_variables:
         if _is_identifier_marked_as_redundant(varname):
             return
@@ -165,3 +166,17 @@ def emit_unreachable_code_after_no_return_call_warning(
     on_lint_warning(
         f"Function '{call_from.name}' has operators after calling no-return function '{callee.name}' at {call_at}! This is unreachable code starting at {unreachable_at}!",
     )
+
+
+def lint_unused_parameters(
+    on_lint_warning: Callable[[str], None],
+    function: Function,
+    references_variables: Mapping[str, Variable[Type]],
+) -> None:
+    for param in function.parameters:
+        if param.name not in references_variables:
+            if _is_identifier_marked_as_redundant(param.name):
+                continue
+            on_lint_warning(
+                f"Unused parameter '{param.name}' in function '{function.name}'",
+            )

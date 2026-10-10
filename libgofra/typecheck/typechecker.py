@@ -29,6 +29,7 @@ from libgofra.typecheck.static_linter import (
     lint_structure_types,
     lint_typecast_same_type,
     lint_unused_function_local_variables,
+    lint_unused_parameters,
     lint_variables_initializer,
 )
 from libgofra.types import Type
@@ -178,6 +179,11 @@ def validate_function_type_safety(
     if module.entry_point_ref != function:
         lint_empty_function_executable_body(on_lint_warning, function)
 
+    lint_unused_parameters(
+        on_lint_warning,
+        function,
+        func_block.references_variables,
+    )
     lint_unused_function_local_variables(
         on_lint_warning,
         function,
@@ -489,10 +495,9 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 (I64Type, PointerType, BoolType, CharType, FunctionType),
             )
             value_holder_type = mut_scope[-2]
-            assert isinstance(value_holder_type, PointerType), (
-                operator.location,
-                value_holder_type,
-            )
+            if not isinstance(value_holder_type, PointerType):
+                msg = f"Tried to write into {value_holder_type} at {operator.location}, but it is not a pointer to pointer type"
+                raise GofraError(msg)
             if (
                 value_holder_type.memory_location
                 == PointerMemoryLocation.STATIC_READONLY
