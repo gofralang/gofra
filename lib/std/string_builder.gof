@@ -1,0 +1,37 @@
+#include "std/memory/utils.gof"
+
+struct StringBuilder
+    data *char[]
+    len int
+    cap int
+end
+
+#define SB_DEFAULT_CAP 1024
+pub func *StringBuilder sb_new[]
+    var sb *StringBuilder;
+    
+    &sb sizeof StringBuilder static_heap_alloc typecast *StringBuilder !<
+
+    &sb.data SB_DEFAULT_CAP static_heap_alloc typecast *char !<
+
+    &sb.len 0 !<
+    &sb.cap SB_DEFAULT_CAP !<
+
+    sb
+end
+
+
+pub func int sb_append[*StringBuilder sb, *string sv]
+        sb.data sb.len + typecast *void 
+        sv.data typecast *void 
+        sv.len
+    call memcpy drop
+
+    &sb.len sb.len sv.len + !<
+    sb.len
+end
+
+pub func void sb_to_string[*StringBuilder sb, *string out]
+    &out.data sb.data !<
+    &out.len sb.len !<
+end

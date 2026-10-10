@@ -7,3 +7,22 @@ pub func void memset[*int[0] addr, int size, int value]
     end
 end
 
+pub func *void memcpy[*void dest, *void src, int n]
+    var d *char;
+    var s *char;
+    var i int = 0;
+    var n8 int;
+
+    &n8 n 8 / 1 + !<
+
+    &d dest typecast *char !<
+    &s src typecast *char !<
+
+    for i in 0..n8 do
+        d 8 i * + 
+        s 8 i * + ?> 
+        !<
+    end
+
+    dest return
+end
