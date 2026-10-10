@@ -53,12 +53,14 @@ def ipc_aarch64_syscall(
 
     # Supervisor call (syscall)
     # assume 0 - 65335 (16 bit)
-    writer.instruction("svc #0")
+    writer.instruction("svc #0x80")
 
     # System calls always returns `long` type (e.g integer 64 bits (default one for Gofra))
     if store_retval_onto_stack:
         # TODO(@kirillzhosul): Research refactoring with using calling-convention system (e.g for system calls (syscall/cffi/fast-call convention))
-        # TODO(@kirillzhosul): Research weirdness of kernel `errno`, not setting carry flag
+
+        writer.instruction("cneg x0, x0, cs")
+
         push_register_onto_stack(
             writer,
             abi.retval_primitive_64bit_register,
