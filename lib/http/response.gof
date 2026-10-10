@@ -1,0 +1,41 @@
+#include "std/string_builder.gof"
+
+pub func int http_send_response[
+    *NetSocket socket, 
+    *string status_text,
+    *string content_type,
+    *string body
+]
+    var sb *StringBuilder
+    var sv_out string;
+
+    &sb call sb_new !<
+
+    // Status line
+    sb "HTTP/1.1 " sb_append drop
+    sb status_text sb_append drop
+    sb "\r\n" sb_append drop
+
+    // Headers
+    sb "Content-Type: " sb_append drop
+    sb content_type sb_append drop
+    sb "\r\n" sb_append drop
+    sb "Connection: close\r\n" sb_append drop
+    sb "\r\n" sb_append drop
+
+    // Content
+    sb body sb_append drop
+    sb &sv_out sb_to_string
+
+    socket
+    &sv_out
+    call net_write_socket_string return
+end
+
+pub func int http_send_html_response[
+    *NetSocket socket, 
+    *string status_text,
+    *string body
+]
+    socket status_text "text/html" body call http_send_response
+end

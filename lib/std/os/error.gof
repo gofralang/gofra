@@ -1,0 +1,7 @@
+#include "std/os"
+pub func *string os_strerror[
+    int errno
+]
+    errno call darwin_strerror
+end
+

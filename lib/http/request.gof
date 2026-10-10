@@ -1,0 +1,8 @@
+struct HTTPRequest
+    // Request for HTTP server from client
+
+    socket *NetSocket // System socket bound for that client
+
+    io_rx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for reading request
+    io_tx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for writing request
+end

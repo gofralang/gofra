@@ -16,7 +16,6 @@ end
     #define STD_NET_SOCKET_DEALLOCATOR drop drop
 #endif
 
-
 // Create and allocate network socket for IPv4 TCP connections
 pub func *NetSocket net_ipv4_tcp_socket[]
     var net_sock *NetSocket;
@@ -29,7 +28,7 @@ pub func *NetSocket net_ipv4_tcp_socket[]
         call os_socket
     !<
 
-    // Allocate using heap
+    // Allocate socket
     &net_sock 
         sizeof NetSocket STD_NET_SOCKET_ALLOCATOR 
         typecast *NetSocket 
@@ -39,6 +38,23 @@ pub func *NetSocket net_ipv4_tcp_socket[]
     &net_sock.addr 0 typecast *sockaddr_in !<
 
     net_sock return
+end
+
+// Simple listener, returns 0 on error
+pub func *NetSocket net_ipv4_tcp_listener[*string ipv4, int port, int backlog]
+    var socket *NetSocket;
+    &socket call net_ipv4_tcp_socket !<
+
+    socket ipv4 port call net_bind_socket 0 < if
+        socket call net_close_socket drop
+        0 typecast *NetSocket return
+    end
+    socket backlog call net_listen_socket 0 < if
+        socket call net_close_socket drop
+        0 typecast *NetSocket return
+    end 
+
+    socket return
 end
 
 // Accept an socket connections on given server socket, 
@@ -62,13 +78,15 @@ pub func *NetSocket net_accept_socket[*NetSocket socket]
         call os_accept
     !<
 
-    &net_sock.fd os_sock !<
-    &net_sock.addr sock_addr !<
 
     &net_sock 
         sizeof NetSocket 
         STD_NET_SOCKET_ALLOCATOR typecast *NetSocket // f()
     !<
+
+    &net_sock.fd os_sock !<
+    &net_sock.addr sock_addr !<
+
 
     net_sock return
 end
@@ -93,6 +111,16 @@ pub func int net_listen_socket[*NetSocket socket, int backlog]
     socket.fd 
     backlog 
     call os_listen
+end
+
+// Write to desired socket
+pub func int net_write_socket[*NetSocket socket, CStr buffer, int buffer_len] 
+    socket.fd buffer buffer_len call sc_write 
+end
+
+// Write string to desired socket
+pub func int net_write_socket_string[*NetSocket socket, *string string] 
+    socket string.data string.len call net_write_socket
 end
 
 // Read given amount of bytes from socket
