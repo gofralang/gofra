@@ -71,6 +71,7 @@ type fd_t int
     #define DARWIN_SYSCALL_SOCKET       97
     #define DARWIN_SYSCALL_CONNECT      98
     #define DARWIN_SYSCALL_BIND         104
+    #define DARWIN_SYSCALL_SETSOCKOPT   105
     #define DARWIN_SYSCALL_LISTEN       106
     #define DARWIN_SYSCALL_GETTIMEOFDAY 116
     #define DARWIN_SYSCALL_MMAP         197
@@ -179,5 +180,9 @@ end
 
     pub func int sc_munmap[*void addr, int length]
         addr length DARWIN_SYSCALL_MUNMAP syscall2
+    end
+
+    pub func int sc_setsockopt[fd_t fd, int level, int optname, *void optval, int optlen]
+        fd level optname optval optlen DARWIN_SYSCALL_SETSOCKOPT syscall5
     end
 #endif // ARCH_ARM64

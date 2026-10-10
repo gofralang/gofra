@@ -22,6 +22,8 @@
 #define SOCK_RDM       4
 #define SOCK_SEQPACKET 5
 
+#define SOL_SOCKET 0xFFFF
+
 // Socket option flags
 #define SO_DEBUG        0x0001
 #define SO_ACCEPTCONN   0x0002
@@ -57,5 +59,9 @@
     end
     pub func int os_close_socket[int socket]
         socket call sc_close 
+    end
+
+    pub func int os_setsockopt[fd_t fd, int level, int optname, *void optval, int optlen]
+        fd level optname optval optlen sc_setsockopt return
     end
 #endif

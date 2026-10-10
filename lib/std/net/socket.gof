@@ -45,6 +45,8 @@ pub func *NetSocket net_ipv4_tcp_listener[*string ipv4, int port, int backlog]
     var socket *NetSocket;
     &socket call net_ipv4_tcp_socket !<
 
+    socket call net_socket_set_reuseport drop
+
     socket ipv4 port call net_bind_socket 0 < if
         socket call net_close_socket drop
         0 typecast *NetSocket return
@@ -143,4 +145,16 @@ pub func int net_close_socket[*NetSocket socket]
     socket.addr typecast int 0 != if
         socket.addr typecast *void sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
     end
+end
+
+
+// Say socket to reuse addr
+pub func int net_socket_set_reuseaddr[*NetSocket socket]
+    var one int = 1
+    socket.fd SOL_SOCKET SO_REUSEADDR &one typecast *void sizeof int call os_setsockopt
+end
+// Say socket to reuse port
+pub func int net_socket_set_reuseport[*NetSocket socket]
+    var one int = 1
+    socket.fd SOL_SOCKET SO_REUSEPORT &one typecast *void sizeof int call os_setsockopt
 end
