@@ -1,0 +1,20 @@
+#ifndef STATIC_HEAP_SIZE
+    #define STATIC_HEAP_SIZE 1048576
+#endif
+
+var __STATIC_HEAP char[STATIC_HEAP_SIZE];
+var __STATIC_HEAP_BASE *void;
+
+pub func *void static_heap_alloc[int size]
+    var allocated *void;
+
+    __STATIC_HEAP_BASE typecast int 0 == if
+        &__STATIC_HEAP_BASE &__STATIC_HEAP typecast *void !<
+    end
+
+    &allocated __STATIC_HEAP_BASE !<
+
+    &__STATIC_HEAP_BASE __STATIC_HEAP_BASE size + !< 
+
+    allocated return
+end

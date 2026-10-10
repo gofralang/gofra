@@ -1,0 +1,30 @@
+/// Crossplatform network byte order functions
+
+// TODO(@kirillzhosul): Big endian
+// TODO(@kirillzhosul): Type system does not like when we use i32/i16 in l/s versions, therefore language type system must be simplified
+
+#ifdef IS_LITTLE_ENDIAN
+    // Host-to-network short
+    pub func int htons[int v]
+        v 0xFFFF & // 16 bytes, stripped
+
+        0x00FF & 8 <<
+        v 0xFF00 & 8 >> 
+        | return
+    end
+
+    // Host-to-network long
+    pub func int htonl[int v]
+        v 0xFFFFFFFF & // 32 bytes, stripped
+
+        0x000000FF & 24 <<
+        v 0x0000FF00 & 8  << |
+        v 0x00FF0000 & 8  >> |
+        v 0xFF000000 & 24 >> |
+        return
+    end
+
+    // Network-to-host (same)
+    pub func int ntohl[int v] v call htonl end
+    pub func int ntohs[int v] v call htons end
+#endif

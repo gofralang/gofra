@@ -13,7 +13,7 @@ type _IMatrix *int[]
 /// =====
 
 
-pub func void array_add[*int[] a, *int[] b, *int[] c, int n]
+pub func void array_add[_IVec a, _IVec b, _IVec c, int n]
     for i in 0..n do
         c 8 i * + a 8 i * + ?> b 8 i * + ?> + !<
     end

@@ -5,6 +5,10 @@
 #include "std/os/network.gof"
 #include "std/types.gof"
 
+#include "std/net/address.gof"
+#include "std/net/byte_order.gof"
+#include "std/net/socket.gof"
+
 // TODO: Add async/thread support
 
 // IO RX/TX buffer capacity expected
@@ -13,7 +17,8 @@
 struct HTTPIncomingRequest
     // Request for HTTP server from client
 
-    socket int // System socket bound for that client
+    socket *NetSocket // System socket bound for that client
+
 
     io_rx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for reading request
     io_tx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for writing request
@@ -23,39 +28,37 @@ type HTTPRequestHandler func void _[*HTTPIncomingRequest request]
 struct HTTPServer
     // HTTP Server instance for HTTP library
 
-    socket  int // System socket opened for listening
-    port    int // Port on which server is listening
+    socket *NetSocket // System socket opened for listening
+    port int 
 
     backlog int // Backlog -  maximum length for the queue of pending connections
 
     pre_handler HTTPRequestHandler
     handler HTTPRequestHandler 
     post_handler HTTPRequestHandler 
-
-    // Internal fields
-    raw_addr int
-    net_addr sockaddr_in // Addr as `sockaddr_in` to listen on
 end
 
 // Open system socket for server, internal function
 func void _http_server_open_socket[*HTTPServer server]
-    &server.socket call net_ipv4_tcp_socket !<
-    server.socket 0 < if 
+    var socket *NetSocket;
+    &socket call net_ipv4_tcp_socket !<
+
+    socket.fd 0 < if 
         "Unable to open HTTP server socket\n" eprint_fatal
     end
+
+    &server.socket socket !<
 end
 
 // Bind system socket for server, internal function
-func void _http_server_bind_socket[*HTTPServer server]
+func void _http_server_bind_socket[*HTTPServer server, *string ipv4]
     var errno int;
 
-    //&server.net_addr typecast *int ?> breakpoint drop
-
-    &errno
-        &server.socket ?>
-        &server.net_addr // *sock_addr_in
-        sizeof sockaddr_in
-        call net_bind
+    &errno 
+        server.socket 
+        ipv4 
+        server.port 
+        call net_bind_socket 
     !<
 
     errno 0 < if
@@ -69,7 +72,7 @@ end
 func void _http_server_listen_socket[*HTTPServer server]
         server.socket
         server.backlog
-    call net_listen
+    call net_listen_socket
 
     -1 == if
         "Unable to listen to HTTP server socket\n" eprint_fatal
@@ -77,39 +80,18 @@ func void _http_server_listen_socket[*HTTPServer server]
 end
 
 // Internal wrapper around system network write bytes
-func int _http_server_net_write_bytes[int fd, *string sv]
-    fd sv.data sv.len call net_write
+func int _http_server_net_write_bytes[*NetSocket socket, *string sv]
+    socket.fd sv.data sv.len call os_write
     copy -1 == if
         "Unable to send response to client socket on HTTP server socket\n" eprint_fatal
         // todo: close socket
     end
 end
 
-func void pack_sockaddr[*HTTPServer server]
-    var so_in *sockaddr_in;
-    &so_in &server.net_addr !<
-    
-    var hport int;
-    var hhost int;
-    &hport server.port call htons !<
-    &hhost server.raw_addr call htonl !<
-
-    &so_in.sin_family AF_INET !<
-    &so_in.sin_port   hport   !<
-    &so_in.sin_addr   hhost   !<
-    &so_in.sin_zero   0       !<
-end
-
-
 
 func void http_server_init[*HTTPServer server, int port, int backlog, *string addr]
     &server.port port !<
     &server.backlog backlog !<
-
-    &server.raw_addr 0x7F000001 !< // localhost
-    &server.raw_addr addr parse_ipv4_address !<
-
-    server call pack_sockaddr
 end
 
 func void http_server_default_pre_handler[*HTTPIncomingRequest request]
@@ -120,18 +102,25 @@ func void http_server_default_pre_handler[*HTTPIncomingRequest request]
     "Bytes read: " print print_int "\n" print
 end
 
+func void default_handler[*HTTPIncomingRequest request]
+    "sent bytez" print
+    request "<h1>Hello from Gofra HTTP server!</h1><i>Built with Gofra and native HTTP library</i>";
+    call http_server_send_html_response drop
+end
+
 func void http_server_default_post_handler[*HTTPIncomingRequest request]
     // Finish request
     request call http_server_close_request
     "Closed connection!" println
 end
 
-
 // Bootstrap HTTP server
 func void http_server_start[
     *HTTPServer server, 
     HTTPRequestHandler handler,
 ]
+
+    handler typecast int print_int64_hex "\n" print
     server 
         NULL typecast HTTPRequestHandler // pre handler
         handler // handler
@@ -145,7 +134,7 @@ func void http_server_start_configurable[
     HTTPRequestHandler post_handler
 ]
     server call _http_server_open_socket
-    server call _http_server_bind_socket
+    server "127.0.0.1" call _http_server_bind_socket
     server call _http_server_listen_socket
 
     pre_handler typecast int NULL == if
@@ -161,17 +150,22 @@ func void http_server_start_configurable[
     "Listening..." println
 
     var request HTTPIncomingRequest;
+    var socket *NetSocket;
     while true do
         &request.socket
-            server.socket call net_accept_sink 
+            server.socket call net_accept_socket
         !<
+        &socket request.socket !<
  
-        request.socket -1 == if
+        socket.fd -1 == if
             "Unable to accept to client socket on HTTP server socket\n" eprint_fatal
         end
 
+        handler typecast int print_int64_hex "\n" print
         &request call pre_handler
-        &request call handler
+        "before" print
+        &request call default_handler
+        "after" print
         &request call post_handler
     end
 end
@@ -206,7 +200,7 @@ func int http_server_read_request[*HTTPIncomingRequest request]
         request.socket
         &request.io_rx_buffer 
         HTTP_IO_BUFFER_CAP
-    call net_read !<
+    call net_read_socket !<
 
     bytes_read 0 <  if
         "FATAL: Unable to read HTTP request: " eprint
@@ -219,7 +213,7 @@ end
 
 // Close client request finishing request-response interaction
 func void http_server_close_request[*HTTPIncomingRequest request]
-    request.socket call net_close -1 == if
+    request.socket call net_close_socket -1 == if
         "Unable to close client socket on HTTP server socket\n" eprint_fatal
     end
 end

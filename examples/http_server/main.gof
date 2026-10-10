@@ -10,6 +10,8 @@
 
 const PORT = 8080;
 const BACKLOG = 5;
+const HOST = "127.0.0.1"
+
 var server HTTPServer;
 var html = "<h1>Hello from Gofra HTTP server!</h1><i>Built with Gofra and native HTTP library</i>";
 
@@ -20,9 +22,9 @@ func void handle_request[*HTTPIncomingRequest request]
 end
 
 func void main[]
-    &server PORT BACKLOG "127.0.0.1"
+    &server PORT BACKLOG HOST
     call http_server_init
-
+    
     &server 
     pointer_of_proc handle_request
     call http_server_start

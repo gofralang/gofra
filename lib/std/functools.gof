@@ -39,3 +39,8 @@ end
 pub func int i_sum[int accumulator, int item]
     accumulator item + 
 end
+
+// Integer product reducer
+pub func int i_product[int accumulator, int item]
+    accumulator item * 
+end

@@ -143,7 +143,7 @@ end
     pub func int sc_execve[CStr pathname, sc_argvp argv, sc_envp envp] pathname argv envp DARWIN_SYSCALL_EXECVE syscall3 end
 
     // Accept pending connections on given socket and return client socket
-    pub func int sc_accept[int socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_ACCEPT syscall3 end
+    pub func int sc_accept[int socket, *sockaddr_in address, *int address_len] socket address address_len DARWIN_SYSCALL_ACCEPT syscall3 end
 
     // Creates an socket FD
     // [domain,type,protocol]

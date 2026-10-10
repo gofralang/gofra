@@ -1,0 +1,74 @@
+// Crossplatform network address utility functions
+// Works for IPv4
+
+#include "std/char.gof"
+
+// Parse IPv4 string (no port spec) into host-network-order integer
+// Returns 0 on error
+pub func int parse_ipv4_address[*string ipv4]
+    var host int  = 0;
+    var octet int = 0;
+    var shift int = 24;
+
+    var addr_len int;
+    &addr_len ipv4.len !<
+
+    var cchar char;
+    for c in 0..addr_len do
+        &cchar ipv4.data c + ?> typecast int 0x00000000FF & !<
+
+        cchar typecast int '.' == if
+            &host octet shift << host | !<
+            &octet 0 !<
+            &shift shift 8 - !<
+        end
+
+        cchar call is_digit false == if 
+            0 return
+        end
+
+        cchar typecast int '.' != if
+            &octet
+                octet 10 * 
+                cchar call digit_to_int
+                + 
+            !<
+
+            octet 255 > if 
+                0 return // Error
+            end
+        end
+    end
+
+    &host octet shift << host | !<
+    host return
+end
+
+// Get specified octet by index from parsed IPv4
+pub func int ipv4_octet[int ipv4, int idx]
+    ipv4
+        24 idx 8 * - // 24 - idx * 8
+    >> // addr >> (24 - idx * 8)
+    0xFF & return
+end
+
+// Translate parsed host-network-order IPv4 into network socket address
+pub func void ipv4_to_sockaddr[*sockaddr_in addr, int ipv4, int port]
+    var network_port int;
+    var network_host int;
+
+    // Translate host order to network order
+    &network_port port call htons !<
+    &network_host ipv4 call htonl !<
+
+    &addr.sin_family AF_INET        !<
+    &addr.sin_port   network_port   !<
+    &addr.sin_addr   network_host   !<
+    &addr.sin_zero   0              !<
+end
+
+// Check is parsed host-network-order IPv4 is loopback
+pub func bool ipv4_is_loopback[int addr]
+    addr 0 call ipv4_octet 
+    127 == return
+end

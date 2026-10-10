@@ -1,0 +1,11 @@
+pub func bool is_digit[char c]
+    c typecast int '0' >= 
+    c typecast int '9' <= 
+    && return 
+end
+
+pub func int digit_to_int[char c]
+    c   typecast int 
+    '0'
+    - return
+end

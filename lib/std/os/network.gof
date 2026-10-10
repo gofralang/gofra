@@ -34,111 +34,28 @@
 #ifdef OS_DARWIN  #define SOMAXCONN 128        #endif
 #ifdef OS_WINDOWS #define SOMAXCONN 0x7FFFFFFF #endif
 
-pub func int htons[int port]
-    port 0x00FF & 8 <<
-    port 0xFF00 & 8 >> 
-    | return
-end
-
-pub func int htonl[int port]
-    port 0x000000FF & 24 <<
-    port 0x0000FF00 & 8  << |
-    port 0x00FF0000 & 8  >> |
-    port 0xFF000000 & 24 >> |
-    return
-end
-
-
-pub func int parse_ipv4_address[*string ipv4]
-    var host int  = 0;
-    var octet int = 0;
-    var shift int = 24;
-
-    var addr_len int;
-    &addr_len ipv4.len !<
-
-    var cchar char;
-    for c in 0..addr_len do
-        &cchar ipv4.data c + ?>  typecast int 0x00000000FF & !<
-
-        cchar typecast int '.' == if
-            &host octet shift << host | !<
-            &octet 0 !<
-            &shift shift 8 - !<
-        end
-        cchar typecast int '.' != if
-            &octet
-                octet 10 * 
-                cchar typecast int '0' - 
-                + 
-            !<
-        end
-    end
-
-    &host octet shift << host | !<
-    host return
-end
 
 #ifdef OS_DARWIN
     // System call wrappers
-    pub func int net_socket[int domain, int type_, int protocol]          
+    pub func int os_socket[int domain, int type_, int protocol]          
         domain type_ protocol call sc_socket 
     end
-    pub func int net_bind[int socket, *sockaddr_in address, int address_len]   
+    pub func int os_bind[int socket, *sockaddr_in address, int address_len]   
         socket address address_len call sc_bind
     end
-    pub func int net_listen[int socket, int backlog]
+    pub func int os_listen[int socket, int backlog]
         socket backlog call sc_listen 
     end
-    pub func int net_accept[int socket, *sockaddr_in address, int address_len] 
+    pub func int os_accept[int socket, *sockaddr_in address, *int address_len] 
         socket address address_len call sc_accept 
     end
-    pub func int net_read[int socket, CStr buf, int nbyte] 
+    pub func int os_read[int socket, CStr buf, int nbyte] 
         socket buf nbyte call sc_read
     end
-    pub func int net_write[int socket, CStr buf, int nbyte]
-        socket buf nbyte call sc_write 
+    pub func int os_write[int socket, CStr buf, int nbyte]
+        socket buf nbyte call sc_write
     end
-    pub func int net_close[int socket]
+    pub func int os_close_socket[int socket]
         socket call sc_close 
     end
-
-    // Accept without a client address - only server socket is required
-    pub func int net_accept_sink[int socket] socket 0 typecast *sockaddr_in 0 call net_accept end
-
-    // Create an IPv4 TCP socket
-    pub func int net_ipv4_tcp_socket[]
-        AF_INET 
-        SOCK_STREAM 
-        0 
-        call net_socket
-    end
-#endif
-
-#ifdef OS_LINUX
-    // System call wrappers
-
-    compile_error "Net layer for Linux is not implemented"
-
-    #ifndef __NEVER__
-        // TODO: no impl for sc_socket and others
-        pub func int net_socket[int, int, int]        call sc_socket end
-        pub func int net_bind[int, *sockaddr_in, int] call sc_bind   end
-        pub func int net_listen[int, int]             call sc_listen end
-        pub func int net_accept[int, int, int]        call sc_accept end
-        pub func int net_read[int, CStr, int]         call sc_read   end
-        pub func int net_write[int, CStr, int]        call sc_write  end
-        pub func int net_close[int]                   call sc_close  end
-
-        // Accept without a client address - only server socket is required
-        pub func int net_accept_sink[int] 0 0 call net_accept end
-
-        // Create an IPv4 TCP socket
-        pub func int net_ipv4_tcp_socket[]
-            AF_INET 
-            SOCK_STREAM 
-            0 
-            call net_socket
-        end
-    #endif
 #endif

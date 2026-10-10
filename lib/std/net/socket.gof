@@ -1,0 +1,118 @@
+/// Public API layer for system network sockets
+#include "std/memory/static_heap.gof"
+#include "std/os/network.gof"
+#include "std/net/address.gof"
+
+// Network socket
+// wrapper around OS socket system
+struct NetSocket
+    fd int // System file descriptor
+    addr *sockaddr_in // System addr
+end
+
+// Primitive allocator setup
+#ifndef STD_NET_SOCKET_ALLOCATOR
+    #define STD_NET_SOCKET_ALLOCATOR static_heap_alloc
+    #define STD_NET_SOCKET_DEALLOCATOR drop drop
+#endif
+
+
+// Create and allocate network socket for IPv4 TCP connections
+pub func *NetSocket net_ipv4_tcp_socket[]
+    var net_sock *NetSocket;
+    var os_sock int;
+
+    &os_sock
+        AF_INET
+        SOCK_STREAM
+        0
+        call os_socket
+    !<
+
+    // Allocate using heap
+    &net_sock 
+        sizeof NetSocket STD_NET_SOCKET_ALLOCATOR 
+        typecast *NetSocket 
+    !<
+
+    &net_sock.fd os_sock !<
+    &net_sock.addr 0 typecast *sockaddr_in !<
+
+    net_sock return
+end
+
+// Accept an socket connections on given server socket, 
+// returing new allocated client socket
+pub func *NetSocket net_accept_socket[*NetSocket socket]
+    var os_sock int;
+    var net_sock *NetSocket;
+    var sock_addr *sockaddr_in;
+    var sock_addr_len int;
+
+    &sock_addr_len sizeof sockaddr_in !<
+    &sock_addr
+        sizeof sockaddr_in
+        STD_NET_SOCKET_ALLOCATOR typecast *sockaddr_in // f()
+    !<
+
+    &os_sock
+        socket.fd
+        sock_addr
+        &sock_addr_len
+        call os_accept
+    !<
+
+    &net_sock.fd os_sock !<
+    &net_sock.addr sock_addr !<
+
+    &net_sock 
+        sizeof NetSocket 
+        STD_NET_SOCKET_ALLOCATOR typecast *NetSocket // f()
+    !<
+
+    net_sock return
+end
+
+// Bind socket to given address and port
+pub func int net_bind_socket[*NetSocket socket, *string ipv4, int port]
+    var sock_addr sockaddr_in;
+
+        &sock_addr
+        ipv4 call parse_ipv4_address
+        port
+    call ipv4_to_sockaddr
+
+        socket.fd
+        &sock_addr
+        sizeof sockaddr_in
+    call os_bind return
+end
+
+// Start listening on given socket
+pub func int net_listen_socket[*NetSocket socket, int backlog]
+    socket.fd 
+    backlog 
+    call os_listen
+end
+
+// Read given amount of bytes from socket
+pub func int net_read_socket[*NetSocket socket, CStr buffer, int buffer_len]
+    var bytes_read int = 0
+
+    &bytes_read
+        socket.fd
+        buffer
+        buffer_len
+    call os_read !<
+
+    bytes_read return
+end
+
+// Close and deallocate socket
+pub func int net_close_socket[*NetSocket socket]
+    socket.fd call os_close_socket
+    socket typecast *void sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
+    socket.addr typecast int 0 != if
+        socket.addr typecast *void sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
+    end
+end
