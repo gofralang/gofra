@@ -228,7 +228,7 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
     while idx < idx_max:
         operator, idx = operators[idx], idx + 1
         if DEBUG_TRACE_TYPESTACK:
-            print(operator.location, scope.types)
+            print(operator.location, scope.types, operator.type)
         match operator.type:
             case (
                 OperatorType.CONDITIONAL_WHILE
@@ -470,6 +470,14 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             if isinstance(a, PointerType):
                 # Pointer arithmetics
                 if isinstance(b, IntegerType):
+                    if isinstance(a.points_to, ArrayType):
+                        scope.push_types(
+                            PointerType(
+                                points_to=a.points_to.element_type,
+                                memory_location=a.memory_location,
+                            ),
+                        )
+                        return None
                     scope.push_types(a)
                     return None
                 raise TypecheckInvalidPointerArithmeticsError(

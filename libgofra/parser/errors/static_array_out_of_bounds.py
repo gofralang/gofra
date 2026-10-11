@@ -21,4 +21,5 @@ class ArrayOutOfBoundsError(GofraError):
 {self.variable.name}[{self.array_index_at}] is not within type of {self.variable.name} ({self.variable.type})
 Note: Variable defined at {self.variable.defined_at}
 
+WARNING: May be ambigious if using chained accessor (TODO)
 {self.generic_error_name}"""
