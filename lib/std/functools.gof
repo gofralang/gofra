@@ -14,7 +14,7 @@ pub func int i_reduce[
     for i in 0..len do
         &accumulator
             accumulator 
-            array sizeof int i * + ?>
+            array[i]
             call callback
         !<
     end
@@ -30,7 +30,7 @@ pub func void i_map[
     IMap_FT callback, 
 ]
     for i in 0..len do
-        array sizeof int i * + ?>
+        array[i]
         call callback
     end
 end

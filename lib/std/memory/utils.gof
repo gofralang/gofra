@@ -3,7 +3,7 @@
 pub func void memset[*int[0] addr, int size, int value]
     // Set memory to int array from given pointer up to + SIZE with given int-value
     for idx in 0..size do
-        addr sizeof int idx * + value !<
+        &addr[idx] value !<
     end
 end
 

@@ -16,12 +16,12 @@ pub func void matrix_mul_scaled[_IMatrix A, _IMatrix B, _IMatrix C, int M, int N
             for k in 0..K do
                 &sum 
                     sum 
-                    A 8 i K * k + * + ?> 
-                    B 8 k N * j + * + ?> 
+                    A sizeof int i K * k + * + ?> 
+                    B sizeof int k N * j + * + ?> 
                     * + 
                 !<
             end
-            C 8 i N * j + * + sum 1000 / !<
+            C sizeof int i N * j + * + sum 1000 / !<
         end
     end
 end
@@ -88,18 +88,18 @@ pub func void softmax[_IVec x, int n]
     var d int;
     var e int;
     for i in 0..n do
-        &d x sizeof int i * + ?> M - !<
+        &d x[i]  M - !<
 
         &e d call exp_approx !<
 
-        x sizeof int i * + e !<
+        &x[i] e !<
         &sum sum e + !<
     end
     
     // 3. Normalize
     for i in 0..n do
-        x sizeof int i * + 
-            x sizeof int i * + ?> 1000 * sum / 
+        &x[i]
+            x[i] 1000 * sum / 
         !<
     end
 end
@@ -154,13 +154,13 @@ pub func void layernorm[_IVec x, _IVec g, _IVec b, _IVec out, int n]
     end
     
     for i in 0..n do
-        out sizeof int i * + 
-            x sizeof int i * + ?> mean - 
+        &out[i]
+            x[i] mean - 
             1000 *
             std / 
-            g sizeof int i * + ?> * 
+            g[i] * 
             1000 /
-            b sizeof int i * + ?> + 
+            b[i] + 
         !<
     end
 end
@@ -216,7 +216,7 @@ pub func void embedding_lookup[_IMatrix table, int d, _IVec tokens, _IMatrix out
     var tok int;
 
     for i in 0..T do
-        &tok tokens sizeof int i * + ?> !<
+        &tok tokens[i] !<
         for j in 0..d do
             out sizeof int i d * j + * + 
                 table sizeof int tok d * j + * + ?> 
@@ -229,8 +229,8 @@ end
 
 pub func void layer[_IMatrix W, _IVec x, int n, _IVec b, _IVec y, int m]
     for i in 0..m do
-        y sizeof int i * + // y[i]
-            W 8 n * i * + x n b 8 i * + ?> neuron 
+        &y[i]
+            W sizeof int n * i * + x n b[i] neuron 
         !<
     end
 end
@@ -238,8 +238,8 @@ end
 pub func void linear_layer[_IMatrix W, _IVec x, int n, _IVec b, _IVec y, int m]
     // Linear layer without activation: y[i] = W[i] · x + b[i]
     for i in 0..m do
-        y sizeof int i * + 
-            W 8 n * i * + x n b 8 i * + ?> array_linear_scaled 
+        &y[i] 
+            W sizeof int n * i * + x n b[i] array_linear_scaled 
         !<
     end
 end

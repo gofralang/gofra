@@ -66,13 +66,27 @@ def _lower_expr_into_offset_reference(
     for accessor in expr.chain:
         match accessor:
             case IndexAccessor():
-                if not isinstance(bound_type, ArrayType):
-                    msg = f"cannot get index-of (e.g []) for non-array types. at {token.location}"
+                if not isinstance(bound_type, ArrayType) and (
+                    not isinstance(bound_type, PointerType)
+                    or not isinstance(bound_type.points_to, ArrayType)
+                ):
+                    msg = f"cannot get index-of (e.g []) for non-array types (nor pointers to arrays). at {token.location}"
                     raise TypeError(msg)
+
+                if isinstance(bound_type, PointerType):
+                    # (-auto-deref-)
+                    assert isinstance(bound_type.points_to, ArrayType)
+                    context.push_new_operator(
+                        type=OperatorType.MEMORY_VARIABLE_READ,
+                        token=token,
+                    )
+                    bound_type = bound_type.points_to
                 if isinstance(accessor.index, int):
                     # Access by integer (direct int or expanded from constant)
                     # Compile-time OOB checks
-                    if bound_type.is_index_oob(accessor.index):
+                    if bound_type.elements_count and bound_type.is_index_oob(
+                        accessor.index,
+                    ):  # TODO: treat as an warning (unfinished array)
                         raise ArrayOutOfBoundsError(
                             at=token.location,
                             # TODO: Error notes variable while may reference bound type in chain
@@ -95,39 +109,39 @@ def _lower_expr_into_offset_reference(
                     bound_type = bound_type.element_type  # lowering
                     continue
 
-                if isinstance(accessor.index, Variable):
-                    var = accessor.index
-                    if not isinstance(var.type, (I64Type, CharType)):
-                        msg = f"Non I64/char type cannot be used as index at {token.location}!"
-                        raise TypeError(msg)
-                    if var.is_constant and isinstance(var.initial_value, int):
-                        # Unwind constant ref into accesor
-                        accessor.index = var.initial_value
+                assert isinstance(accessor.index, Variable)
+                var = accessor.index
+                if not isinstance(var.type, (I64Type, CharType)):
+                    msg = f"Non I64/char type cannot be used as index at {token.location}!"
+                    raise TypeError(msg)
+                if var.is_constant and isinstance(var.initial_value, int):
+                    # Unwind constant ref into accessor
+                    accessor.index = var.initial_value
 
-                    # Access by non-constant variable
-                    context.push_new_operator(
-                        OperatorType.PUSH_INTEGER,
+                # Access by non-constant variable
+                context.push_new_operator(
+                    OperatorType.PUSH_INTEGER,
+                    token,
+                    operand=bound_type.element_type.size_in_bytes,
+                )
+                context.push_new_operator(
+                    OperatorType.PUSH_VARIABLE_VALUE,
+                    token,
+                    operand=var.name,
+                )
+                if context.rt_array_oob_check:
+                    assert isinstance(var.type, (I64Type, CharType))
+                    array_index_at = cast("Variable[I64Type]", accessor.index)
+                    emit_runtime_hir_oob_check(
+                        context,
                         token,
-                        operand=bound_type.element_type.size_in_bytes,
+                        array_index_at,
+                        bound_type.elements_count,
                     )
-                    context.push_new_operator(
-                        OperatorType.PUSH_VARIABLE_VALUE,
-                        token,
-                        operand=var.name,
-                    )
-                    if context.rt_array_oob_check:
-                        assert isinstance(var.type, (I64Type, CharType))
-                        array_index_at = cast("Variable[I64Type]", accessor.index)
-                        emit_runtime_hir_oob_check(
-                            context,
-                            token,
-                            array_index_at,
-                            bound_type.elements_count,
-                        )
-                    context.push_new_operator(OperatorType.ARITHMETIC_MULTIPLY, token)
-                    context.push_new_operator(OperatorType.ARITHMETIC_PLUS, token)
-                    bound_type = bound_type.element_type  # lowering
-                    continue
+                context.push_new_operator(OperatorType.ARITHMETIC_MULTIPLY, token)
+                context.push_new_operator(OperatorType.ARITHMETIC_PLUS, token)
+                bound_type = bound_type.element_type  # lowering
+                continue
             case FieldAccessor():
                 # TODO: check field accessor on pointer to non structs
                 if not isinstance(bound_type, StructureType) and not isinstance(
@@ -145,6 +159,7 @@ def _lower_expr_into_offset_reference(
                         # If we have struct field accessor for analogue of `->` (E.g *struct)
                         # we must dereference that struct pointer and deal with direct pointer to it
                         # struct is remapped to pointer holding that type
+                        # (-auto-deref-)
                         context.push_new_operator(
                             type=OperatorType.MEMORY_VARIABLE_READ,
                             token=token,
@@ -262,7 +277,7 @@ def _resolve_variable_expr(
 
             rbracket = context.next_token()
             if rbracket.type != TokenType.RBRACKET:
-                msg = f"Expected RBRACKET after (array) index element accessor but got {rbracket.type.name}"
+                msg = f"Expected RBRACKET after (array) index element accessor but got {rbracket.type.name} at {token.location}"
                 raise ValueError(msg)
 
             if elements_token.type == TokenType.INTEGER:

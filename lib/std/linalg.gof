@@ -15,13 +15,13 @@ type _IMatrix *int[]
 
 pub func void array_add[_IVec a, _IVec b, _IVec c, int n]
     for i in 0..n do
-        c 8 i * + a 8 i * + ?> b 8 i * + ?> + !<
+        &c[i] a[i] b[i] + !<
     end
 end
 
 pub func void array_scale[*int[] a, int s, int n]
     for i in 0..n do
-        a 8 i * + a 8 i * + ?> s * !<
+        &a[i] a[i] s * !<
     end
 end
 
@@ -30,7 +30,7 @@ pub func int array_sum[*int[] A, int n]
     var sum int = 0;
 
     for i in 0..n do
-        &sum sum A sizeof int i * + ?> + !< // sum = sum + A[i]
+        &sum sum A[i] + !<
     end
 
     sum return
@@ -41,7 +41,7 @@ pub func int array_product[*int[] A, int n]
     var sum int = 1;
 
     for i in 0..n do
-        &sum sum A sizeof int i * + ?> * !< // sum = sum * A[i]
+        &sum sum A[i] * !<
     end
 
     sum return
@@ -54,9 +54,8 @@ pub func int array_dot[*int[] A, *int[] B, int n]
     for i in 0..n do
         &s // s = s + a[i] * b[i]
             s 
-            A sizeof int i * + ?> 
-            B sizeof int i * + ?> 
-            * + 
+            A[i] B[i] * 
+            + 
         !<
     end
 
@@ -72,9 +71,9 @@ pub func int array_max[*int[] A, int n]
     var best int;
     var v int;
 
-    &best A ?> !<
+    &best A[0] !<
     for i in 1..n do
-        &v A sizeof int i * + ?> !<
+        &v A[i] !<
         v best > if
             &best v !<
         end
@@ -89,7 +88,7 @@ pub func int array_min[*int[] A, int n]
 
     &best A ?> !<
     for i in 1..n do
-        &v A sizeof int i * + ?> !<
+        &v A[i] !<
         v best < if
             &best v !<
         end
@@ -106,7 +105,7 @@ pub func int array_argmax[*int[] arr, int n]
     
     &best_val arr ?> !<
     for i in 1..n do
-        &v arr sizeof int i * + ?> !<
+        &v arr[i] !<
         v best_val > if
             &best_idx i !<
             &best_val v !<
@@ -123,7 +122,7 @@ pub func int array_argmin[*int[] arr, int n]
 
     &best_val arr ?> !<
     for i in 1..n do
-        &v arr sizeof int i * + ?> !<
+        &v arr[i] !<
         v best_val < if
             &best_idx i !<
             &best_val v !<
@@ -146,7 +145,7 @@ pub func int array_var[*int[] A, int n]
     var sum int = 0;
     var d int;
     for i in 0..n do
-        &d A 8 i * + ?> mean - !<
+        &d A[i] mean - !<
         &sum sum d d * + !<
     end
 
@@ -155,7 +154,7 @@ end
 
 pub func void array_fill[*int[] a, int v, int n]
     for i in 0..n do
-        a 8 i * + v !<
+        &a[i] v !<
     end
 end
 
@@ -165,7 +164,7 @@ end
 
 pub func void array_copy[*int[] src, *int[] dst, int n]
     for i in 0..n do
-        dst 8 i * + src 8 i * + ?> !<
+        &dst[i] src[i] !<
     end
 end
 
@@ -179,8 +178,8 @@ pub func void matrix_transpose[*int[] A, *int[] B, int M, int N]
     // B = A^T
     for i in 0..M do
         for j in 0..N do
-            B 8 j M * i + * + // B[j][i]
-                A 8 i N * j + * + ?>  // A[i][j]
+            B sizeof int j M * i + * + // B[j][i]
+                A sizeof int i N * j + * + ?>  // A[i][j]
             !<
         end
     end
@@ -197,12 +196,12 @@ pub func void matrix_mul[*int[] A, *int[] B, *int[] C, int M, int N, int K]
             for k in 0..K do
                 &sum 
                     sum 
-                    A 8 i K * k + * + ?> 
-                    B 8 k N * j + * + ?> 
+                    A sizeof int i K * k + * + ?> 
+                    B sizeof int k N * j + * + ?> 
                     * + 
                 !<
             end
-            C 8 i N * j + * + sum !<
+            C sizeof int i N * j + * + sum !<
         end
     end
 end
@@ -210,14 +209,14 @@ end
 pub func void matrix_scale[*int[] matrix, int rows, int cols, int multiplier]
     // Multiply each element of 2D matrix by scalar
     var v int;
-    var i int;
+    var xy int;
 
     for row in 0..rows do
     for col in 0..cols do
-        &i row cols * col + !<
-        &v matrix sizeof int i * + ?> !<
+        &xy row cols * col + !<
+        &v matrix[xy] !<
 
-        matrix sizeof int i * + v multiplier * !<
+        &matrix[xy] v multiplier * !<
     end end
 end
 
@@ -231,7 +230,7 @@ pub func void matrix_vec_mul[*int[] W, *int[] x, *int[] y, int M, int N]
     // W: M×N, x: N, y: M
 
     for i in 0..M do
-        y sizeof int i * + 
+        &y[i]
             W i 0 N matrix_ptr_of
             x
             N call array_dot 
@@ -243,22 +242,21 @@ pub func void matrix_vec_linear[*int[] W, *int[] x, int N, *int[] b, *int[] y, i
     // y = W · x + b
     // W: M×N, x: N, b: M, y: M
     for i in 0..M do
-        y sizeof int i * + 
+        &y[i]
             W i 0 N matrix_ptr_of 
             x 
             N call array_dot 
-            b sizeof int i * + ?> + 
+            b[i]  + 
         !<
     end
 end
 
 pub func void matrix_add_bias[_IMatrix M, _IVec b, int T, int d]
-    // M[i][j] += b[j] for all i, j
     for i in 0..T do
         for j in 0..d do
-            M i j d matrix_ptr_of           // адрес M[i][j]
-                M i j d matrix_ptr_of ?>     // значение M[i][j]
-                b sizeof int j * + ?>        // b[j]
+            M i j d matrix_ptr_of
+                M i j d matrix_ptr_of ?> 
+                b[j]
                 + 
             !<
         end
