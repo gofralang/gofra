@@ -56,6 +56,7 @@ from libgofra.parser.type_parser import (
 )
 from libgofra.parser.typecast import unpack_typecast_from_token
 from libgofra.parser.typedef import unpack_type_definition_from_token
+from libgofra.parser.unions import unpack_union_definition_from_token
 from libgofra.parser.variable_accessor import try_push_variable_reference
 from libgofra.parser.variable_definition import (
     unpack_variable_definition_from_token,
@@ -91,6 +92,7 @@ TOP_LEVEL_KEYWORD = (
     Keyword.ATTR_STRUCT_PACKED,
     Keyword.FUNCTION,
     Keyword.STRUCT,
+    Keyword.UNION,
     Keyword.TYPE_DEFINE,
     Keyword.MODULE_IMPORT,
 )
@@ -298,6 +300,8 @@ def _consume_keyword_token(context: ParserScope, token: Token) -> None:  # noqa:
             )
         case Keyword.STRUCT:
             return unpack_structure_definition_from_token(context)
+        case Keyword.UNION:
+            return unpack_union_definition_from_token(context)
         case Keyword.DEBUGGER_BREAKPOINT | Keyword.COPY | Keyword.DROP | Keyword.SWAP:
             return context.push_new_operator(
                 type={

@@ -5,7 +5,7 @@ from libgofra.types.reordering import reorder_type_fields
 
 
 class StructureType(CompositeType):
-    """Type that holds fields with their types as structure."""
+    """Type that holds fields with their types as structure (product type)."""
 
     _natural_fields: Mapping[str, Type]
     _natural_order: Sequence[str]

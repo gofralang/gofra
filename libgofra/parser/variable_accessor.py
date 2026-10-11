@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import cast
 
+from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 from libgofra.hir.variable import (
     Variable,
@@ -16,6 +17,7 @@ from libgofra.types._base import Type
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
 from libgofra.types.composite.structure import StructureType
+from libgofra.types.composite.union import UnionType
 from libgofra.types.primitive.character import CharType
 from libgofra.types.primitive.integers import I64Type
 
@@ -144,11 +146,15 @@ def _lower_expr_into_offset_reference(
                 continue
             case FieldAccessor():
                 # TODO: check field accessor on pointer to non structs
-                if not isinstance(bound_type, StructureType) and not isinstance(
-                    bound_type,
-                    PointerType,
+                if (
+                    not isinstance(bound_type, StructureType)
+                    and not isinstance(
+                        bound_type,
+                        PointerType,
+                    )
+                    and not isinstance(bound_type, UnionType)
                 ):
-                    msg = f"cannot use field accessor for non-structure or pointers to structure types at {token.location}."
+                    msg = f"cannot use field accessor for non-structure/union or pointers to structure types at {token.location}."
                     raise TypeError(msg)
 
                 if isinstance(bound_type, PointerType):
@@ -168,22 +174,36 @@ def _lower_expr_into_offset_reference(
                     else:
                         msg = f"cannot use field accessor for pointers to non structures at {token.location}."
                         raise TypeError(msg)
-                assert isinstance(bound_type, StructureType)
-                field = accessor.field
-                if not bound_type.has_field(field):
-                    raise UnknownFieldAccessorStructFieldError(
-                        field,
-                        token.location,
-                        bound_type,
+                if isinstance(bound_type, StructureType):
+                    field = accessor.field
+                    if not bound_type.has_field(field):
+                        raise UnknownFieldAccessorStructFieldError(
+                            field,
+                            token.location,
+                            bound_type,
+                        )
+
+                    context.push_new_operator(
+                        type=OperatorType.STRUCT_FIELD_OFFSET,
+                        token=token,
+                        operand=(bound_type, field),
                     )
+                    bound_type = bound_type.get_field_type(field)  # lowering
+                    continue
+                assert isinstance(bound_type, UnionType)
+                member = accessor.field
+                if not bound_type.has_member(member):
+                    msg = f"no member at {token.location}"
+                    raise GofraError(msg)
 
+                # were just lowering hier sir
+                bound_type = bound_type.get_member_type(member)  # lowering
                 context.push_new_operator(
-                    type=OperatorType.STRUCT_FIELD_OFFSET,
-                    token=token,
-                    operand=(bound_type, field),
+                    OperatorType.STATIC_TYPE_CAST,
+                    token,
+                    operand=PointerType(bound_type),
                 )
-                bound_type = bound_type.get_field_type(field)  # lowering
-
+                continue
     if not expr.is_reference:
         context.push_new_operator(
             type=OperatorType.MEMORY_VARIABLE_READ,
