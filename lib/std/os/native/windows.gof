@@ -50,7 +50,6 @@ func int win_write[int handle, CStr ptr, int len]
     var error int = 0;
     var bytes_written int;
 
-    // TODO: Introduce else block
 
     handle call win_is_console_handle true == if
         // Is an console
@@ -60,8 +59,7 @@ func int win_write[int handle, CStr ptr, int len]
         &bytes_written
         call win_write_console
         0 != if -1 return end
-    end
-    handle call win_is_console_handle false == if
+    else
         // Is an file
 
         handle len ptr

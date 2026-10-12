@@ -1,0 +1,16 @@
+#define TESTKIT_EXPECTED_EXIT_CODE 3
+func int main[]
+    false if 
+      true if 
+        1 return
+      end
+    else
+      false if
+        2 return 
+      else
+        3 return
+      end
+    end
+
+  0 return
+end

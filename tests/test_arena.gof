@@ -1,0 +1,28 @@
+/// Test arena base
+#include "std"
+#include "std/memory/arena.gof"
+
+var a Arena;
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    &a 1024 1024 * call arena_init
+    
+    var p1 *void;
+    &p1 &a 100 call arena_alloc !<
+    
+    var p2 *void;
+    &p2 &a 200 call arena_alloc !<
+    
+    var p1_i int;
+    var p2_i int;
+    &p1_i p1 typecast int !<
+    &p2_i p2 typecast int !<
+    
+    p2_i p1_i <= if 1 return end   // p2 > p1
+    
+    &a call arena_destroy
+    
+    0 return
+end

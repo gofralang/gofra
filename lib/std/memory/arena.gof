@@ -6,7 +6,7 @@
 
 #define ARENA_ALIGNMENT sizeof *void
 
-type struct Arena
+struct Arena
     /// Data holder of allocated arena
 
     base *void[]

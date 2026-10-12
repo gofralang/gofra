@@ -1,0 +1,23 @@
+struct Foo
+  a char 
+  b bool
+end
+struct Bar
+  a bool
+  b int
+end
+
+#define TESTKIT_EXPECTED_EXIT_CODE 32
+
+union XX
+  foo Foo
+  bar Bar
+end
+
+func int main[]
+  var xx XX;
+  &xx.bar.b TESTKIT_EXPECTED_EXIT_CODE !<
+
+  xx.bar.b
+end
+

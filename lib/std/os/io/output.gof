@@ -187,8 +187,7 @@ end
             digit 10 >= if
                 as_uppercase true == if
                     &print_int64_hex_buf[idx] digit 10 - 'A' + !<
-                end
-                as_uppercase false == if
+                else
                     &print_int64_hex_buf[idx] digit 10 - 'a' + !<
                 end
             end

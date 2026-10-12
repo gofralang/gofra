@@ -21,13 +21,11 @@ pub func int parse_ipv4_address[*string ipv4]
             &host octet shift << host | !<
             &octet 0 !<
             &shift shift 8 - !<
-        end
+        else
+            cchar call is_digit false == if 
+                0 return
+            end
 
-        cchar call is_digit false == if 
-            0 return
-        end
-
-        cchar typecast int '.' != if
             &octet
                 octet 10 * 
                 cchar call digit_to_int
