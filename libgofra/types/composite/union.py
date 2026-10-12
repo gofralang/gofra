@@ -28,6 +28,9 @@ class UnionType(CompositeType):
         self.size_in_bytes = (
             max(s.size_in_bytes for s in self.members.values()) if self.members else 0
         )
+        self.alignment = (
+            max(s.alignment for s in self.members.values()) if self.members else 0
+        )
 
     def backpatch(
         self,
