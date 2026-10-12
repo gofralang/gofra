@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, cast
 
+from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 from libgofra.hir.variable import Variable, VariableScopeClass, VariableStorageClass
 from libgofra.lexer.keywords import Keyword
@@ -37,7 +38,7 @@ class RangeQualifierRange:
 type RangeQualifier = RangeQualifierForeach | RangeQualifierRange
 
 
-def consume_conditional_block_keyword_from_token(
+def consume_conditional_block_keyword_from_token(  # noqa: PLR0911
     context: ParserScope,
     token: Token,
 ) -> None:
@@ -93,6 +94,28 @@ def consume_conditional_block_keyword_from_token(
                 token=token,
                 is_contextual=True,
             )
+        case Keyword.ELSE:
+            if not context.has_context_stack():
+                msg = f"Else without context! {token.location}"
+                raise GofraError(msg)
+
+            if_idx, if_operator, _ = context.context_stack[-1]  # peek
+            if if_operator.type != OperatorType.CONDITIONAL_IF:
+                msg = f"Else without if! {token.location}"
+                raise GofraError(msg)
+
+            context.push_new_operator(
+                type=OperatorType.CONDITIONAL_ELSE,
+                token=token,
+                is_contextual=True,
+            )
+
+            else_idx, _, _ = context.context_stack[-1]
+            # Mark else on if to backpatch
+            context.operators[else_idx].jumps_to_operator_idx = if_idx
+
+            if_operator.jumps_to_operator_idx = else_idx
+            return None
         case Keyword.FOR:
             qualifier = parse_for_range_qualifier(context, token)
             context.expect_token(TokenType.KEYWORD)
@@ -182,7 +205,8 @@ def consume_conditional_block_keyword_from_token(
                 is_contextual=False,
             )
             prev_context_jumps_at = context_operator.jumps_to_operator_idx
-            context_operator.jumps_to_operator_idx = context.current_operator - 1
+            if context_operator.type != OperatorType.CONDITIONAL_ELSE:
+                context_operator.jumps_to_operator_idx = context.current_operator - 1
 
             match context_operator.type:
                 case OperatorType.CONDITIONAL_DO:
@@ -193,12 +217,23 @@ def consume_conditional_block_keyword_from_token(
                         raise ParserEmptyIfBodyError(if_token=context_operator.token)
                 case OperatorType.CONDITIONAL_WHILE:
                     raise ParserEndAfterWhileError(end_token=token)
+                case OperatorType.CONDITIONAL_ELSE:
+                    if_idx, if_op, _ = context.pop_context_stack()
+
+                    else_op = context_operator
+                    else_idx = if_op.jumps_to_operator_idx
+                    assert else_idx is not None
+                    assert else_op.type == OperatorType.CONDITIONAL_ELSE, else_op.type
+                    assert context.operators[if_idx].type == OperatorType.CONDITIONAL_IF
+
+                    else_op.jumps_to_operator_idx = context.current_operator - 1
                 case _:
-                    raise AssertionError
+                    raise AssertionError(context_operator.type)
 
             return None
         case _:
             raise AssertionError
+    return None
 
 
 def parse_for_range_qualifier(

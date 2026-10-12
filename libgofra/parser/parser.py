@@ -273,7 +273,14 @@ def _consume_keyword_token(context: ParserScope, token: Token) -> None:  # noqa:
         raise TopLevelKeywordInLocalScopeError(token)
 
     match token.value:
-        case Keyword.IF | Keyword.DO | Keyword.WHILE | Keyword.END | Keyword.FOR:
+        case (
+            Keyword.IF
+            | Keyword.DO
+            | Keyword.WHILE
+            | Keyword.END
+            | Keyword.FOR
+            | Keyword.ELSE
+        ):
             return consume_conditional_block_keyword_from_token(context, token)
         case (
             Keyword.FUNCTION

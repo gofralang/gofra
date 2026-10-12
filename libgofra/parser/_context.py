@@ -222,6 +222,7 @@ class ParserScope(PeekableTokenizer):
         *,
         is_contextual: bool = False,
     ) -> None:
+        """:param is_contextual: push onto context stack to backpatch later."""
         if type == OperatorType.FUNCTION_CALL:
             self.is_leaf_context = False
 

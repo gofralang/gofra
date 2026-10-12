@@ -245,7 +245,10 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
                 # Acquire where this block jumps, shift due to emulation layers
                 assert operator.jumps_to_operator_idx
                 jumps_to_idx = operator.jumps_to_operator_idx - blocks_idx_shift
-                assert operators[jumps_to_idx].type == OperatorType.CONDITIONAL_END
+                assert operators[jumps_to_idx].type in (
+                    OperatorType.CONDITIONAL_END,
+                    OperatorType.CONDITIONAL_ELSE,
+                )
 
                 block = emulate_type_stack_for_operators(
                     operators=operators[idx:jumps_to_idx],
@@ -272,8 +275,41 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
                         stack_after_block=block.types,
                     )
 
-                # Skip this part as we typecheck below and acquire type stack
-                idx = jumps_to_idx
+                if operators[jumps_to_idx].type == OperatorType.CONDITIONAL_ELSE:
+                    else_op = operators[jumps_to_idx]
+
+                    assert else_op.jumps_to_operator_idx is not None
+                    end_idx = else_op.jumps_to_operator_idx - blocks_idx_shift
+                    assert operators[end_idx].type == OperatorType.CONDITIONAL_END
+
+                    else_block = emulate_type_stack_for_operators(
+                        operators=operators[jumps_to_idx + 1 : end_idx],
+                        module=module,
+                        initial_type_stack=scope.types[::],
+                        blocks_idx_shift=blocks_idx_shift + jumps_to_idx + 1,
+                        current_function=current_function,
+                        on_lint_warning=on_lint_warning,
+                        references_variables=references_variables,
+                    )
+
+                    if else_block.reason not in (
+                        "early-return",
+                        "no-return-func-call",
+                    ) and not is_typestack_same(
+                        else_block.types,
+                        scope.types,
+                    ):
+                        raise TypecheckBlockStackMismatchError(
+                            operator_begin=else_op,
+                            operator_end=operators[end_idx],
+                            stack_before_block=scope.types,
+                            stack_after_block=else_block.types,
+                        )
+
+                    idx = end_idx
+                else:
+                    # Skip this part as we typecheck below and acquire type stack
+                    idx = jumps_to_idx
             case _:
                 etb = _emulate_scope_unconditional_hir_operator(
                     operators,
@@ -329,6 +365,9 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             | OperatorType.CONDITIONAL_END
         ):
             ...  # Nothing here as there nothing to typecheck
+        case OperatorType.CONDITIONAL_ELSE:
+            msg = "Expected typechecker to emulate else blocks before it reaches it"
+            raise GofraError(msg)
         case OperatorType.DEBUGGER_BREAKPOINT:
             ...
         case OperatorType.CONDITIONAL_DO | OperatorType.CONDITIONAL_IF:

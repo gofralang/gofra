@@ -269,6 +269,15 @@ def jump_to_subroutine(
     writer.instruction(f"bl _{label}")
 
 
+def jump_to_label(
+    writer: WriterProtocol,
+    label: str,
+) -> None:
+    """Unconditional jump to label."""
+    assert label
+    writer.instruction(f"b {label}")
+
+
 def compare_and_jump_to_label(
     writer: WriterProtocol,
     register: AARCH64_GP_REGISTERS,

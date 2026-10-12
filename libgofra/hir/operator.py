@@ -71,6 +71,7 @@ class OperatorType(Enum):
     CONDITIONAL_WHILE = auto()
     CONDITIONAL_FOR = auto()
 
+    CONDITIONAL_ELSE = auto()
     CONDITIONAL_END = auto()
 
     # System calls for architectures and operating system which supports them

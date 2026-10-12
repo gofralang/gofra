@@ -103,6 +103,8 @@ def _emit_hir_into_stdout(module: Module) -> None:
                 OperatorType.CONDITIONAL_FOR,
             ):
                 context_block_shift += 1
+            if operator.type == OperatorType.CONDITIONAL_ELSE:
+                context_block_shift += 1
 
 
 def _emit_ir_operator(  # noqa: PLR0911
@@ -120,6 +122,8 @@ def _emit_ir_operator(  # noqa: PLR0911
             | OperatorType.CONDITIONAL_FOR
         ):
             return print(f"{shift}{operator.type.name}" + "{")
+        case OperatorType.CONDITIONAL_ELSE:
+            return print(f"{shift}" + "}" + f"{operator.type.name}" + "{")
         case OperatorType.CONDITIONAL_DO:
             return print(f"{shift}" + "}" + f"{operator.type.name}" + "{")
         case OperatorType.CONDITIONAL_END:

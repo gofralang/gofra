@@ -13,6 +13,7 @@ from libgofra.codegen.backends.aarch64.primitive_instructions import (
     AddressingMode,
     drop_stack_slots,
     evaluate_conditional_block_on_stack_with_jump,
+    jump_to_label,
     load_memory_from_stack_arguments,
     perform_operation_onto_stack,
     place_software_trap,
@@ -119,7 +120,17 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
                 owner_function.name,
                 operator.jumps_to_operator_idx,
             )
+
             evaluate_conditional_block_on_stack_with_jump(writer, label)
+        case OperatorType.CONDITIONAL_ELSE:
+            assert isinstance(operator.jumps_to_operator_idx, int)
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (
+                owner_function.name,
+                operator.jumps_to_operator_idx,
+            )
+            jump_to_label(writer, label)
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (owner_function.name, idx)
+            writer.label(label)
         case (
             OperatorType.CONDITIONAL_END
             | OperatorType.CONDITIONAL_WHILE

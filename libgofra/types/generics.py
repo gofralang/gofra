@@ -186,11 +186,12 @@ def get_generic_type_parameters_count(t: GenericParametrizedType | Type) -> int:
 def get_generic_type_parameters(
     t: GenericParametrizedType | Type,
 ) -> set[GenericParameter]:
+    tp: set[GenericParameter]
     match t:
         case GenericPointerType():
             return get_generic_type_parameters(t.points_to)
         case GenericArrayType():
-            tp: set[GenericParameter] = set()
+            tp = set()
             if not isinstance(t.element_count, int):
                 tp.add(t.element_count)
             if isinstance(t.element_type, GenericParametrizedType):
@@ -199,7 +200,7 @@ def get_generic_type_parameters(
         case GenericParameter():
             return {t}
         case GenericStructureType():
-            tp: set[GenericParameter] = set()
+            tp = set()
             for f in t.fields.values():
                 tp.update(get_generic_type_parameters(f))
             return tp

@@ -5,6 +5,7 @@ class Keyword(Enum):
     """Words that are related to language due to internal implementation like loops or parsing stage."""
 
     IF = auto()
+    ELSE = auto()
 
     WHILE = auto()
     FOR = auto()
@@ -105,6 +106,7 @@ WORD_TO_KEYWORD: dict[str, Keyword | PreprocessorKeyword] = {
     "in": Keyword.IN,
     "for": Keyword.FOR,
     "do": Keyword.DO,
+    "else": Keyword.ELSE,
     "end": Keyword.END,
     # Statements / operators
     "call": Keyword.FUNCTION_CALL,
