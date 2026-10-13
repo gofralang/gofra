@@ -23,10 +23,8 @@ def build_parser(subparsers: "_SubParsersAction[ArgumentParser]") -> ArgumentPar
     )
 
     parser.add_argument(
-        "source_files",
-        help="Input source code files in Gofra to process (`.gof` files)",
-        nargs="*",
-        default=[],
+        "source_file",
+        help="Input source code file in Gofra to process (`.gof` files)",
     )
 
     groups.add_target_group(parser)

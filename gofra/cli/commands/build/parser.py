@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, cast, get_args, get_type_hints
+from typing import TYPE_CHECKING, Literal, assert_never, cast, get_args
 
-from gofra.cli.commands.build.arguments import BuildArguments
+from gofra.cli.commands.build.arguments import BuildArguments, BuildOutputFormat
 from gofra.cli.output import cli_fatal_abort
 from libgofra.codegen.config import CodegenConfig
 from libgofra.linker.profile import LinkerProfile
@@ -27,10 +27,10 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
     """Parse CLI arguments from argparse into custom DTO."""
     _validate_mutually_exclusive_goals(args)
     target = _process_target(args)
-    source_filepaths = _process_source_filepaths(args)
+    source_filepath = _process_source_filepath(args)
     definitions = _process_definitions(args)
     include_paths = _process_include_paths(args)
-    output = _process_output_path(source_filepaths, args, target)
+    output = _process_output_path(source_filepath, args, target)
     linker_profile = _process_linker_profile(args)
     linker_libraries_search_paths = _process_linker_libraries_search_paths(args)
     linker_executable = _process_linker_executable(args)
@@ -50,7 +50,7 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
         skip_typecheck=bool(args.skip_typecheck),
         verbose=bool(args.verbose),
         show_commands=bool(args.show_commands),
-        source_filepaths=source_filepaths,
+        source_filepath=source_filepath,
         output_filepath=output,
         output_file_is_specified=bool(args.output),
         output_format=output_format,
@@ -104,18 +104,13 @@ def _process_linker_backend(
 
 def _process_output_format(
     args: Namespace,
-) -> Literal["library", "object", "executable", "assembly"]:
+) -> BuildOutputFormat:
     """Validate and process output format as type safe value."""
-    allowed_formats = get_args(get_type_hints(BuildArguments)["output_format"])
-    assert args.output_format in (*allowed_formats, None), (
-        f"{args.target} not in {allowed_formats}"
-    )
-    args.output_format = cast(
-        'Literal["library", "object", "executable", "assembly"]',
-        args.output_format,
+    assert args.output_format in BuildOutputFormat, (
+        f"{args.target} not in allowed formats"
     )
 
-    return args.output_format
+    return BuildOutputFormat(args.output_format)
 
 
 def _process_linker_executable(args: Namespace) -> Path | None:
@@ -168,19 +163,16 @@ def _process_definitions(args: Namespace) -> dict[str, str]:
     return user_definitions
 
 
-def _process_source_filepaths(args: Namespace) -> list[Path]:
+def _process_source_filepath(args: Namespace) -> Path:
     """Process input source files as paths and validate it."""
-    paths = [Path(f) for f in args.source_files]
+    path = Path(args.source_file)
 
-    if len(args.source_files) == 0:
-        return cli_fatal_abort("Expected source files to compile!")
-
-    if any(not p.exists(follow_symlinks=True) for p in paths):
+    if not path.exists(follow_symlinks=True):
         return cli_fatal_abort(
-            text="One of input source file is not exists, aborting compilation as safe mechanism.",
+            text="Input source file does not exists, aborting compilation as safe mechanism.",
         )
 
-    return paths
+    return path
 
 
 def _process_include_paths(args: Namespace) -> list[Path]:
@@ -199,12 +191,14 @@ def _process_include_paths(args: Namespace) -> list[Path]:
 
 def _process_optimizer_config(
     args: Namespace,
-    output_format: Literal["library", "object", "executable", "assembly"],
+    output_format: BuildOutputFormat,
 ) -> OptimizerConfig:
     """Process whole configuration of optimizer from CLI into config."""
     config = build_default_optimizer_config_from_level(level=args.optimizer_level)
     config = merge_into_optimizer_config(config, args, prefix="optimizer")
-    config.dead_code_aggressive_from_entry_point = output_format == "executable"
+    config.dead_code_aggressive_from_entry_point = (
+        output_format == BuildOutputFormat.EXECUTABLE
+    )
     return config
 
 
@@ -231,7 +225,7 @@ def _process_codegen_config(
 
 
 def _process_output_path(
-    source_filepaths: list[Path],
+    source_filepath: Path,
     args: Namespace,
     target: Target,
 ) -> Path:
@@ -240,12 +234,12 @@ def _process_output_path(
         Path(args.output)
         if args.output
         else _infer_output_filename(
-            source_filepaths,
+            source_filepath,
             output_format=args.output_format,
             target=target,
         )
     )
-    if inferred_output_path in source_filepaths:
+    if inferred_output_path == source_filepath:
         return cli_fatal_abort(
             text="Inferred/specified output file path will rewrite existing input file, please specify another output path.",
         )
@@ -253,30 +247,27 @@ def _process_output_path(
 
 
 def _infer_output_filename(
-    source_filepaths: list[Path],
-    output_format: Literal["library", "object", "executable", "assembly"],
+    source_filepath: Path,
+    output_format: BuildOutputFormat,
     target: Target,
 ) -> Path:
     """Try to infer filename for output from input source files."""
     suffix: str
     match output_format:
-        case "library":
+        case BuildOutputFormat.LIBRARY:
             is_dynamic = False
             suffix = [
                 target.file_library_static_suffix,
                 target.file_library_dynamic_suffix,
             ][is_dynamic]
-        case "object":
+        case BuildOutputFormat.OBJECT:
             suffix = target.file_object_suffix
-        case "assembly":
+        case BuildOutputFormat.ASSEMBLY:
             suffix = target.file_assembly_suffix
-        case "executable":
+        case BuildOutputFormat.EXECUTABLE:
             suffix = target.file_executable_suffix
-
-    if not source_filepaths:
-        return Path("out").with_suffix(suffix)
-
-    source_filepath = source_filepaths[0]
+        case _:
+            assert_never(output_format)
 
     if source_filepath.suffix == suffix:
         suffix = source_filepath.suffix + suffix

@@ -2,6 +2,7 @@ from collections.abc import Iterable, MutableSequence
 from pathlib import Path
 from subprocess import PIPE, CompletedProcess, run
 
+from libgofra.exceptions import GofraError
 from libgofra.linker.command_composer import (
     LinkerCommandComposer,
     get_linker_command_composer_backend,
@@ -30,6 +31,10 @@ def link_object_files(  # noqa: PLR0913, PLR0917
 
     Runs an new process with linker, returns it for high-level checks.
     """
+    if target.architecture == "WASM32":
+        msg = "WASM32 target cannot be linked; use object output format"
+        raise GofraError(msg)
+
     if not linker_backend:
         linker_backend = get_linker_command_composer_backend(target)
 

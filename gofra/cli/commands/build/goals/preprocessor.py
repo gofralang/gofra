@@ -25,21 +25,16 @@ def cli_perform_preprocess_goal(args: BuildArguments) -> NoReturn:
             text="Output file has no effect for preprocess only goal, please pipe output via posix pipe (`>`) into desired file!",
         )
 
-    if len(args.source_filepaths) > 1:
-        return cli_fatal_abort(
-            text="Multiple source files has not effect for preprocess only goal, as it has no linkage, please specify single file!",
-        )
-
     macros_registry = registry_from_raw_definitions(
         location=TokenLocation.cli(),
         definitions=args.definitions,
     ).inject_propagated_defaults(target=args.target)
 
-    path = args.source_filepaths[0]
+    path = args.source_filepath
     io = open_source_file_line_stream(path)
     lexer = tokenize_from_raw(path, io)
     preprocessor = preprocess_file(
-        args.source_filepaths[0],
+        path,
         lexer,
         args.include_paths,
         macros=macros_registry,

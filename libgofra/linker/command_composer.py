@@ -1,6 +1,6 @@
 from collections.abc import Iterable, MutableSequence
 from pathlib import Path
-from typing import Protocol
+from typing import Literal, Protocol, assert_never
 
 from libgofra.linker.apple.command_composer import compose_apple_linker_command
 from libgofra.linker.gnu.command_composer import compose_gnu_linker_command
@@ -37,3 +37,18 @@ def get_linker_command_composer_backend(
 
     # Fallback to GNU
     return compose_gnu_linker_command
+
+
+def resolve_linker_command_composer(
+    backend: Literal["apple-ld", "gnu-ld"] | None,
+    target: Target,
+) -> LinkerCommandComposer:
+    if backend is None:
+        return get_linker_command_composer_backend(target)
+    match backend:
+        case "apple-ld":
+            return compose_apple_linker_command
+        case "gnu-ld":
+            return compose_gnu_linker_command
+        case _:
+            assert_never(backend)

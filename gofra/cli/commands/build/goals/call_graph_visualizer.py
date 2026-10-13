@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import TYPE_CHECKING, Literal, NoReturn
 
 from gofra.cli.output import cli_fatal_abort
-from libgofra.gofra import process_input_file
+from libgofra.driver.stages.frontend import load_module_graph
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.optimizer.helpers.call_graph import CallGraph, CallGraphNode, CallSite
 from libgofra.preprocessor.macros.registry import registry_from_raw_definitions
@@ -28,18 +28,13 @@ def cli_perform_call_graph_goal(args: BuildArguments) -> NoReturn:
             text="Output file has no effect for call graph only goal, please pipe output via posix pipe (`>`) into desired file!",
         )
 
-    if len(args.source_filepaths) > 1:
-        return cli_fatal_abort(
-            text="Multiple source files has not effect for call graph only goal, as it has no linkage, please specify single file!",
-        )
-
     macros_registry = registry_from_raw_definitions(
         location=TokenLocation.cli(),
         definitions=args.definitions,
     ).inject_propagated_defaults(target=args.target)
 
-    module = process_input_file(
-        args.source_filepaths[0],
+    module = load_module_graph(
+        args.source_filepath,
         args.include_paths,
         macros=macros_registry,
         rt_array_oob_check=args.runtime_array_oob_checks,

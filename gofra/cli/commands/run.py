@@ -5,18 +5,15 @@ from dataclasses import dataclass
 from typing import NoReturn
 
 from gofra.cli.commands.build import groups
-from gofra.cli.commands.build.arguments import BuildArguments
-from gofra.cli.commands.build.goals.compile import (
-    cli_perform_compile_goal,
-    log_command,
-    wrap_with_perf_time_taken,
-)
+from gofra.cli.commands.build.arguments import BuildArguments, BuildOutputFormat
+from gofra.cli.commands.build.goals.compile import cli_perform_compile_goal
 from gofra.cli.commands.build.parser import parse_cli_arguments
+from gofra.cli.driver_diag import CliDiagnosticConsumer
 from gofra.cli.errors.error_handler import cli_gofra_error_handler
 from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.output import cli_fatal_abort, cli_message
 from gofra.execution.execution import execute_native_binary_executable
-from libgofra.targets.infer_host import infer_host_target
+from libgofra.targets.infer_host import get_host_compliance
 
 
 @dataclass(frozen=True)
@@ -43,10 +40,8 @@ def build_parser(subparsers: "_SubParsersAction[ArgumentParser]") -> ArgumentPar
     )
 
     parser.add_argument(
-        "source_files",
-        help="Input source code files in Gofra to process (`.gof` files)",
-        nargs="*",
-        default=[],
+        "source_file",
+        help="Input source code file in Gofra to process (`.gof` files)",
     )
 
     parser.add_argument(
@@ -86,18 +81,12 @@ def execute(args: RunArguments) -> NoReturn:
 
 def _execute_after_compilation(args: RunArguments) -> NoReturn:
     """Run executable after compilation if user requested."""
-    if args.parent.output_format != "executable":
+    if args.parent.output_format != BuildOutputFormat.EXECUTABLE:
         return cli_fatal_abort(
             text="Cannot execute after compilation due to output format is not set to an executable!",
         )
 
-    host_target = infer_host_target()
-    assert host_target
-    host_compliance = (
-        args.parent.target.architecture == host_target.architecture
-        and args.parent.target.operating_system == host_target.operating_system
-    )
-
+    host_compliance = get_host_compliance(args.parent.target)
     if not host_compliance:
         cli_fatal_abort(
             "Target differs from host target, cannot execute on current host without emulation layer, please execute on your own!\nFile was compiled, please remove execute flag!",
@@ -109,13 +98,17 @@ def _execute_after_compilation(args: RunArguments) -> NoReturn:
         verbose=args.parent.verbose,
     )
 
-    with wrap_with_perf_time_taken("Execution", verbose=args.parent.verbose):
+    d_diag = CliDiagnosticConsumer(
+        verbose=args.parent.verbose,
+        show_commands=args.parent.show_commands,
+    )
+    with d_diag.timer("Execution"):
         try:
             process = execute_native_binary_executable(
                 args.parent.output_filepath,
                 args=[],
             )
-            log_command(args.parent, process)
+            d_diag.command(process.args)
             exit_code = process.returncode
         except KeyboardInterrupt:
             if not args.parent.cli_debug_user_friendly_errors:

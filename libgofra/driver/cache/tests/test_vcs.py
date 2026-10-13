@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from gofra.cache.vcs import try_create_cache_gitignore
+from libgofra.driver.cache.vcs import try_create_cache_gitignore
 
 
 def test_create_cache_gitignore(tmp_path: Path) -> None:

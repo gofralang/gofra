@@ -6,12 +6,12 @@ from concurrent.futures import ThreadPoolExecutor
 from subprocess import TimeoutExpired
 from typing import TYPE_CHECKING
 
-from gofra.cache.directory import prepare_build_cache_directory
 from gofra.cli.errors.error_handler import cli_gofra_error_handler
 from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.output import cli_fatal_abort, cli_message
 from gofra.testkit.cli.matrix import display_test_matrix
 from gofra.testkit.test import TestStatus
+from libgofra.driver.cache.directory import prepare_build_cache_directory
 from libgofra.exceptions import GofraError
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.preprocessor.macros.defaults import (

@@ -262,7 +262,8 @@ def add_cache_group(parser: ArgumentParser) -> None:
         default=False,
         action="store_true",
         required=False,
-        help="If passed, enables incremental compilation with rebuilding only modified artifacts",
+        # help="If passed, enables incremental compilation with rebuilding only modified artifacts",  # noqa: ERA001
+        help=argparse.SUPPRESS,
     )
 
     group.add_argument(

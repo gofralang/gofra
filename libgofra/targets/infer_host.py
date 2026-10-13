@@ -14,3 +14,13 @@ def infer_host_target() -> Target | None:
             return Target.from_triplet("amd64-unknown-windows")
         case _:
             return None
+
+
+def get_host_compliance(target: Target) -> bool:
+    host_target = infer_host_target()
+    if host_target is None:
+        return False
+    return (
+        target.architecture == host_target.architecture
+        and target.operating_system == host_target.operating_system
+    )

@@ -1,388 +1,80 @@
 from __future__ import annotations
 
 import sys
-from contextlib import contextmanager
-from time import perf_counter_ns
 from typing import TYPE_CHECKING, NoReturn
 
-from gofra.cache.directory import prepare_build_cache_directory
-from gofra.cli.mod_hashing import (
-    get_module_hash,
-    is_module_needs_rebuild,
-)
-from gofra.cli.output import cli_fatal_abort, cli_linter_warning, cli_message
+from gofra.cli.commands.build.arguments import BuildOutputFormat
+from gofra.cli.driver_diag import CliDiagnosticConsumer
+from gofra.cli.output import cli_message
 from gofra.execution.permissions import apply_file_executable_permissions
-from libgofra.assembler.assembler import assemble_object_files
-from libgofra.codegen.generator import generate_code_for_assembler
-from libgofra.gofra import process_input_file
-from libgofra.lexer.tokens import TokenLocation
-from libgofra.linker.apple.command_composer import compose_apple_linker_command
-from libgofra.linker.command_composer import get_linker_command_composer_backend
-from libgofra.linker.entry_point import LINKER_EXPECTED_ENTRY_POINT
-from libgofra.linker.gnu.command_composer import compose_gnu_linker_command
-from libgofra.linker.linker import link_object_files
-from libgofra.linker.output_format import LinkerOutputFormat
-from libgofra.linker.pkgconfig.pkgconfig import pkgconfig_get_library_search_paths
-from libgofra.preprocessor.macros.registry import registry_from_raw_definitions
-from libgofra.targets.infer_host import infer_host_target
-from libgofra.typecheck import validate_type_safety
-from libgofra.typecheck.typechecker import on_lint_warning_suppressed
-
-from ._optimization_pipeline import cli_process_optimization_pipeline
+from libgofra.driver.artifact import (
+    Artifact,
+    AssemblyArtifact,
+    ExecutableArtifact,
+    LibraryArtifact,
+    ObjectArtifact,
+)
+from libgofra.driver.cache.directory import prepare_build_cache_directory
+from libgofra.driver.driver import Driver
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, MutableSequence, Sequence
     from pathlib import Path
-    from subprocess import CompletedProcess
 
-    from gofra.cli.commands.build.arguments import BuildArguments as CLIArguments
-    from libgofra.hir.module import Module
-
-# Must refactor and move somewhere else?
-NANOS_TO_SECONDS = 1_000_000_000
+    from gofra.cli.commands.build.arguments import BuildArguments
 
 
-@contextmanager
-def wrap_with_perf_time_taken(message: str, *, verbose: bool) -> Generator[None]:
-    start_time = perf_counter_ns()
-    yield
-    time_taken = (perf_counter_ns() - start_time) / NANOS_TO_SECONDS
-    cli_message(
-        level="INFO",
-        text=f"{message} took {time_taken:.2f}s",
-        verbose=verbose,
-    )
-
-
-def on_warning_wrapper(*, verbose: bool) -> Callable[[str], None]:
-    return lambda text: cli_message(
-        level="WARNING",
-        text=text,
-        verbose=verbose,
-    )
-
-
-def cli_perform_compile_goal(args: CLIArguments) -> NoReturn:
+def cli_perform_compile_goal(args: BuildArguments) -> NoReturn:
     """Process full toolchain onto input source files."""
-    cache_gc: MutableSequence[Path] = []
-
-    if len(args.source_filepaths) > 1:
-        return cli_fatal_abort(
-            "Compiling several files not implemented, you may want to use modules system.",
-        )
-    cli_message(level="INFO", text="Parsing input files...", verbose=args.verbose)
-    if args.incremental_compilation:
-        cli_message(
-            "WARNING",
-            "Incremental compilation may skip changes in dependant files due to using raw include!",
-        )
-    macros_registry = registry_from_raw_definitions(
-        location=TokenLocation.cli(),
-        definitions=args.definitions,
-    ).inject_propagated_defaults(target=args.target)
-
-    with wrap_with_perf_time_taken("Core (lex/parse/pp)", verbose=args.verbose):
-        # That module may have dependencies that is compiled separately from root
-        root_module = process_input_file(
-            args.source_filepaths[0],
-            args.include_paths,
-            macros=macros_registry,
-            rt_array_oob_check=args.runtime_array_oob_checks,
-            entry_point_name=args.executable_entry_point,
-        )
-
-    if root_module.dependencies and args.output_format not in ("executable", "library"):
-        cli_message(
-            "WARNING",
-            "Output format is set to non library/executable and root module is dependant on others - only root symbols are compiled for you, please checkout cache",
-        )
-
-    cli_message(
-        "INFO",
-        f"Collected {len(root_module.flatten_dependencies_paths(include_self=False))} + 1 modules to compile.",
-        verbose=args.verbose,
-    )
+    prepare_build_cache_directory(args.build_cache_dir)
 
     # Actually this can be skipped if we identify that some modules does not needs rebuild
-    _perform_typechecker(args, root_module)
-    _perform_optimizer(args, root_module)
-
-    cache_dir = args.build_cache_dir
-    prepare_build_cache_directory(cache_dir)
-
-    output = args.output_filepath
-    assembly_filepath = (cache_dir / output.name).with_suffix(
-        args.target.file_assembly_suffix,
-    )
-
-    modules_dependencies_dir = assembly_filepath.parent / (
-        f"{root_module.path.name}" + "$mod_dependencies"
-    )
-    modules_assembly: dict[Path, Path] = {}
-    cli_message(
-        level="INFO",
-        text="Assembling object file(s)...",
-        verbose=args.verbose,
-    )
-
-    with wrap_with_perf_time_taken("Codegen", verbose=args.verbose):
-        if not args.incremental_compilation or is_module_needs_rebuild(
-            root_module,
-            rebuild_artifact=assembly_filepath,
-        ):
-            generate_code_for_assembler(
-                assembly_filepath,
-                root_module,
-                args.target,
-                config=args.codegen_config,
-                on_warning=on_warning_wrapper(verbose=args.verbose),
-            )
-
-        for mod in root_module.visit_dependencies(include_self=False):
-            mod_assembly_path = (
-                modules_dependencies_dir / get_module_hash(mod)
-            ).with_suffix(args.target.file_assembly_suffix)
-            if not args.incremental_compilation or not is_module_needs_rebuild(
-                mod,
-                rebuild_artifact=mod_assembly_path,
-            ):
-                modules_assembly[mod.path] = mod_assembly_path
-                continue
-            generate_code_for_assembler(
-                mod_assembly_path,
-                mod,
-                args.target,
-                on_warning=on_warning_wrapper(verbose=args.verbose),
-                config=args.codegen_config,
-            )
-            modules_assembly[mod.path] = mod_assembly_path
-
-    if args.output_format == "assembly":
-        _ = assembly_filepath.replace(args.output_filepath)
-
-    object_filepath = (cache_dir / output.name).with_suffix(
-        args.target.file_object_suffix,
-    )
-
-    modules_objects = _perform_assembler(
-        args,
-        root_module,
-        modules_dependencies_dir,
-        modules_assembly,
-        assembly_filepath,
-        object_filepath,
-    )
-
-    cache_gc.append(assembly_filepath)
-    cache_gc.extend(modules_assembly.values())
-
     # We may skip this part also if identify that final build artifact is not needs rebuild
     # e.g if dependant object files is already linked against this artifact (modify time, hash)
-    _perform_linker_bundle(
-        args,
-        object_filepath,
-        modules_objects=list(modules_objects.values()),
+    diag = CliDiagnosticConsumer(
+        verbose=args.verbose,
+        show_commands=args.show_commands,
     )
 
-    if args.delete_build_cache:
-        cache_gc.append(object_filepath)
-        cache_gc.extend(modules_objects.values())
+    driver = Driver(
+        request=args.to_compilation_request(),
+        diag=diag,
+    )
+    artifact = driver.run()
 
-    if args.output_format == "executable":
+    if isinstance(artifact, ExecutableArtifact):
         apply_file_executable_permissions(args.output_filepath)
 
-    if args.output_format == "object":
-        object_filepath.replace(args.output_filepath)
+    if args.output_format == BuildOutputFormat.OBJECT:
+        driver.layout.root_object.replace(args.output_filepath)
+    elif args.output_format == BuildOutputFormat.ASSEMBLY:
+        driver.layout.root_assembly.replace(args.output_filepath)
 
     cli_message(
         level="INFO",
-        text=f"Compiled input file down to {args.output_format} `{args.output_filepath.name}`!",
+        text=f"Compiled input file down to {args.output_format.name} `{args.output_filepath.name}`!",
         verbose=args.verbose,
     )
 
-    _cleanup_cache_gc(cache_gc, args)
+    _cleanup_cache_gc(artifact, args)
     return sys.exit(0)
 
 
-def _perform_assembler(  # noqa: PLR0913, PLR0917
-    args: CLIArguments,
-    root_module: Module,
-    modules_dependencies_dir: Path,
-    modules_assembly: dict[Path, Path],
-    assembly_filepath: Path,
-    object_filepath: Path,
-) -> dict[Path, Path]:
-    if args.output_format not in ("library", "object", "executable"):
-        return {}
-
-    modules_objects: dict[Path, Path] = {}
-
-    with wrap_with_perf_time_taken("Assembler", verbose=args.verbose):
-        assembly_targets: list[tuple[Path, Path]] = []
-
-        if not args.incremental_compilation or is_module_needs_rebuild(
-            root_module,
-            rebuild_artifact=object_filepath,
-        ):
-            assembly_targets.append((assembly_filepath, object_filepath))
-
-        for mod in root_module.visit_dependencies(include_self=False):
-            mod_object_path = (
-                modules_dependencies_dir / get_module_hash(mod)
-            ).with_suffix(args.target.file_object_suffix)
-            if not args.incremental_compilation or not is_module_needs_rebuild(
-                mod,
-                rebuild_artifact=mod_object_path,
-            ):
-                modules_objects[mod.path] = mod_object_path
-                continue
-            assembly_targets.append((modules_assembly[mod.path], mod_object_path))
-            modules_objects[mod.path] = mod_object_path
-
-        # We discovered pairs ready to be assembled
-        cli_message(
-            "INFO",
-            f"Performing batch assembler for {len(assembly_targets)} artifacts...",
-            verbose=args.verbose,
-        )
-        assembler_processes = assemble_object_files(
-            file_pairs=assembly_targets,
-            target=args.target,
-            extra_flags=args.assembler_flags,
-            debug_information=args.debug_symbols,
-        )
-        for process in assembler_processes:
-            process.check_returncode()
-            log_command(args, process)
-
-    if args.target.architecture == "WASM32":
-        cli_message(
-            level="WARNING",
-            text="WASM target requires loader with env respectfully!",
-        )
-
-    return modules_objects
-
-
-def _perform_linker_bundle(
-    args: CLIArguments,
-    root_object: Path,
-    modules_objects: list[Path],
-) -> None:
-    if args.output_format not in ("library", "executable"):
-        return
-    cli_message(
-        level="INFO",
-        text=f"Linking final {args.output_format} from object file(s)...",
-        verbose=args.verbose,
-    )
-
-    if args.linker_backend is None:
-        linker_backend = get_linker_command_composer_backend(args.target)
-    else:
-        match args.linker_backend:
-            case "apple-ld":
-                linker_backend = compose_apple_linker_command
-            case "gnu-ld":
-                linker_backend = compose_gnu_linker_command
-
-    output_format = (
-        LinkerOutputFormat.EXECUTABLE
-        if args.output_format == "executable"
-        else LinkerOutputFormat.LIBRARY
-    )
-
-    with wrap_with_perf_time_taken("Linker", verbose=args.verbose):
-        if args.target.architecture == "WASM32":
-            cli_fatal_abort(
-                text="Cannot link executable for WASM32, use object output format (`-of object`)",
-            )
-        libraries_search_paths = args.linker_libraries_search_paths
-        if args.linker_resolve_libraries_with_pkgconfig:
-            for library in args.linker_libraries:
-                paths = pkgconfig_get_library_search_paths(library)
-                if paths:
-                    libraries_search_paths += paths
-        assert all(isinstance(x, str) for x in args.linker_additional_flags)
-        linker_process = link_object_files(
-            objects=[root_object, *modules_objects],
-            target=args.target,
-            output=args.output_filepath,
-            libraries=args.linker_libraries,
-            output_format=output_format,
-            additional_flags=args.linker_additional_flags,
-            libraries_search_paths=args.linker_libraries_search_paths,
-            profile=args.linker_profile,
-            linker_backend=linker_backend,
-            linker_executable=args.linker_executable,
-            cache_directory=args.build_cache_dir,
-            executable_entry_point_symbol=LINKER_EXPECTED_ENTRY_POINT,
-        )
-        log_command(args, linker_process)
-        linker_process.check_returncode()
-
-
-def _cleanup_cache_gc(cache_gc: Sequence[Path], args: CLIArguments) -> None:
+def _cleanup_cache_gc(artifact: Artifact, args: BuildArguments) -> None:
     if not args.delete_build_cache:
         return
+    paths: set[Path] = set()
+    if isinstance(artifact, (ExecutableArtifact, LibraryArtifact)):
+        paths |= set(artifact.objects.modules_objects.values())
+        paths |= set(artifact.objects.assembly.modules_assembly.values())
+    elif isinstance(artifact, ObjectArtifact):
+        paths |= set(artifact.modules_objects.values())
+        paths |= set(artifact.assembly.modules_assembly.values())
+    elif isinstance(artifact, AssemblyArtifact):
+        paths |= set(artifact.modules_assembly.values())
     cli_message(
         level="INFO",
-        text=f"Cleaning up {len(cache_gc)} cache files...",
+        text=f"Cleaning up {len(paths)} cache files...",
         verbose=args.verbose,
     )
-    for item in cache_gc:
-        item.unlink(missing_ok=True)
-
-
-def log_command(args: CLIArguments, process: CompletedProcess[bytes]) -> None:
-    if not args.show_commands:
-        return
-    cli_message("CMD", " ".join(map(str, process.args)))
-
-
-def get_host_compliance(args: CLIArguments) -> bool:
-    host_target = infer_host_target()
-    assert host_target
-    return (
-        args.target.architecture == host_target.architecture
-        and args.target.operating_system == host_target.operating_system
-    )
-
-
-def _perform_typechecker(args: CLIArguments, root_module: Module) -> None:
-    if args.skip_typecheck:
-        return
-    cli_message(
-        level="INFO",
-        text="Validating type safety...",
-        verbose=args.verbose,
-    )
-    is_executable = args.output_format == "executable"
-    with wrap_with_perf_time_taken("Typecheck and lint", verbose=args.verbose):
-        for mod in root_module.visit_dependencies(include_self=True):
-            is_root = mod == root_module
-            must_has_entry_point = (
-                is_root and is_executable
-            )  # Main required for root module and only if executable
-            validate_type_safety(
-                mod,
-                on_lint_warning=cli_linter_warning
-                if args.display_lint_warnings
-                else on_lint_warning_suppressed,
-                strict_expect_entry_point=must_has_entry_point,
-                entry_point_name=args.executable_entry_point,
-            )
-
-
-def _perform_optimizer(args: CLIArguments, root_module: Module) -> None:
-    with wrap_with_perf_time_taken("Optimizer", verbose=args.verbose):
-        cli_message(
-            level="INFO",
-            text=f"Applying optimizer pipeline (From base optimization level: {args.optimizer.level})",
-            verbose=args.verbose,
-        )
-        for mod in root_module.visit_dependencies(include_self=False):
-            cli_process_optimization_pipeline(mod, args)
-
-        # Perform root optimizations last - high level optimizations after dependencies
-        cli_process_optimization_pipeline(root_module, args)
+    for p in paths:
+        p.unlink(missing_ok=True)

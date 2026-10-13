@@ -15,8 +15,8 @@ from libgofra.assembler.assembler import (
     assemble_object_file,
 )
 from libgofra.codegen.generator import generate_code_for_assembler
+from libgofra.driver.stages.frontend import load_module_graph
 from libgofra.exceptions import GofraError
-from libgofra.gofra import process_input_file
 from libgofra.hir.module import Module
 from libgofra.lexer.tokens import TokenType
 from libgofra.linker.entry_point import LINKER_EXPECTED_ENTRY_POINT
@@ -90,7 +90,7 @@ def evaluate_test_case(  # noqa: PLR0911
 ) -> Test:
     macros = immutable_macros.copy()
     try:
-        module = process_input_file(
+        module = load_module_graph(
             path,
             include_paths=args.include_paths,
             macros=macros,

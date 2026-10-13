@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from pathlib import Path
 from shutil import which
@@ -25,3 +26,18 @@ def pkgconfig_get_library_search_paths(
     return [
         Path(flag.removeprefix("-L")) for flag in linker_flags if flag.startswith("-L")
     ]
+
+
+def resolve_library_search_paths(
+    explicit_paths: Sequence[Path],
+    libraries: Iterable[str],
+    *,
+    resolve_with_pkgconfig: bool,
+) -> list[Path]:
+    libraries_search_paths = list(explicit_paths)
+    if resolve_with_pkgconfig:
+        for library in libraries:
+            if paths := pkgconfig_get_library_search_paths(library):
+                libraries_search_paths += paths
+
+    return libraries_search_paths
