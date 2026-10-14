@@ -9,7 +9,7 @@
 struct Arena
     /// Data holder of allocated arena
 
-    base *void[]
+    base *void
     size int
     offset int
 end
@@ -60,7 +60,7 @@ pub func void arena_destroy[*Arena a]
     a.size 
     call memory_free
 
-    &a.base 0 typecast *void[] !<
+    &a.base 0 typecast *void !<
     &a.size 0 !<
     &a.offset 0 !<
 end

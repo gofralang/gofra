@@ -695,7 +695,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             scope.raise_for_enough_arguments(operator, required_args=1)
             struct_pointer_type = scope.pop_type_from_stack()
             assert isinstance(struct_pointer_type, PointerType), (
-                f"Expected PUSH_STRUCT_FIELD_OFFSET to have structure pointer type on type stack but got {struct_pointer_type}"
+                f"Expected STRUCT_FIELD_OFFSET to have structure pointer type on type stack but got {struct_pointer_type}"
             )
 
             struct_type = struct_pointer_type.points_to
@@ -707,7 +707,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 "Expected struct field as an string in operand"
             )
             assert isinstance(struct_type, StructureType), (
-                f"Expected PUSH_STRUCT_FIELD_OFFSET to have structure type on type stack but got {struct_type}"
+                f"Expected STRUCT_FIELD_OFFSET to have structure type on type stack but got {struct_type}"
             )
 
             if struct_field not in struct_type.natural_fields:

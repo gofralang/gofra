@@ -4,13 +4,12 @@ from libgofra.hir.variable import (
 )
 from libgofra.lexer.tokens import Token, TokenType
 from libgofra.parser._context import ParserScope
-from libgofra.types.primitive.integers import I64Type
 
 
 def emit_runtime_hir_oob_check(
     context: ParserScope,
     token: Token,
-    index_var: Variable[I64Type],
+    index_var: Variable,
     elements_const: int,
 ) -> None:
     """Push operators to perform OOB check at runtime.
