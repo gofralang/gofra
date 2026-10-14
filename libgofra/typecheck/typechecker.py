@@ -542,8 +542,9 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 (I64Type, PointerType, BoolType, CharType, FunctionType),
             )
             value_holder_type = mut_scope[-2]
+            store_type = mut_scope[-1]
             if not isinstance(value_holder_type, PointerType):
-                msg = f"Tried to write into {value_holder_type} at {operator.location}, but it is not a pointer to pointer type"
+                msg = f"Tried to write into {value_holder_type} at {operator.location}, but it is not a pointer"
                 raise GofraError(msg)
             if (
                 value_holder_type.memory_location
@@ -551,7 +552,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             ):
                 raise ReadOnlyMemoryAssignmentError(at=operator.location)
             value_type = value_holder_type.points_to
-            store_type = mut_scope[-1]
             base_type_is_same = type(value_type) == type(store_type)  # noqa: E721
             if base_type_is_same and not is_types_same(
                 value_type,
@@ -560,6 +560,11 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             ):
                 msg = f"\nStorage and value type mismatch at {operator.location}. Holder has type {value_holder_type}, which is {value_type} but tried to store {store_type}.\n\nMismatch: {store_type} != {value_type}\n[write-store-type-mismatch]"
                 raise GofraError(msg)
+
+            if store_type.size_in_bytes not in (1, 2, 4, 8):
+                msg = f"Cannot store type of size {store_type.size_in_bytes} [{store_type}] at {operator.location}"
+                raise TypeError(msg)
+            operator.tc_meta = store_type
         case OperatorType.LOAD_PARAM_ARGUMENT:
             scope.raise_for_enough_arguments(operator, required_args=1)
             scope.consume_n_arguments(1)
@@ -573,6 +578,11 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             revealed_type = ptr_t.points_to
             if isinstance(revealed_type, ArrayType):
                 revealed_type = revealed_type.element_type
+            if revealed_type.size_in_bytes not in (1, 2, 4, 8):
+                msg = f"Cannot load type of size {revealed_type.size_in_bytes} [{revealed_type} at {operator.location}"
+                raise TypeError(msg)
+
+            operator.tc_meta = revealed_type
             scope.push_types(revealed_type)
         case OperatorType.PUSH_VARIABLE_VALUE:
             # TODO(@kirillzhosul): Should be refactored as consist of PUSH_VARIABLE_ADDRESS + MEMORY_VARIABLE_READ
@@ -591,6 +601,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             revealed_type = variable.type
             if isinstance(revealed_type, ArrayType):
                 revealed_type = revealed_type.element_type
+
+            operator.tc_meta = revealed_type
             scope.push_types(revealed_type)
         case OperatorType.STACK_COPY:
             scope.raise_for_enough_arguments(operator, required_args=1)

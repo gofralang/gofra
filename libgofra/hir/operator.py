@@ -143,6 +143,8 @@ class Operator:
     token: Token
     operand: int | float | str | Type | StructAccessor | FunctionCallOperand | None
 
+    tc_meta: Type | None = None
+
     jumps_to_operator_idx: int | None = None
 
     @property
