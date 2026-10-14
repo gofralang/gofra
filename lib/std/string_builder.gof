@@ -1,4 +1,5 @@
 #include "std/memory/utils.gof"
+#include "std/memory/static_heap.gof"
 
 struct StringBuilder
     data *char[]
@@ -10,7 +11,9 @@ end
 pub func *StringBuilder sb_new[]
     var sb *StringBuilder;
     
-    &sb sizeof StringBuilder static_heap_alloc typecast *StringBuilder !<
+    &sb 
+    sizeof StringBuilder 
+    call static_heap_alloc typecast *StringBuilder !<
 
     &sb.data SB_DEFAULT_CAP static_heap_alloc typecast *char !<
 

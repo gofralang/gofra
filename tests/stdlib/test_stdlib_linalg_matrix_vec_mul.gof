@@ -1,10 +1,10 @@
 /// Test matrix_vec_mul
 #include "std/linalg.gof"
 
-var W int[6] = [
+var W int[2][3] = [
     1, 2, 3, 
     4, 5, 6
-]  // 2×3
+]
 var x int[3] = [1, 1, 1]
 var y int[2]
 

@@ -69,14 +69,14 @@ def _write_initializer_for_stack_variable(
 
     if isinstance(initial_value, VariableIntArrayInitializerValue):
         assert isinstance(var_type, ArrayType)
-        values = initial_value.values
-        setters = ((var_type.get_index_offset(i), v) for i, v in enumerate(values))
-        for relative_offset, value in setters:
+
+        flat = var_type.flatten()
+        for i, value in enumerate(initial_value.values):
             _set_local_numeric_var_immediate(
                 writer,
                 value,
-                var_type.element_type,
-                offset=offset + relative_offset,
+                flat.element_type,
+                offset=offset + flat.get_index_offset(i),
             )
         return None
 

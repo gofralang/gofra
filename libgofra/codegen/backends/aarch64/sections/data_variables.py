@@ -85,28 +85,29 @@ def _write_static_segment_variable_initializer(
             ddd = _get_ddd_for_type(variable.type)
             writer.label(symbol_name)
             writer.sym_sect_directive(ddd, variable.initial_value)
-        case ArrayType(element_type=I64Type()):
+        case ArrayType() if isinstance(variable.type.flatten().element_type, I64Type):
             assert isinstance(variable.initial_value, VariableIntArrayInitializerValue)
             ddd = _get_ddd_for_type(I64Type())
 
-            values = variable.initial_value.values
-            f_values = ", ".join(map(str, values))
+            flat = variable.type.flatten()
+            init = variable.initial_value
+            f_values = ", ".join(map(str, init.values))
 
             writer.label(symbol_name)
             writer.sym_sect_directive(ddd, f_values)
             # Zero initialized symbol
-            element_size = variable.type.element_type.size_in_bytes
-            empty_cells = variable.type.elements_count - len(values)
+            element_size = flat.element_type.size_in_bytes
+            empty_cells = flat.elements_count - len(init.values)
             if not empty_cells:
                 return
-            if variable.initial_value.default == 0:
-                bytes_total = variable.type.size_in_bytes
-                bytes_taken = len(values) * element_size
+            if init.default == 0:
+                bytes_total = flat.size_in_bytes
+                bytes_taken = len(init.values) * element_size
                 bytes_free = bytes_total - bytes_taken
                 writer.sym_sect_directive("zero", bytes_free)
 
             else:
-                fill_with = variable.initial_value.default
+                fill_with = init.default
                 cell_size = I64Type().size_in_bytes
                 writer.sym_sect_directive("fill", empty_cells, cell_size, fill_with)
 

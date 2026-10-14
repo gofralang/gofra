@@ -72,7 +72,7 @@ def _lower_expr_into_offset_reference(
                     not isinstance(bound_type, PointerType)
                     or not isinstance(bound_type.points_to, ArrayType)
                 ):
-                    msg = f"cannot get index-of (e.g []) for non-array types (nor pointers to arrays). at {token.location}"
+                    msg = f"cannot get index-of (e.g []) for non-array types (nor pointers to arrays): {bound_type}. at {token.location}"
                     raise TypeError(msg)
 
                 if isinstance(bound_type, PointerType):

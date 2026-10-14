@@ -42,3 +42,17 @@ class ArrayType(CompositeType):
     def elements_count(self, value: int) -> None:
         self._elements_count = value
         self._update_metrics()
+
+    def flatten(self) -> "ArrayType":
+        """Transform multidimensional array into flat 1D array (flat memory structure)."""
+        count = self.elements_count
+        inner = self.element_type
+
+        while isinstance(inner, ArrayType):
+            count *= inner.elements_count
+            inner = inner.element_type
+
+        return ArrayType(
+            element_type=inner,
+            elements_count=count,
+        )

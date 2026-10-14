@@ -6,7 +6,7 @@
 
 // Internal
 type _IVec *int[]
-type _IMatrix *int[]
+type _IMatrix *int[][]
 
 /// =====
 /// Array methods
@@ -19,13 +19,13 @@ pub func void array_add[_IVec a, _IVec b, _IVec c, int n]
     end
 end
 
-pub func void array_scale[*int[] a, int s, int n]
+pub func void array_scale[_IVec a, int s, int n]
     for i in 0..n do
         &a[i] a[i] s * !<
     end
 end
 
-pub func int array_sum[*int[] A, int n]
+pub func int array_sum[_IVec A, int n]
     // Sum each element of integer array and return total sum
     var sum int = 0;
 
@@ -36,7 +36,7 @@ pub func int array_sum[*int[] A, int n]
     sum return
 end
 
-pub func int array_product[*int[] A, int n]
+pub func int array_product[_IVec A, int n]
     // Product each element of integer array and return total product
     var sum int = 1;
 
@@ -47,7 +47,7 @@ pub func int array_product[*int[] A, int n]
     sum return
 end
 
-pub func int array_dot[*int[] A, *int[] B, int n]
+pub func int array_dot[_IVec A, _IVec B, int n]
     // Dot product
     var s int = 0;
 
@@ -62,11 +62,11 @@ pub func int array_dot[*int[] A, *int[] B, int n]
     s return
 end
 
-pub func int array_mean[*int[] A, int n]
+pub func int array_mean[_IVec A, int n]
     A n call array_sum n / return
 end
 
-pub func int array_max[*int[] A, int n]
+pub func int array_max[_IVec A, int n]
     // Maximum value in array
     var best int;
     var v int;
@@ -81,7 +81,7 @@ pub func int array_max[*int[] A, int n]
     best return
 end
 
-pub func int array_min[*int[] A, int n]
+pub func int array_min[_IVec A, int n]
     // Minimum value in array
     var best int;
     var v int;
@@ -97,7 +97,7 @@ pub func int array_min[*int[] A, int n]
     best return
 end
 
-pub func int array_argmax[*int[] arr, int n]
+pub func int array_argmax[_IVec arr, int n]
     // Return index of maximal value in integer array
     var best_idx int = 0;
     var best_val int;
@@ -114,7 +114,7 @@ pub func int array_argmax[*int[] arr, int n]
     best_idx return
 end
 
-pub func int array_argmin[*int[] arr, int n]
+pub func int array_argmin[_IVec arr, int n]
     // Index of minimum value (first occurrence)
     var best_idx int = 0;
     var best_val int;
@@ -131,13 +131,13 @@ pub func int array_argmin[*int[] arr, int n]
     best_idx return
 end
 
-pub func int array_linear[*int[] w, *int[] x, int n, int b]
+pub func int array_linear[_IVec w, _IVec x, int n, int b]
     // y = w · x + b
     w x n array_dot
     b + return
 end
 
-pub func int array_var[*int[] A, int n]
+pub func int array_var[_IVec A, int n]
     // Variance: Σ(A[i] - mean)² / n
     var mean int;
     &mean A n array_mean !<
@@ -152,17 +152,17 @@ pub func int array_var[*int[] A, int n]
     sum n / return
 end
 
-pub func void array_fill[*int[] a, int v, int n]
+pub func void array_fill[_IVec a, int v, int n]
     for i in 0..n do
         &a[i] v !<
     end
 end
 
-pub func void array_zero[*int[] a, int n]
+pub func void array_zero[_IVec a, int n]
     a 0 n array_fill
 end
 
-pub func void array_copy[*int[] src, *int[] dst, int n]
+pub func void array_copy[_IVec src, _IVec dst, int n]
     for i in 0..n do
         &dst[i] src[i] !<
     end
@@ -173,7 +173,7 @@ end
 /// =====
 
 
-pub func void matrix_transpose[*int[] A, *int[] B, int M, int N]
+pub func void matrix_transpose[_IMatrix A, _IMatrix B, int M, int N]
     // Transpone matrix A (MxN) into matrix B (NxM)
     // B = A^T
     for i in 0..M do
@@ -185,7 +185,7 @@ pub func void matrix_transpose[*int[] A, *int[] B, int M, int N]
     end
 end
 
-pub func void matrix_mul[*int[] A, *int[] B, *int[] C, int M, int N, int K]
+pub func void matrix_mul[_IMatrix A, _IMatrix B, _IMatrix C, int M, int N, int K]
     // Matrix multiplication: C = A * B, where A is MxK, B is KxN, and C is MxN
     // C = A · B
     var sum int = 0;
@@ -206,26 +206,29 @@ pub func void matrix_mul[*int[] A, *int[] B, *int[] C, int M, int N, int K]
     end
 end
 
-pub func void matrix_scale[*int[] matrix, int rows, int cols, int multiplier]
-    // Multiply each element of 2D matrix by scalar
-    var v int;
-    var xy int;
 
-    for row in 0..rows do
-    for col in 0..cols do
-        &xy row cols * col + !<
-        &v matrix[xy] !<
 
-        &matrix[xy] v multiplier * !<
-    end end
-end
-
-func *int[] matrix_ptr_of[*int[] A, int i, int j, int cols]
+func *int[] matrix_ptr_of[_IMatrix A, int i, int j, int cols]
     // Get pointer to A[i][j] (row-major)
     A sizeof int i cols * j + * + return
 end
 
-pub func void matrix_vec_mul[*int[] W, *int[] x, *int[] y, int M, int N]
+pub func void matrix_scale[_IMatrix matrix, int rows, int cols, int multiplier]
+    // Multiply each element of 2D matrix by scalar
+    var v int;
+
+
+    for row in 0..rows do
+    for col in 0..cols do
+
+        &v matrix row col cols matrix_ptr_of ?> !<
+
+        matrix row col cols matrix_ptr_of
+        v multiplier * !<
+    end end
+end
+
+pub func void matrix_vec_mul[_IMatrix W, _IVec x, _IVec y, int M, int N]
     // y = W · x
     // W: M×N, x: N, y: M
 
@@ -238,7 +241,7 @@ pub func void matrix_vec_mul[*int[] W, *int[] x, *int[] y, int M, int N]
     end
 end
 
-pub func void matrix_vec_linear[*int[] W, *int[] x, int N, *int[] b, *int[] y, int M]
+pub func void matrix_vec_linear[_IMatrix W, _IVec x, int N, _IVec b, _IVec y, int M]
     // y = W · x + b
     // W: M×N, x: N, b: M, y: M
     for i in 0..M do

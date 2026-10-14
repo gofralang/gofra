@@ -20,7 +20,7 @@ from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.boolean import BoolType
 from libgofra.types.primitive.character import CharType
-from libgofra.types.primitive.integers import I64Type
+from libgofra.types.primitive.integers import I64Type, IntegerType
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
@@ -61,59 +61,33 @@ def consume_variable_initializer(
                 msg = f"Default value for boolean must be in two states: 0 or 1, but got {initial_value} as initial value at {value_token.location}"
                 raise ValueError(msg)
             return initial_value, var_t
-        case ArrayType(element_type=I64Type()):
+        case ArrayType() if isinstance(var_t.flatten().element_type, I64Type):
             context.expect_token(TokenType.LBRACKET)
             context.next_token()
 
-            default_filler = 0
-            int_values: list[int] = []
-            while True:
-                if context.peek_token().type == TokenType.RBRACKET:
-                    _ = context.next_token()
-                    break
+            flat = var_t.flatten()
 
-                context.expect_token(TokenType.INTEGER)
-                value_token = context.next_token()
-                assert isinstance(value_token.value, int)
-                element_value = value_token.value
-                int_values.append(element_value)
-                _validate_initial_numeric_value_fits_type(
-                    var_t.element_type,
-                    element_value,
-                    value_token,
-                )
-                if context.peek_token().type == TokenType.RBRACKET:
-                    _ = context.next_token()
-                    break
-
-                if context.peek_token().type == TokenType.SEMICOLON:
-                    context.advance_token()
-                    context.expect_token(TokenType.INTEGER)
-                    default_filler_tok = context.next_token()
-                    default_filler = default_filler_tok.value
-                    assert isinstance(default_filler, int)
-                    if context.peek_token().type == TokenType.RBRACKET:
-                        _ = context.next_token()
-                        # TODO: proper error
-                        break
-                    break
-
-                context.expect_token(TokenType.COMMA)
-                _ = context.next_token()
+            assert isinstance(flat.element_type, I64Type)
+            int_values, default_filler = _consume_int_array_initializer_spec(
+                context,
+                holder_t=flat.element_type,
+            )
 
             # TODO(@kirillzhosul): General semantic problem? t[0] means unfinished array definition and allows this to pass
+            # TODO: traverse for type system? maybe not needed
             if var_t.elements_count == 0:
                 var_t.elements_count = len(int_values)
+                flat.elements_count = var_t.elements_count
 
-            if len(int_values) > var_t.elements_count:
-                msg = f"Array initializer got {len(int_values)} elements at {varname_token.location}, but array size is {var_t.elements_count} which overflows array!"
+            if len(int_values) > flat.elements_count:
+                msg = f"Array initializer got {len(int_values)} elements at {varname_token.location}, but array size is {flat} (flattened from {var_t}) which overflows array!"
                 raise ValueError(msg)
 
             # This allows not all array to be initialized and its ok
             return VariableIntArrayInitializerValue(
                 default=default_filler,
                 values=int_values,
-            ), var_t
+            ), var_t  # TODO: Must be flat ?
         case ArrayType(element_type=PointerType(points_to=StringType())):
             # TODO(@kirillzhosul): Must be refactor in general array initializer logic
             context.expect_token(TokenType.LBRACKET)
@@ -242,3 +216,46 @@ def _validate_initial_numeric_value_fits_type(
         return
     msg = f"Default value is to big for that type ({t}) at {from_token.location} ["
     raise ValueError(msg)
+
+
+def _consume_int_array_initializer_spec(
+    context: ParserScope,
+    holder_t: IntegerType,
+) -> tuple[list[int], int]:
+    default_filler = 0
+    int_values: list[int] = []
+    while True:
+        if context.peek_token().type == TokenType.RBRACKET:
+            _ = context.next_token()
+            break
+
+        context.expect_token(TokenType.INTEGER)
+        value_token = context.next_token()
+        assert isinstance(value_token.value, int)
+        element_value = value_token.value
+        int_values.append(element_value)
+        _validate_initial_numeric_value_fits_type(
+            holder_t,
+            element_value,
+            value_token,
+        )
+        if context.peek_token().type == TokenType.RBRACKET:
+            _ = context.next_token()
+            break
+
+        if context.peek_token().type == TokenType.SEMICOLON:
+            context.advance_token()
+            context.expect_token(TokenType.INTEGER)
+            default_filler_tok = context.next_token()
+            default_filler = default_filler_tok.value
+            assert isinstance(default_filler, int)
+            if context.peek_token().type == TokenType.RBRACKET:
+                _ = context.next_token()
+                # TODO: proper error
+                break
+            break
+
+        context.expect_token(TokenType.COMMA)
+        _ = context.next_token()
+
+    return (int_values, default_filler)

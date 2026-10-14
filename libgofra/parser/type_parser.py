@@ -69,7 +69,12 @@ def parse_concrete_type_from_tokenizer(
         raise UnknownPrimitiveTypeError(t.text, t.location)
 
     if context.peek_token().type == TokenType.LBRACKET:
-        return _parse_array_type(context, base=aggregated_type)
+        aggregated_type = _parse_array_suffixes(
+            context,
+            base=aggregated_type,
+            generic_params=None,
+        )
+        assert isinstance(aggregated_type, ArrayType)
 
     return aggregated_type
 
@@ -84,34 +89,76 @@ def _parse_pointer_type(context: ParserScope) -> PointerType:
     return PointerType(points_to=inner_type)
 
 
-def _parse_array_type(context: ParserScope, base: Type) -> ArrayType:
-    assert context.peek_token().type == TokenType.LBRACKET
+def _parse_array_suffixes(
+    context: ParserScope,
+    base: Type | GenericParametrizedType,
+    *,
+    generic_params: Mapping[str, Token] | None = None,
+) -> Type | GenericParametrizedType:
+    """Parse `[N][M]...` suffixes after a base type.
 
-    dimensions = []
+    C-style nesting:  int[3][4]  →  Array(Array(int, 4), 3)
+    Supports unsized `[]` (elements_count = 0).
+    Supports generic value params: `[N]` when N is in `generic_params`.
+    """
+    dimensions: list[int | GenericParameter] = []
 
     while context.peek_token().type == TokenType.LBRACKET:
-        context.advance_token()
-        dimensions.append(_parse_array_size_qualifier(context))
+        context.advance_token()  # consume [
+        dimensions.append(
+            _parse_array_size_qualifier(context, generic_params=generic_params),
+        )
 
     for dim in reversed(dimensions):
-        base = ArrayType(element_type=base, elements_count=dim)
+        if isinstance(dim, GenericParameter):
+            base = GenericArrayType(element_type=base, element_count=dim)
+        else:
+            assert isinstance(base, Type)
+            base = ArrayType(element_type=base, elements_count=dim)
 
-    assert isinstance(base, ArrayType)
     return base
 
 
-def _parse_array_size_qualifier(context: ParserScope) -> int:
+def _parse_array_size_qualifier(
+    context: ParserScope,
+    *,
+    generic_params: Mapping[str, Token] | None = None,
+) -> int | GenericParameter:
+    """Parse one `[N]`, `[]`, or `[T]` (generic value param).
+
+    Returns int for concrete size (0 = unsized), or GenericParameter for `[T]`.
+    """
     token = context.next_token()
 
     if token.type == TokenType.RBRACKET:
-        return 0
+        return 0  # unsized: int[]
+
     if token.type == TokenType.INTEGER:
         assert isinstance(token.value, int)
         size = token.value
         context.expect_token(TokenType.RBRACKET)
         _ = context.next_token()
         return size
-    msg = f"Expected RBRACKET or INTEGER in array size, got {token.type.name} at {token.location}"
+
+    if token.type == TokenType.IDENTIFIER:
+        name = token.text
+        if generic_params is None or name not in generic_params:
+            msg = (
+                f"Identifier '{name}' in array size is not a generic type param "
+                f"at {token.location}"
+            )
+            raise ValueError(msg)
+        context.expect_token(TokenType.RBRACKET)
+        _ = context.next_token()
+        return GenericParameter(
+            name=name,
+            kind=GenericParameter.Kind.VALUE_PARAM,
+        )
+
+    msg = (
+        f"Expected RBRACKET, INTEGER, or generic param identifier "
+        f"in array size, got {token.type.name} at {token.location}"
+    )
     raise ValueError(msg)
 
 
@@ -270,7 +317,7 @@ def parse_function_type_parameters(
     return parameters
 
 
-def parse_generic_type_alias_from_tokenizer(  # noqa: PLR0911
+def parse_generic_type_alias_from_tokenizer(
     context: ParserScope,
     *,
     generic_type_params: Mapping[str, Token],
@@ -341,42 +388,10 @@ def parse_generic_type_alias_from_tokenizer(  # noqa: PLR0911
         raise UnknownPrimitiveTypeError(typename, token.location)
 
     if context.peek_token().type == TokenType.LBRACKET:
-        _ = context.next_token()  # Consume LBRACKET
-
-        elements = 0
-        elements_or_rbracket = context.next_token()
-
-        if elements_or_rbracket.type == TokenType.INTEGER:
-            assert isinstance(elements_or_rbracket.value, int)
-            elements = elements_or_rbracket.value
-            rbracket = context.next_token()
-            if rbracket.type != TokenType.RBRACKET:
-                msg = f"Expected RBRACKET after array type elements qualifier but got {rbracket.type.name} at {rbracket.location}"
-                raise ValueError(msg)
-        elif elements_or_rbracket.type == TokenType.IDENTIFIER:
-            identifier = elements_or_rbracket.text
-            if identifier not in generic_type_params:
-                msg = f"Expected identifier '{identifier}' at {elements_or_rbracket.location} to be an part of generic type params!"
-                raise ValueError(msg)
-            rbracket = context.next_token()
-            if rbracket.type != TokenType.RBRACKET:
-                msg = f"Expected RBRACKET after array type elements qualifier but got {rbracket.type.name} at {rbracket.location}"
-                raise ValueError(msg)
-            return GenericArrayType(
-                element_type=base_t,
-                element_count=GenericParameter(
-                    name=identifier,
-                    kind=GenericParameter.Kind.VALUE_PARAM,
-                ),
-            )
-        elif elements_or_rbracket.type != TokenType.RBRACKET:
-            msg = f"Expected RBRACKET after array type empty qualifier but got {elements_or_rbracket.type.name}"
-            raise ValueError(msg)
-        if isinstance(base_t, GenericParametrizedType):
-            return GenericArrayType(element_type=base_t, element_count=elements)
-        return ArrayType(
-            element_type=base_t,
-            elements_count=elements,
+        base_t = _parse_array_suffixes(
+            context,
+            base_t,
+            generic_params=generic_type_params,
         )
 
     return base_t

@@ -1,0 +1,22 @@
+#include "std"
+#include "std/string_builder.gof"
+
+#define TESTKIT_EXPECTED_STDOUT "Hello!\nThis is my big poem!\nBla-bla-bla\nBla-bla-bla\nBla-bla-bla\n"
+
+pub func void main[]
+    var sb *StringBuilder
+    var sv_out string;
+
+    &sb call sb_new !<
+
+    sb "Hello!\n" sb_append drop
+    sb "This is my big poem!\n" sb_append drop
+    sb "Bla-bla-bla\n" sb_append drop
+    sb "Bla-bla-bla\n" sb_append drop
+    sb "Bla-bla-bla\n" sb_append drop
+
+    sb &sv_out sb_to_string
+    
+    &sv_out print
+end
+
