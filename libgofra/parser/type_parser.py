@@ -36,30 +36,13 @@ def parse_concrete_type_from_tokenizer(
     For concrete types only substitution (e.g application) of generic is allowed.
     Cannot define another generic type.
     """
-    if context.peek_token().type == TokenType.STAR:
-        _ = context.next_token()  # Consume
-        return PointerType(
-            points_to=parse_concrete_type_from_tokenizer(
-                context,
-                allow_inferring_variable_types=False,
-            ),
-        )
+    pt = context.peek_token()
+    if pt.type == TokenType.STAR:
+        return _parse_pointer_type(context)
 
-    if (
-        context.peek_token().type == TokenType.KEYWORD
-        and context.peek_token().value == Keyword.FUNCTION
-    ):
-        _token = context.next_token()
-        _, function_params, function_return_type = consume_concrete_function_signature(
-            context,
-            token=_token,
-        )
+    if pt.type == TokenType.KEYWORD and pt.value == Keyword.FUNCTION:
+        return _parse_function_type(context)
 
-        function_param_types = [p.type for p in function_params]
-        return FunctionType(
-            return_type=function_return_type,
-            parameter_types=function_param_types,
-        )
     context.expect_token(TokenType.IDENTIFIER)
     t = context.next_token()
 
@@ -86,29 +69,64 @@ def parse_concrete_type_from_tokenizer(
         raise UnknownPrimitiveTypeError(t.text, t.location)
 
     if context.peek_token().type == TokenType.LBRACKET:
-        _ = context.next_token()  # Consume LBRACKET
-
-        elements = 0
-        elements_or_rbracket = context.next_token()
-
-        if elements_or_rbracket.type == TokenType.INTEGER:
-            assert isinstance(elements_or_rbracket.value, int)
-            elements = elements_or_rbracket.value
-
-            rbracket = context.next_token()
-            if rbracket.type != TokenType.RBRACKET:
-                msg = f"Expected RBRACKET after array type elements qualifier but got {rbracket.type.name} at {rbracket.location}"
-                raise ValueError(msg)
-        elif elements_or_rbracket.type != TokenType.RBRACKET:
-            msg = f"Expected RBRACKET after array type empty qualifier but got {elements_or_rbracket.type.name} at {elements_or_rbracket.location}"
-            raise ValueError(msg)
-
-        aggregated_type = ArrayType(
-            element_type=aggregated_type,
-            elements_count=elements,
-        )
+        return _parse_array_type(context, base=aggregated_type)
 
     return aggregated_type
+
+
+def _parse_pointer_type(context: ParserScope) -> PointerType:
+    assert context.peek_token().type == TokenType.STAR  # Must be an pointer
+    context.advance_token()
+    inner_type = parse_concrete_type_from_tokenizer(
+        context,
+        allow_inferring_variable_types=False,
+    )
+    return PointerType(points_to=inner_type)
+
+
+def _parse_array_type(context: ParserScope, base: Type) -> ArrayType:
+    assert context.peek_token().type == TokenType.LBRACKET
+
+    dimensions = []
+
+    while context.peek_token().type == TokenType.LBRACKET:
+        context.advance_token()
+        dimensions.append(_parse_array_size_qualifier(context))
+
+    for dim in reversed(dimensions):
+        base = ArrayType(element_type=base, elements_count=dim)
+
+    assert isinstance(base, ArrayType)
+    return base
+
+
+def _parse_array_size_qualifier(context: ParserScope) -> int:
+    token = context.next_token()
+
+    if token.type == TokenType.RBRACKET:
+        return 0
+    if token.type == TokenType.INTEGER:
+        assert isinstance(token.value, int)
+        size = token.value
+        context.expect_token(TokenType.RBRACKET)
+        _ = context.next_token()
+        return size
+    msg = f"Expected RBRACKET or INTEGER in array size, got {token.type.name} at {token.location}"
+    raise ValueError(msg)
+
+
+def _parse_function_type(context: ParserScope) -> FunctionType:
+    assert context.peek_token().type == TokenType.KEYWORD
+    assert context.peek_token().value == Keyword.FUNCTION
+    _, function_params, function_return_type = consume_concrete_function_signature(
+        context,
+        token=context.next_token(),
+    )
+
+    return FunctionType(
+        return_type=function_return_type,
+        parameter_types=[p.type for p in function_params],
+    )
 
 
 def consume_concrete_function_signature(
