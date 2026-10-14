@@ -62,7 +62,6 @@ class BuildArguments:
 
     target: Target
 
-    skip_typecheck: bool
     display_lint_warnings: bool
 
     build_cache_dir: Path
@@ -100,7 +99,6 @@ class BuildArguments:
             output_format=DriverOutputFormat(self.output_format),
             executable_entry_point=self.executable_entry_point,
             runtime_array_oob_checks=self.runtime_array_oob_checks,
-            skip_typecheck=self.skip_typecheck,
             display_lint_warnings=self.display_lint_warnings,
             optimizer=self.optimizer,
             codegen_config=self.codegen_config,

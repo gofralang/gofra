@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import NoReturn
 
-from gofra.cache.directory import cleanup_build_cache_directory
+from libgofra.driver.cache.directory import cleanup_build_cache_directory
 
 # TODO(@kirillzhosul): --dry-run
 # TODO(@kirillzhosul): --verbose

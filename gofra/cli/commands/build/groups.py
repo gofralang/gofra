@@ -72,14 +72,6 @@ def add_additional_group(parser: ArgumentParser) -> None:
         help="If passed, will enable injecting Out-Of-Bounds (OOB) checks into runtime when accessing arrays(!), WIP feature that must be treated as feature flag",
     )
 
-    group.add_argument(
-        "--skip-typecheck",
-        "-nt",
-        action="store_true",
-        required=False,
-        help="If passed, will disable type safety checking. Strictly not recommended!",
-    )
-
 
 def add_toolchain_debug_group(parser: ArgumentParser) -> None:
     """Construct and inject argument group with internal toolchain debug options into given parser."""

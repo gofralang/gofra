@@ -12,7 +12,7 @@ from gofra.cli.driver_diag import CliDiagnosticConsumer
 from gofra.cli.errors.error_handler import cli_gofra_error_handler
 from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.output import cli_fatal_abort, cli_message
-from gofra.execution.execution import execute_native_binary_executable
+from gofra.execution import execute_native_binary_executable
 from libgofra.targets.infer_host import get_host_compliance
 
 

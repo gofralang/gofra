@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, NoReturn
 from gofra.cli.commands.build.arguments import BuildOutputFormat
 from gofra.cli.driver_diag import CliDiagnosticConsumer
 from gofra.cli.output import cli_message
-from gofra.execution.permissions import apply_file_executable_permissions
 from libgofra.driver.artifact import (
     Artifact,
     AssemblyArtifact,
@@ -16,6 +15,7 @@ from libgofra.driver.artifact import (
 )
 from libgofra.driver.cache.directory import prepare_build_cache_directory
 from libgofra.driver.driver import Driver
+from libgofra.driver.permissions import apply_file_executable_permissions
 
 if TYPE_CHECKING:
     from pathlib import Path

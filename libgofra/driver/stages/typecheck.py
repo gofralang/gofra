@@ -10,9 +10,6 @@ def driver_run_typecheck_stage(
     frontend: FrontendArtifact,
     diag: DiagnosticConsumer,
 ) -> FrontendArtifact:
-    if request.skip_typecheck:
-        return frontend
-
     on_lint_waring = (
         diag.warning if request.display_lint_warnings else on_lint_warning_suppressed
     )

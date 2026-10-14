@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from libgofra.import_path_resolver import try_resolve_and_find_real_include_path
+from libgofra.frontend.import_path_resolver import (
+    try_resolve_and_find_real_include_path,
+)
 from libgofra.lexer.io import open_source_file_line_stream
 from libgofra.lexer.keywords import PreprocessorKeyword
 from libgofra.lexer.lexer import tokenize_from_raw

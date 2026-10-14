@@ -5,10 +5,10 @@ from gofra.cli.output import cli_message
 from libgofra.driver.artifact import FrontendArtifact
 from libgofra.driver.diagnostics import DiagnosticConsumer
 from libgofra.driver.request import CompilationRequest
-from libgofra.hir.module import Module
-from libgofra.import_path_resolver import (
+from libgofra.frontend.import_path_resolver import (
     try_resolve_and_find_real_include_path,
 )
+from libgofra.hir.module import Module
 from libgofra.lexer import tokenize_from_raw
 from libgofra.lexer.io import open_source_file_line_stream
 from libgofra.lexer.tokens import Token

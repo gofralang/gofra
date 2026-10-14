@@ -109,6 +109,10 @@ class Module:
         return flatten
 
     @property
+    def dependencies_count(self) -> int:
+        return len(self.flatten_dependencies_paths(include_self=False))
+
+    @property
     def executable_functions(self) -> filter[Function]:
         return filter(
             lambda f: not f.attrs.external and not f.attrs.inline,

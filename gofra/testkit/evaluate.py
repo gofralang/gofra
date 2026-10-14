@@ -4,8 +4,7 @@ from subprocess import PIPE, CalledProcessError, TimeoutExpired
 
 from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.output import cli_linter_warning, cli_message
-from gofra.execution.execution import execute_native_binary_executable
-from gofra.execution.permissions import apply_file_executable_permissions
+from gofra.execution import execute_native_binary_executable
 from gofra.testkit.errors import (
     TestkitExpectedExitCodeMustBeIntError,
     TestkitInternalAssemblerError,
@@ -15,6 +14,7 @@ from libgofra.assembler.assembler import (
     assemble_object_file,
 )
 from libgofra.codegen.generator import generate_code_for_assembler
+from libgofra.driver.permissions import apply_file_executable_permissions
 from libgofra.driver.stages.frontend import load_module_graph
 from libgofra.exceptions import GofraError
 from libgofra.hir.module import Module

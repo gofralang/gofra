@@ -47,7 +47,6 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
         # Rest of these are mostly goal-specific
         delete_build_cache=bool(args.delete_cache),
         debug_symbols=bool(args.debug_symbols),
-        skip_typecheck=bool(args.skip_typecheck),
         verbose=bool(args.verbose),
         show_commands=bool(args.show_commands),
         source_filepath=source_filepath,

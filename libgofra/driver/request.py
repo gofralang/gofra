@@ -54,7 +54,6 @@ class CompilationRequest:
     executable_entry_point: str
     runtime_array_oob_checks: bool
 
-    skip_typecheck: bool
     display_lint_warnings: bool
 
     optimizer: OptimizerConfig
