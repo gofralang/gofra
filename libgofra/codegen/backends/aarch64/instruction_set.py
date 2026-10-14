@@ -35,6 +35,8 @@ from libgofra.hir.function import Function
 from libgofra.hir.module import Module
 from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
 from libgofra.hir.variable import VariableStorageClass
+from libgofra.types import PointerType
+from libgofra.types.comparison import is_primitive_type
 from libgofra.types.composite.function import FunctionType
 
 if TYPE_CHECKING:
@@ -224,15 +226,25 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
                 injected_args=None,
             )
         case OperatorType.MEMORY_VARIABLE_READ:
-            load_memory_from_stack_arguments(writer)
+            assert operator.tc_meta
+            assert operator.tc_meta.size_in_bytes <= 8, operator.token.location
+
+            store_size = operator.tc_meta.size_in_bytes
+            load_memory_from_stack_arguments(writer, size_in_bytes=store_size)
         case OperatorType.MEMORY_VARIABLE_WRITE:
-            store_into_memory_from_stack_arguments(writer)
+            assert operator.tc_meta
+            assert operator.tc_meta.size_in_bytes <= 8, operator.token.location
+
+            store_size = operator.tc_meta.size_in_bytes
+            store_into_memory_from_stack_arguments(writer, size_in_bytes=store_size)
         case OperatorType.PUSH_VARIABLE_VALUE:
             assert isinstance(operator.operand, str)
+            assert operator.tc_meta
 
             # TODO(@kirillzhosul): This was merged from two operations - must be refactored (and also optimized)
             _push_variable_address(writer, owner_function, operator.operand)
-            load_memory_from_stack_arguments(writer)
+            load_size = operator.tc_meta.size_in_bytes
+            load_memory_from_stack_arguments(writer, size_in_bytes=load_size)
         case OperatorType.LOAD_PARAM_ARGUMENT:
             assert isinstance(operator.operand, str)
 
@@ -247,7 +259,15 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             push_register_onto_stack(writer, "X0")
             push_register_onto_stack(writer, "X1")
 
-            store_into_memory_from_stack_arguments(writer)
+            # TODO: must use tc meta
+            assert is_primitive_type(param_ref.type) or isinstance(
+                param_ref.type,
+                PointerType | FunctionType,
+            ), param_ref.type
+            store_into_memory_from_stack_arguments(
+                writer,
+                size_in_bytes=param_ref.type.size_in_bytes,
+            )
 
         case OperatorType.DEBUGGER_BREAKPOINT:
             place_software_trap(

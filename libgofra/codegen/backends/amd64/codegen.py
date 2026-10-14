@@ -235,6 +235,8 @@ def amd64_operator_instructions(
                 injected_args=[],
             )
         case OperatorType.MEMORY_VARIABLE_READ:
+            assert operator.tc_meta
+            assert operator.tc_meta.size_in_bytes == 8
             load_memory_from_stack_arguments(context)
         case OperatorType.PUSH_VARIABLE_VALUE:
             assert isinstance(operator.operand, str)
@@ -249,6 +251,9 @@ def amd64_operator_instructions(
             push_register_onto_stack(context, "rbx")
             store_into_memory_from_stack_arguments(context)
         case OperatorType.MEMORY_VARIABLE_WRITE:
+            assert operator.tc_meta
+            assert operator.tc_meta.size_in_bytes == 8
+
             store_into_memory_from_stack_arguments(context)
         case OperatorType.DEBUGGER_BREAKPOINT:
             context.write("int3")
@@ -275,6 +280,8 @@ def amd64_operator_instructions(
         case OperatorType.PUSH_FUNCTION_POINTER:
             raise NotImplementedError(operator)
         case OperatorType.FUNCTION_CALL_FROM_STACK_POINTER:
+            raise NotImplementedError(operator)
+        case OperatorType.CONDITIONAL_ELSE:
             raise NotImplementedError(operator)
         case _:
             assert_never(operator.type)

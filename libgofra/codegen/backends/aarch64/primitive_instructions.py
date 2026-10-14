@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Literal, cast
 
+from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 
 from .registers import (
@@ -125,17 +126,50 @@ def push_integer_onto_stack(
     push_register_onto_stack(writer, register="X0")
 
 
-def load_memory_from_stack_arguments(writer: WriterProtocol) -> None:
+def load_memory_from_stack_arguments(
+    writer: WriterProtocol,
+    *,
+    size_in_bytes: int,
+) -> None:
     """Load memory as value using arguments from stack."""
     pop_cells_from_stack_into_registers(writer, "X0")
-    writer.instruction("ldr X0, [X0]")
+
+    match size_in_bytes:
+        case 1:
+            writer.instruction("ldrb W0, [X0]")
+        case 2:
+            writer.instruction("ldrh W0, [X0]")
+        case 4:
+            writer.instruction("ldr W0, [X0]")
+        case 8:
+            writer.instruction("ldr X0, [X0]")
+        case _:
+            msg = f"Unsupported load size: {size_in_bytes} bytes"
+            raise GofraError(msg)
+
     push_register_onto_stack(writer, "X0")
 
 
-def store_into_memory_from_stack_arguments(writer: WriterProtocol) -> None:
+def store_into_memory_from_stack_arguments(
+    writer: WriterProtocol,
+    *,
+    size_in_bytes: int,
+) -> None:
     """Store value into memory pointer, pointer and value acquired from stack."""
     pop_cells_from_stack_into_registers(writer, "X0", "X1")
-    writer.instruction("str X0, [X1]")
+
+    match size_in_bytes:
+        case 1:
+            writer.instruction("strb W0, [X1]")
+        case 2:
+            writer.instruction("strh W0, [X1]")
+        case 4:
+            writer.instruction("str W0, [X1]")
+        case 8:
+            writer.instruction("str X0, [X1]")
+        case _:
+            msg = f"Unsupported store size: {size_in_bytes} bytes"
+            raise GofraError(msg)
 
 
 def perform_operation_onto_stack(

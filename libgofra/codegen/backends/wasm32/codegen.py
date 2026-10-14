@@ -635,13 +635,17 @@ class WASM32CodegenBackend:
                 yield I64ConstNode(offset)
                 yield CommentNode("symtable offset string")
             case OperatorType.MEMORY_VARIABLE_READ:
-                load_type = I64Type()
+                assert op.tc_meta
+                load_type = op.tc_meta
                 load_wasm_type = wasm_type_from_primitive(load_type)
 
                 yield InstructionNode("i32.wrap_i64")
                 yield InstructionNode(f"{load_wasm_type}.load")
             case OperatorType.MEMORY_VARIABLE_WRITE:
                 self.requested_inlined_intrinsics.add("swap")
+                assert op.tc_meta
+                assert op.tc_meta.size_in_bytes == 8
+                assert isinstance(op.tc_meta, I64Type)
 
                 self.requested_inlined_intrinsics.add("swap_i64i32")
                 yield InstructionCallNode("swap")
@@ -687,6 +691,8 @@ class WASM32CodegenBackend:
             case OperatorType.PUSH_FUNCTION_POINTER:
                 raise NotImplementedError(op)
             case OperatorType.FUNCTION_CALL_FROM_STACK_POINTER:
+                raise NotImplementedError(op)
+            case OperatorType.CONDITIONAL_ELSE:
                 raise NotImplementedError(op)
             case _:
                 assert_never(op.type)

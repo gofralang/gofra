@@ -34,10 +34,11 @@ class DWARFAttribute(IntEnum):
     DW_AT_compilation_directory = 27 # Compilation directory
     DW_AT_const_value           = 28 # Constant value                (TODO)
     DW_AT_producer              = 37 # Producer (compiler)         
-    DW_AT_declaration_file       = 58 # Index of file where defined
+    DW_AT_declaration_file      = 58 # Index of file where defined
     DW_AT_declaration_line      = 59 # Line where defined
     DW_AT_encoding              = 62 # Encoding type in memory
     DW_AT_external              = 63 # Is it visible externally
+    DW_AT_frame_base            = 64 # Frame base 
     DW_AT_type                  = 73
 
 
