@@ -1,9 +1,11 @@
 from typing import TYPE_CHECKING
 
+from libgofra.exceptions import GofraError
 from libgofra.hir.initializer import (
     T_AnyVariableInitializer,
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
+    VariableIntSliceInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
 )
@@ -16,6 +18,7 @@ from libgofra.parser.variable_type_inference import infer_type_from_initializer
 from libgofra.types._base import Type
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
+from libgofra.types.composite.slice import SliceType
 from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.boolean import BoolType
@@ -26,7 +29,7 @@ if TYPE_CHECKING:
     from collections.abc import MutableMapping
 
 
-def consume_variable_initializer(
+def consume_variable_initializer(  # noqa: PLR0911
     context: ParserScope,
     var_t: Type | None,
     varname_token: Token,
@@ -61,33 +64,18 @@ def consume_variable_initializer(
                 msg = f"Default value for boolean must be in two states: 0 or 1, but got {initial_value} as initial value at {value_token.location}"
                 raise ValueError(msg)
             return initial_value, var_t
-        case ArrayType() if isinstance(var_t.flatten().element_type, I64Type):
-            context.expect_token(TokenType.LBRACKET)
-            context.next_token()
-
-            flat = var_t.flatten()
-
-            assert isinstance(flat.element_type, I64Type)
-            int_values, default_filler = _consume_int_array_initializer_spec(
+        case SliceType():
+            array_initializer, _ = _consume_int_array_initializer(
                 context,
-                holder_t=flat.element_type,
+                var_t.as_raw_array(),
+                varname_token,
             )
+            return VariableIntSliceInitializerValue(
+                data_initializer=array_initializer,
+            ), var_t
+        case ArrayType() if isinstance(var_t.flatten().element_type, I64Type):
+            return _consume_int_array_initializer(context, var_t, varname_token)
 
-            # TODO(@kirillzhosul): General semantic problem? t[0] means unfinished array definition and allows this to pass
-            # TODO: traverse for type system? maybe not needed
-            if var_t.elements_count == 0:
-                var_t.elements_count = len(int_values)
-                flat.elements_count = var_t.elements_count
-
-            if len(int_values) > flat.elements_count:
-                msg = f"Array initializer got {len(int_values)} elements at {varname_token.location}, but array size is {flat} (flattened from {var_t}) which overflows array!"
-                raise ValueError(msg)
-
-            # This allows not all array to be initialized and its ok
-            return VariableIntArrayInitializerValue(
-                default=default_filler,
-                values=int_values,
-            ), var_t  # TODO: Must be flat ?
         case ArrayType(element_type=PointerType(points_to=StringType())):
             # TODO(@kirillzhosul): Must be refactor in general array initializer logic
             context.expect_token(TokenType.LBRACKET)
@@ -134,6 +122,39 @@ def consume_variable_initializer(
             )
 
 
+def _consume_int_array_initializer(
+    context: ParserScope,
+    var_t: ArrayType,
+    varname_token: Token,
+) -> tuple[VariableIntArrayInitializerValue, Type]:
+    context.expect_token(TokenType.LBRACKET)
+    context.next_token()
+
+    flat = var_t.flatten()
+
+    assert isinstance(flat.element_type, I64Type)
+    int_values, default_filler = _consume_int_array_initializer_spec(
+        context,
+        holder_t=flat.element_type,
+    )
+
+    # TODO(@kirillzhosul): General semantic problem? t[0] means unfinished array definition and allows this to pass
+    # TODO: traverse for type system? maybe not needed
+    if var_t.elements_count == 0:
+        var_t.elements_count = len(int_values)
+        flat.elements_count = var_t.elements_count
+
+    if len(int_values) > flat.elements_count:
+        msg = f"Array initializer got {len(int_values)} elements at {varname_token.location}, but array size is {flat} (flattened from {var_t}) which overflows array!"
+        raise ValueError(msg)
+
+    # This allows not all array to be initialized and its ok
+    return VariableIntArrayInitializerValue(
+        default=default_filler,
+        values=int_values,
+    ), var_t  # TODO: Must be flat ?
+
+
 def _consume_string_literal_initializer(
     t: PointerType | StringType,
     context: ParserScope,
@@ -162,7 +183,9 @@ def _consume_structure_initializer(
     context: ParserScope,
     varname_token: Token,
 ) -> VariableIntFieldedStructureInitializerValue:
-    context.expect_token(TokenType.LCURLY)
+    if context.peek_token().type != TokenType.LCURLY:
+        msg = f"Expected LCURLY for structure initializer but got {context.peek_token().type.name} at {varname_token.location}"
+        raise GofraError(msg)
     context.advance_token()
 
     # TODO(@kirillzhosul): Same as other similar blocks - requires whitespace by lexer ERROR

@@ -4,11 +4,11 @@ They may break existing code or be buggy, so they are separate into flags
 You can enable them to try or to develop.
 """
 
-# Allow to use float-values
-# FULLY UNSTABLE and has too few features
-# Merge plan: Full FP support like integers
+# Will allow `float` types?
 FEATURE_ALLOW_FPU = False
 
-# Will be `import` allowed?
-# Merge plan: Finish implementation, close caveats, remove preprocessor direct include? (with exchange)
+# Will allow `import` statement?
 FEATURE_ALLOW_MODULES = False
+
+# Will allow `[]T` syntax?
+FEATURE_ALLOW_SLICES = False

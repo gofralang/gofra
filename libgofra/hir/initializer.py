@@ -14,6 +14,11 @@ class VariableIntArrayInitializerValue:
 
 
 @dataclass(frozen=True, slots=True)
+class VariableIntSliceInitializerValue:
+    data_initializer: VariableIntArrayInitializerValue
+
+
+@dataclass(frozen=True, slots=True)
 class VariableStringPtrArrayInitializerValue:
     """HIR value parsed from initializer for *string array.
 
@@ -47,4 +52,5 @@ type T_AnyVariableInitializer = (
     | VariableStringPtrInitializerValue
     | VariableStringPtrArrayInitializerValue
     | VariableIntFieldedStructureInitializerValue
+    | VariableIntSliceInitializerValue
 )

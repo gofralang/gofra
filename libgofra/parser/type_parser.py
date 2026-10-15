@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from libgofra.feature_flags import FEATURE_ALLOW_SLICES
 from libgofra.hir.function import FunctionParameter
 from libgofra.lexer.keywords import Keyword
 from libgofra.lexer.tokens import Token, TokenType
@@ -12,6 +13,7 @@ from libgofra.types import Type
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.function import FunctionType
 from libgofra.types.composite.pointer import PointerType
+from libgofra.types.composite.slice import SliceType
 from libgofra.types.generics import (
     GenericArrayType,
     GenericFunctionType,
@@ -42,6 +44,12 @@ def parse_concrete_type_from_tokenizer(
 
     if pt.type == TokenType.KEYWORD and pt.value == Keyword.FUNCTION:
         return _parse_function_type(context)
+
+    if pt.type == TokenType.LBRACKET:
+        return _parse_slice_type(
+            context,
+            allow_inferring_variable_types=allow_inferring_variable_types,
+        )
 
     context.expect_token(TokenType.IDENTIFIER)
     t = context.next_token()
@@ -87,6 +95,27 @@ def _parse_pointer_type(context: ParserScope) -> PointerType:
         allow_inferring_variable_types=False,
     )
     return PointerType(points_to=inner_type)
+
+
+def _parse_slice_type(
+    context: ParserScope,
+    *,
+    allow_inferring_variable_types: bool = False,
+) -> SliceType:
+    """Parse `[]T`."""
+    if not FEATURE_ALLOW_SLICES:
+        msg = "Slices feature is not enabled, currently being work-in-progress"
+        raise ValueError(msg)
+    context.expect_token(TokenType.LBRACKET)
+    context.advance_token()  # consume [
+    context.expect_token(TokenType.RBRACKET)
+    context.advance_token()  # consume ]
+
+    element_type = parse_concrete_type_from_tokenizer(
+        context,
+        allow_inferring_variable_types=allow_inferring_variable_types,
+    )
+    return SliceType(element_type=element_type)
 
 
 def _parse_array_suffixes(

@@ -1,17 +1,19 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.hir.initializer import (
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
+    VariableIntSliceInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
 )
 from libgofra.types._base import PrimitiveType
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
+from libgofra.types.composite.slice import SliceType
 from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.character import CharType
@@ -90,29 +92,14 @@ def _write_static_segment_variable_initializer(
             ddd = _get_ddd_for_type(I64Type())
 
             flat = variable.type.flatten()
-            init = variable.initial_value
-            f_values = ", ".join(map(str, init.values))
-
-            writer.label(symbol_name)
-            writer.sym_sect_directive(ddd, f_values)
-            # Zero initialized symbol
-            element_size = flat.element_type.size_in_bytes
-            empty_cells = flat.elements_count - len(init.values)
-            if not empty_cells:
-                return
-            if init.default == 0:
-                bytes_total = flat.size_in_bytes
-                bytes_taken = len(init.values) * element_size
-                bytes_free = bytes_total - bytes_taken
-                writer.sym_sect_directive("zero", bytes_free)
-
-            else:
-                fill_with = init.default
-                cell_size = I64Type().size_in_bytes
-                writer.sym_sect_directive("fill", empty_cells, cell_size, fill_with)
-
-                writer.comment_eol(f"Filler ({fill_with})")
-
+            assert isinstance(flat.element_type, PrimitiveType)
+            _write_static_array_initializer(
+                writer,
+                symbol_name,
+                init=variable.initial_value,
+                total_count=flat.elements_count,
+                element_type=flat.element_type,
+            )
         case ArrayType(element_type=PointerType(points_to=StringType())):
             assert isinstance(
                 variable.initial_value,
@@ -129,6 +116,22 @@ def _write_static_segment_variable_initializer(
             string_raw = variable.initial_value.string
             writer.label(symbol_name)
             writer.sym_sect_directive("quad", string_pool.add(string_raw))
+        case SliceType():
+            assert isinstance(variable.initial_value, VariableIntSliceInitializerValue)
+
+            init = variable.initial_value.data_initializer
+            data_label = f"{symbol_name}$data"
+            _write_static_array_initializer(
+                writer,
+                data_label,
+                init=init,
+                total_count=len(init.values),
+                element_type=cast("PrimitiveType", variable.type.element_type),
+            )
+
+            writer.label(symbol_name)
+            writer.sym_sect_directive("quad", data_label)
+            writer.sym_sect_directive("quad", len(init.values))
         case StructureType():
             assert isinstance(
                 variable.initial_value,
@@ -143,6 +146,37 @@ def _write_static_segment_variable_initializer(
         case _:
             msg = f"Has no known static initializer codegen logic for type {variable.type}"
             raise ValueError(msg)
+
+
+def _write_static_array_initializer(
+    writer: WriterProtocol,
+    symbol_name: str,
+    init: VariableIntArrayInitializerValue,
+    total_count: int,
+    element_type: PrimitiveType,
+) -> None:
+    ddd = _get_ddd_for_type(I64Type())
+
+    f_values = ", ".join(map(str, init.values))
+
+    writer.label(symbol_name)
+    writer.sym_sect_directive(ddd, f_values)
+    # Zero initialized symbol
+    empty_cells = total_count - len(init.values)
+    if not empty_cells:
+        return
+    if init.default == 0:
+        bytes_total = total_count * element_type.size_in_bytes
+        bytes_taken = len(init.values) * element_type.size_in_bytes
+        bytes_free = bytes_total - bytes_taken
+        writer.sym_sect_directive("zero", bytes_free)
+
+    else:
+        fill_with = init.default
+        cell_size = element_type.size_in_bytes
+        writer.sym_sect_directive("fill", empty_cells, cell_size, fill_with)
+
+        writer.comment_eol(f"Filler ({fill_with})")
 
 
 def _write_static_segment_structure_initializer(

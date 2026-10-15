@@ -21,6 +21,7 @@ from libgofra.parser.runtime_oob_check import emit_runtime_hir_oob_check
 from libgofra.types._base import Type
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
+from libgofra.types.composite.slice import SliceType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.composite.union import UnionType
 from libgofra.types.primitive.character import CharType
@@ -67,6 +68,8 @@ def _resolve_indexable_type(t: Type, token: Token) -> tuple[Type, int, int | Non
                 inner.element_type.size_in_bytes,
                 inner.elements_count,
             )
+        if isinstance(t, SliceType):
+            raise NotImplementedError
         # *T -> element T, stride sizeof(T), unsafe OOB
         return inner, inner.size_in_bytes, None
     if isinstance(t, ArrayType):
@@ -75,6 +78,13 @@ def _resolve_indexable_type(t: Type, token: Token) -> tuple[Type, int, int | Non
             t.element_type,
             t.element_type.size_in_bytes,
             t.elements_count,
+        )
+    if isinstance(t, SliceType):
+        # []T -> T, stride sizeof(T)
+        return (
+            t.element_type,
+            t.element_type.size_in_bytes,
+            None,
         )
 
     raise NotIndexableError(t, at=token.location)
@@ -111,6 +121,17 @@ def _lower_index_accessor_expr(
 
     if isinstance(bound_type, PointerType):
         # Dereference *T, such we will work against target type, not holder
+        context.push_new_operator(
+            type=OperatorType.MEMORY_VARIABLE_READ,
+            token=token,
+        )
+
+    if isinstance(bound_type, SliceType):
+        context.push_new_operator(
+            type=OperatorType.STRUCT_FIELD_OFFSET,
+            token=token,
+            operand=(bound_type, "data"),
+        )
         context.push_new_operator(
             type=OperatorType.MEMORY_VARIABLE_READ,
             token=token,
@@ -308,7 +329,7 @@ def try_push_variable_reference(context: ParserScope, token: Token) -> bool:
 
     bound_type = _lower_expr_into_offset_reference(context, token, expr)
     if bound_type.size_in_bytes > 8:
-        msg = f"Cannot load variable {variable.name} of type {variable.type} as it has size {variable.type.size_in_bytes} in bytes (stack-cell-overflow) at {token.location}"
+        msg = f"Cannot load expression result onto stack as it has type {bound_type} which size is {bound_type.size_in_bytes} in bytes (stack-cell-overflow) at {token.location}"
         raise ValueError(msg)
 
     return True
