@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from sys import argv
 
-from gofra.cli.commands import clean, run, version
+from gofra.cli.commands import clean, run, targets, version
 from gofra.cli.commands.build import command as build
 from gofra.executable import cli_get_executable_program, warn_on_improper_installation
 
@@ -27,6 +27,8 @@ def cli_entry_point() -> None:
             build.execute(build.parse_arguments(raw_args))
         case "run":
             run.execute(run.parse_arguments(raw_args))
+        case "targets":
+            targets.execute(targets.parse_arguments(raw_args))
         case _:
             cli_fatal_abort(f"Unknown command: {raw_args.command}")
 

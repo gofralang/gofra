@@ -13,6 +13,8 @@ type Triplet = Literal[
 class Target:
     """Specifications for target build host."""
 
+    status: Literal["stable", "experimental"]
+
     # Conventional triplet for that target for comparisons
     triplet: Triplet
 
@@ -41,6 +43,7 @@ class Target:
         match triplet:
             case "arm64-apple-darwin":
                 return Target(
+                    status="stable",
                     triplet=triplet,
                     vendor="apple",
                     architecture="ARM64",
@@ -56,6 +59,7 @@ class Target:
                 )
             case "amd64-unknown-windows":
                 return Target(
+                    status="experimental",
                     triplet=triplet,
                     vendor="unknown",
                     architecture="AMD64",
@@ -71,6 +75,7 @@ class Target:
                 )
             case "amd64-unknown-linux":
                 return Target(
+                    status="experimental",
                     triplet=triplet,
                     vendor="unknown",
                     architecture="AMD64",
@@ -86,6 +91,7 @@ class Target:
                 )
             case "wasm32-unknown-none":
                 return Target(
+                    status="experimental",
                     triplet=triplet,
                     vendor="unknown",
                     architecture="WASM32",
