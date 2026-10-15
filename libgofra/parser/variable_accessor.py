@@ -68,8 +68,13 @@ def _resolve_indexable_type(t: Type, token: Token) -> tuple[Type, int, int | Non
                 inner.element_type.size_in_bytes,
                 inner.elements_count,
             )
-        if isinstance(t, SliceType):
-            raise NotImplementedError
+        if isinstance(inner, SliceType):
+            # *T[N] -> T, stride sizeof(T)
+            return (
+                inner.element_type,
+                inner.element_type.size_in_bytes,
+                None,
+            )
         # *T -> element T, stride sizeof(T), unsafe OOB
         return inner, inner.size_in_bytes, None
     if isinstance(t, ArrayType):
@@ -125,6 +130,7 @@ def _lower_index_accessor_expr(
             type=OperatorType.MEMORY_VARIABLE_READ,
             token=token,
         )
+        bound_type = bound_type.points_to
 
     if isinstance(bound_type, SliceType):
         context.push_new_operator(

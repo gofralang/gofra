@@ -579,7 +579,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             if isinstance(revealed_type, ArrayType):
                 revealed_type = revealed_type.element_type
             if revealed_type.size_in_bytes not in (1, 2, 4, 8):
-                msg = f"Cannot load type of size {revealed_type.size_in_bytes} [{revealed_type} at {operator.location}"
+                msg = f"Cannot load type of size {revealed_type.size_in_bytes} {revealed_type} at {operator.location}"
                 raise TypeError(msg)
 
             operator.tc_meta = revealed_type
