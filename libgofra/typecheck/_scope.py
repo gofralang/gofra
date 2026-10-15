@@ -8,7 +8,8 @@ from libgofra.typecheck.errors import (
     ParameterTypeMismatchTypecheckError,
 )
 from libgofra.types.comparison import is_types_same
-from libgofra.types.composite.function import FunctionType
+from libgofra.types.composite.pointer import PointerType
+from libgofra.types.primitive.void import VoidType
 
 from .exceptions import (
     TypecheckInvalidOperatorArgumentTypeError,
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
     from libgofra.hir.function import Function
     from libgofra.hir.operator import Operator
     from libgofra.types import Type
+    from libgofra.types.composite.function import FunctionType
 
 
 @dataclass(frozen=False)
@@ -76,12 +78,7 @@ class TypecheckScope:
                 at=at.location,
             )
 
-        if isinstance(callee, FunctionType):
-            params_non_t = callee.parameters
-        else:
-            params_non_t = callee.parameter_types
-
-        for expected_type in params_non_t[::-1]:
+        for expected_type in callee.parameter_types[::-1]:
             argument_type = self.pop_type_from_stack()
 
             if is_types_same(
@@ -89,6 +86,15 @@ class TypecheckScope:
                 expected_type,
                 strategy="strict-same-type",
             ):
+                continue
+
+            if (
+                isinstance(argument_type, PointerType)
+                and isinstance(expected_type, PointerType)
+                and isinstance(expected_type.points_to, VoidType)
+            ):
+                # TODO: Make inside is_types_same
+                # TODO: does not emit unnecessary typecast warning
                 continue
 
             # TODO(@kirillzhosul): Called from `real_function` at `inlined_location` (bug)

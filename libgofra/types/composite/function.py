@@ -31,3 +31,7 @@ class FunctionType(CompositeType):
             parameter_types=f.parameter_types,
             return_type=f.return_type,
         )
+
+    @property
+    def parameter_types(self) -> Sequence[Type]:
+        return self.parameters
