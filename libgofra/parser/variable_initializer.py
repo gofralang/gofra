@@ -40,7 +40,7 @@ def consume_variable_initializer(  # noqa: PLR0911
     match var_t:
         case PointerType(points_to=StringType()) | StringType():
             return _consume_string_literal_initializer(var_t, context), var_t
-        case I64Type() | CharType():
+        case IntegerType() | CharType():
             value_token = context.next_token()
             if value_token.type not in (TokenType.INTEGER, TokenType.CHARACTER):
                 msg = f"Expected INTEGER or CHARACTER for initializer (type {var_t}), but got {value_token.type.name} at {value_token.location}"
