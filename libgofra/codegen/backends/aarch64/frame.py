@@ -11,8 +11,6 @@ from libgofra.types._base import Type
 # Size of frame head (FP, LR registers)
 FRAME_HEAD_SIZE = 8 * 2
 
-STORE_PAIR_MAX_RANGE = 8 * 64 - 8
-
 
 def preserve_callee_frame(
     writer: WriterProtocol,
@@ -32,7 +30,7 @@ def preserve_callee_frame(
         f"Frame in total must be aligned by 16 bytes, got {frame_size}"
     )
 
-    assert local_space_size < STORE_PAIR_MAX_RANGE, (
+    assert local_space_size < (2**12), (
         f"Cannot locate current local frame without relocation, auto relocation is not implemented [lsp: {local_space_size}]"
     )
     if writer.config.dwarf_emit_cfi:
@@ -40,7 +38,13 @@ def preserve_callee_frame(
     writer.instruction(f"sub SP, SP, #{frame_size}")
     if writer.config.dwarf_emit_cfi:
         writer.directive("cfi_def_cfa_offset", frame_size)
-    writer.instruction(f"stp X29, X30, [SP, #{local_space_size}]")
+
+    if local_space_size <= 504:
+        writer.instruction(f"stp X29, X30, [SP, #{local_space_size}]")
+    else:
+        writer.instruction(f"mov X16, #{local_space_size}")
+        writer.instruction("add X16, SP, X16")
+        writer.instruction("stp X29, X30, [X16]")
 
     fp_offset = frame_size - local_space_size
     lr_offset = frame_size - local_space_size - 8

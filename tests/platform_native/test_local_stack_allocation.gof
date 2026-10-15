@@ -5,9 +5,9 @@
 #define TESTKIT_EXPECTED_EXIT_CODE 32
 
 func int main[]
-    var v i8[1024]
+    var v i8[4000]
 
-    &v[0] TESTKIT_EXPECTED_EXIT_CODE !<
+    &v[3999] TESTKIT_EXPECTED_EXIT_CODE !<
 
-    v[0] typecast i64
+    v[3999] typecast i64
 end

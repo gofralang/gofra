@@ -11,7 +11,7 @@ from libgofra.types._base import Type
 # Size of frame head (FP, LR registers)
 FRAME_HEAD_SIZE = 8 * 2
 
-STORE_PAIR_MAX_RANGE = 8 * 64 - 8
+STORE_PAIR_MAX_RANGE = 2**12 - 1
 
 
 class LocalVariablesFrameOffsets(NamedTuple):
@@ -53,8 +53,8 @@ def build_local_variables_frame_offsets(
     # Alignment is required on AARCH64
     local_space_size = align_to_highest_size(current_offset)
 
-    if local_space_size > STORE_PAIR_MAX_RANGE:  # [-512, 504] STP limitations
-        # TODO(@kirillzhosul): Add proper auto relocation / fix STP limitations
+    if local_space_size > STORE_PAIR_MAX_RANGE:
+        # TODO(@kirillzhosul): rework this error
         raise FrameTableLocatableError(local_space_size, STORE_PAIR_MAX_RANGE)
 
     return LocalVariablesFrameOffsets(
