@@ -31,7 +31,7 @@ class SliceType(StructureType):
                 "len": I64Type(),
             },
             order=["data", "len"],
-            is_packed=True,
+            is_packed=False,
             reorder=False,
         )
 
