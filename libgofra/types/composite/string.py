@@ -11,6 +11,7 @@ class StringType(SliceType):
             element_type=CharType(),
             pma=PointerMemoryLocation.STATIC_READONLY,
         )
+        self.name = "String"
 
     def __repr__(self) -> str:
         return self.name
