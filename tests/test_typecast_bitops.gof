@@ -1,0 +1,45 @@
+/// Test that typecast works using TRUNCATE, EXTEND, NORMALIZE_BOOL strategies
+
+func int main[]
+    300 typecast char typecast i64 44 != if
+        1 return
+    end
+
+    300 typecast i8 typecast i64 44 != if
+        2 return
+    end
+
+    200 typecast i8 typecast i64 -56 != if
+        3 return
+    end
+
+    200 typecast char typecast i64 200 != if
+        4 return
+    end
+
+    300 typecast bool typecast i64 1 != if
+        6 return
+    end
+
+    256 typecast char typecast i64 0 != if
+        7 return
+    end
+
+    257 typecast char typecast i64 1 != if
+        8 return
+    end
+
+    -1 typecast char typecast i64 255 != if
+        9 return
+    end
+
+    0 typecast char typecast i64 0 != if
+        10 return
+    end
+
+    255 typecast char typecast i64 255 != if
+        11 return
+    end
+
+  0 return
+end

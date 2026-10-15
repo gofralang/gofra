@@ -233,7 +233,7 @@ def perform_operation_onto_stack(
             compare_registers_boolean(
                 writer,
                 register_a="X1",
-                register_b="X0",
+                register_b_or_immediate="X0",
                 register="X0",
                 condition=logic_op[operation],
             )
@@ -332,11 +332,16 @@ def compare_and_jump_to_label(
 def compare_registers_boolean(
     writer: WriterProtocol,
     register_a: AARCH64_GP_REGISTERS,
-    register_b: AARCH64_GP_REGISTERS,
+    register_b_or_immediate: AARCH64_GP_REGISTERS | int,
     register: AARCH64_GP_REGISTERS,
     condition: Literal["ne", "ge", "le", "lt", "gt", "eq"],
 ) -> None:
-    writer.instruction(f"cmp {register_a}, {register_b}")
+    against = (
+        f"#{register_b_or_immediate}"
+        if isinstance(register_b_or_immediate, int)
+        else register_b_or_immediate
+    )
+    writer.instruction(f"cmp {register_a}, {against}")
     writer.instruction(f"cset {register}, {condition}")
 
 

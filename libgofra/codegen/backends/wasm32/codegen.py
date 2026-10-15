@@ -44,7 +44,12 @@ from libgofra.hir.initializer import (
     VariableStringPtrInitializerValue,
 )
 from libgofra.hir.module import Module
-from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
+from libgofra.hir.operator import (
+    FunctionCallOperand,
+    Operator,
+    OperatorType,
+    TypecastMeta,
+)
 from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.targets.target import Target
 from libgofra.types._base import PrimitiveType, Type
@@ -564,8 +569,11 @@ class WASM32CodegenBackend:
                 raise ValueError(msg)
             case OperatorType.DEBUGGER_BREAKPOINT:
                 yield InstructionNode("unreachable")
-            case OperatorType.COMPILE_TIME_ERROR | OperatorType.STATIC_TYPE_CAST:
+            case OperatorType.COMPILE_TIME_ERROR:
                 ...
+            case OperatorType.STATIC_TYPE_CAST:
+                assert isinstance(op.tc_meta, TypecastMeta)
+                assert op.tc_meta.kind == TypecastMeta.Kind.REINTERPRET
             # Function instructions
             case OperatorType.FUNCTION_CALL:
                 assert isinstance(op.operand, FunctionCallOperand)
@@ -636,6 +644,7 @@ class WASM32CodegenBackend:
                 yield CommentNode("symtable offset string")
             case OperatorType.MEMORY_VARIABLE_READ:
                 assert op.tc_meta
+                assert isinstance(op.tc_meta, Type)
                 load_type = op.tc_meta
                 load_wasm_type = wasm_type_from_primitive(load_type)
 
@@ -644,6 +653,7 @@ class WASM32CodegenBackend:
             case OperatorType.MEMORY_VARIABLE_WRITE:
                 self.requested_inlined_intrinsics.add("swap")
                 assert op.tc_meta
+                assert isinstance(op.tc_meta, Type)
                 assert op.tc_meta.size_in_bytes == 8
                 assert isinstance(op.tc_meta, I64Type)
 

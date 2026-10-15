@@ -11,6 +11,7 @@ from libgofra.codegen.backends.aarch64.frame import (
 )
 from libgofra.codegen.backends.aarch64.primitive_instructions import (
     AddressingMode,
+    compare_registers_boolean,
     drop_stack_slots,
     evaluate_conditional_block_on_stack_with_jump,
     jump_to_label,
@@ -31,11 +32,17 @@ from libgofra.codegen.backends.aarch64.writer import WriterProtocol
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
 from libgofra.codegen.backends.string_pool import StringPool
 from libgofra.codegen.dwarf.dwarf import DWARF
+from libgofra.exceptions import GofraError
 from libgofra.hir.function import Function
 from libgofra.hir.module import Module
-from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
+from libgofra.hir.operator import (
+    FunctionCallOperand,
+    Operator,
+    OperatorType,
+    TypecastMeta,
+)
 from libgofra.hir.variable import VariableStorageClass
-from libgofra.types import PointerType
+from libgofra.types import CharType, PointerType, Type
 from libgofra.types.comparison import is_primitive_type
 from libgofra.types.composite.function import FunctionType
 
@@ -179,8 +186,69 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
                 call_convention="apple_aapcs64",
             )
         case OperatorType.STATIC_TYPE_CAST:
-            # Skip that as it is typechecker only.
-            pass
+            assert operator.tc_meta
+            assert isinstance(operator.tc_meta, TypecastMeta)
+
+            meta = operator.tc_meta
+
+            if meta.kind == TypecastMeta.Kind.REINTERPRET:
+                return
+            match meta.kind:
+                case TypecastMeta.Kind.EXTEND:
+                    pop_cells_from_stack_into_registers(writer, "X0")
+                    size = meta.a.size_in_bytes
+                    signed = not isinstance(meta.a, CharType)
+                    match (size, signed):
+                        case (1, True):
+                            writer.instruction("sxtb X0, W0")
+                        case (1, False):
+                            writer.instruction("uxtb W0, W0")
+                        case (2, True):
+                            writer.instruction("sxth X0, W0")
+                        case (2, False):
+                            writer.instruction("uxth W0, W0")
+                        case (4, True):
+                            writer.instruction("sxtw X0, W0")
+                        case (4, False):
+                            writer.instruction("mov W0, W0")
+                        case _:
+                            msg = f"Truncate to {size}-byte not supported"
+                            raise GofraError(msg)
+                    push_register_onto_stack(writer, "X0")
+                case TypecastMeta.Kind.TRUNCATE:
+                    pop_cells_from_stack_into_registers(writer, "X0")
+                    size = meta.b.size_in_bytes
+                    signed = not isinstance(meta.b, CharType)
+                    match (size, signed):
+                        case (1, True):
+                            writer.instruction("sxtb X0, W0")
+                        case (1, False):
+                            writer.instruction("uxtb W0, W0")
+                        case (2, True):
+                            writer.instruction("sxth X0, W0")
+                        case (2, False):
+                            writer.instruction("uxth W0, W0")
+                        case (4, True):
+                            writer.instruction("sxtw X0, W0")
+                        case (4, False):
+                            writer.instruction("mov W0, W0")
+                        case _:
+                            msg = f"Truncate to {size}-byte not supported"
+                            raise GofraError(msg)
+                    push_register_onto_stack(writer, "X0")
+                case TypecastMeta.Kind.NORMALIZE_BOOL:
+                    pop_cells_from_stack_into_registers(writer, "X0")
+                    compare_registers_boolean(
+                        writer,
+                        register_a="X0",
+                        register_b_or_immediate=0,
+                        register="X0",
+                        condition="ne",
+                    )
+                    push_register_onto_stack(writer, "X0")
+                case _:
+                    msg = f"{meta.a} -> {meta.b} cast via {meta.kind.name}"
+                    raise NotImplementedError(msg)
         case OperatorType.STACK_DROP:
             drop_stack_slots(writer, slots_count=1)
         case OperatorType.STACK_COPY:
@@ -227,12 +295,14 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             )
         case OperatorType.MEMORY_VARIABLE_READ:
             assert operator.tc_meta
+            assert isinstance(operator.tc_meta, Type)
             assert operator.tc_meta.size_in_bytes <= 8, operator.token.location
 
             store_size = operator.tc_meta.size_in_bytes
             load_memory_from_stack_arguments(writer, size_in_bytes=store_size)
         case OperatorType.MEMORY_VARIABLE_WRITE:
             assert operator.tc_meta
+            assert isinstance(operator.tc_meta, Type)
             assert operator.tc_meta.size_in_bytes <= 8, operator.token.location
 
             store_size = operator.tc_meta.size_in_bytes
@@ -240,7 +310,7 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
         case OperatorType.PUSH_VARIABLE_VALUE:
             assert isinstance(operator.operand, str)
             assert operator.tc_meta
-
+            assert isinstance(operator.tc_meta, Type)
             # TODO(@kirillzhosul): This was merged from two operations - must be refactored (and also optimized)
             _push_variable_address(writer, owner_function, operator.operand)
             load_size = operator.tc_meta.size_in_bytes
@@ -268,7 +338,6 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
                 writer,
                 size_in_bytes=param_ref.type.size_in_bytes,
             )
-
         case OperatorType.DEBUGGER_BREAKPOINT:
             place_software_trap(
                 writer,

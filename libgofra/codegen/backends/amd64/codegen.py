@@ -13,6 +13,7 @@ from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
 from libgofra.hir.variable import VariableStorageClass
+from libgofra.types import Type
 
 from ._context import AMD64CodegenContext
 from .assembly import (
@@ -236,6 +237,7 @@ def amd64_operator_instructions(
             )
         case OperatorType.MEMORY_VARIABLE_READ:
             assert operator.tc_meta
+            assert isinstance(operator.tc_meta, Type)
             assert operator.tc_meta.size_in_bytes == 8
             load_memory_from_stack_arguments(context)
         case OperatorType.PUSH_VARIABLE_VALUE:
@@ -252,6 +254,7 @@ def amd64_operator_instructions(
             store_into_memory_from_stack_arguments(context)
         case OperatorType.MEMORY_VARIABLE_WRITE:
             assert operator.tc_meta
+            assert isinstance(operator.tc_meta, Type)
             assert operator.tc_meta.size_in_bytes == 8
 
             store_into_memory_from_stack_arguments(context)

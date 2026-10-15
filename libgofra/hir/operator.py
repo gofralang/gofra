@@ -137,13 +137,26 @@ class FunctionCallOperand:
         return self.func.name
 
 
+@dataclass(frozen=True)
+class TypecastMeta:
+    class Kind(Enum):  # noqa: D106
+        REINTERPRET = auto()  # Do nothing at native level
+        TRUNCATE = auto()  # Truncate bits of bigger type into smaller type
+        EXTEND = auto()  # Extend bits of smaller type into bigger size
+        NORMALIZE_BOOL = auto()  # Compare and truncate to 0/1 variant (bool)
+
+    a: Type
+    b: Type
+    kind: Kind
+
+
 @dataclass(frozen=False, slots=True)
 class Operator:
     type: OperatorType
     token: Token
     operand: int | float | str | Type | StructAccessor | FunctionCallOperand | None
 
-    tc_meta: Type | None = None
+    tc_meta: Type | TypecastMeta | None = None
 
     jumps_to_operator_idx: int | None = None
 

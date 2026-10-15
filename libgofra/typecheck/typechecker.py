@@ -5,10 +5,17 @@ from typing import TYPE_CHECKING, Literal, assert_never
 
 from libgofra.exceptions import GofraError
 from libgofra.feature_flags import FEATURE_ALLOW_MODULES
-from libgofra.hir.operator import FunctionCallOperand, OperatorType
+from libgofra.hir.operator import (
+    FunctionCallOperand,
+    OperatorType,
+    TypecastMeta,
+)
 from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.optimizer.helpers.call_graph import CallGraph
 from libgofra.typecheck.entry_point import validate_entry_point_signature
+from libgofra.typecheck.errors.cannot_cast_to_given_type import (
+    CannotCastToGivenTypeError,
+)
 from libgofra.typecheck.errors.no_main_entry_function import NoMainEntryFunctionError
 from libgofra.typecheck.errors.read_only_memory_assignment import (
     ReadOnlyMemoryAssignmentError,
@@ -681,15 +688,32 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
 
         case OperatorType.STATIC_TYPE_CAST:
             assert isinstance(operator.operand, Type)
-            to_type_cast = operator.operand
             scope.raise_for_enough_arguments(operator, required_args=1)
+
+            to_type_cast = operator.operand
             previous_type = scope.pop_type_from_stack()
+
             lint_typecast_same_type(
                 on_lint_warning,
                 t_from=previous_type,
                 t_to=to_type_cast,
                 at=operator.token.location,
             )
+
+            kind = _resolve_cast_kind(a=previous_type, b=to_type_cast)
+            if kind is None:
+                raise CannotCastToGivenTypeError(
+                    source=previous_type,
+                    target=to_type_cast,
+                    at=operator.location,
+                )
+
+            operator.tc_meta = TypecastMeta(
+                a=previous_type,
+                b=to_type_cast,
+                kind=kind,
+            )
+
             scope.push_types(to_type_cast)
         case OperatorType.STRUCT_FIELD_OFFSET:
             scope.raise_for_enough_arguments(operator, required_args=1)
@@ -749,6 +773,38 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
         case _:
             assert_never(operator.type)
 
+    return None
+
+
+def _resolve_cast_kind(a: Type, b: Type) -> TypecastMeta.Kind | None:  # noqa: PLR0911
+    """Resolve expression in form of `cast type A to type B` into bit operation required to do such operation."""
+    if a is b:
+        return TypecastMeta.Kind.REINTERPRET
+
+    if isinstance(a, PointerType) and isinstance(b, PointerType):
+        return TypecastMeta.Kind.REINTERPRET  # *a -> *b
+
+    if isinstance(a, IntegerType) and isinstance(b, PointerType):
+        return TypecastMeta.Kind.REINTERPRET  # int -> *T
+
+    if isinstance(a, PointerType) and isinstance(b, I64Type):
+        return TypecastMeta.Kind.REINTERPRET  # *T -> i64
+
+    if isinstance(a, IntegerType) and isinstance(b, BoolType):
+        return TypecastMeta.Kind.NORMALIZE_BOOL  # int -> bool
+
+    if isinstance(a, BoolType) and isinstance(b, IntegerType):
+        return TypecastMeta.Kind.REINTERPRET  # int -> bool
+
+    if isinstance(a, (IntegerType, CharType)) and isinstance(
+        b,
+        (IntegerType, CharType),
+    ):
+        if a.size_in_bytes > b.size_in_bytes:
+            return TypecastMeta.Kind.TRUNCATE  # i64 -> i8
+        if a.size_in_bytes < b.size_in_bytes:
+            return TypecastMeta.Kind.EXTEND
+        return TypecastMeta.Kind.REINTERPRET  # i8 -> i64
     return None
 
 
