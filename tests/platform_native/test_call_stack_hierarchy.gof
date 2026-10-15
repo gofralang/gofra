@@ -1,0 +1,24 @@
+/// Test that it is possible to have functions call each other without recursion with deep nesting
+
+#define TESTKIT_EXPECTED_EXIT_CODE 16
+
+func int a1[int x]  x 1 + call a2  return end
+func int a2[int x]  x 1 + call a3  return end
+func int a3[int x]  x 1 + call a4  return end
+func int a4[int x]  x 1 + call a5  return end
+func int a5[int x]  x 1 + call a6  return end
+func int a6[int x]  x 1 + call a7  return end
+func int a7[int x]  x 1 + call a8  return end
+func int a8[int x]  x 1 + call a9  return end
+func int a9[int x]  x 1 + call a10 return end
+func int a10[int x] x 1 + call a11 return end
+func int a11[int x] x 1 + call a12 return end
+func int a12[int x] x 1 + call a13 return end
+func int a13[int x] x 1 + call a14 return end
+func int a14[int x] x 1 + call a15 return end
+func int a15[int x] x 1 + call a16 return end
+func int a16[int x] x 1 +          return end
+
+func int main[]
+    0 call a1 return
+end

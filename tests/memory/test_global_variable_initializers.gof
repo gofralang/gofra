@@ -1,0 +1,18 @@
+/// Test that different initializers are possible
+
+struct PrimitiveStruct
+    x int 
+    y int
+end
+
+var a = 1;
+var b = 'a';
+var c = [1, 2, 3]
+var d = "hello"
+var e = ["abc", "def"]
+var f PrimitiveStruct = {x = 1, y = 2}
+
+func void main[]
+    &a   &b   &c   &d   &e   &f
+    drop drop drop drop drop drop
+end

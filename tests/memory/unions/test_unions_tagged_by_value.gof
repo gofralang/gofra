@@ -1,0 +1,47 @@
+#include "std"
+#define TESTKIT_EXPECTED_STDOUT "is it string?\n42\n"
+
+const VALUE_INT = 1
+const VALUE_STRING = 2
+
+union ValueTagged
+    as_int int
+    as_string string
+end
+
+struct Value
+    tag int
+    value ValueTagged
+end
+
+func void set_string[*Value v, *string vv]
+    &v.tag VALUE_STRING !<
+    &v.value.as_string.data vv.data !<
+    &v.value.as_string.len vv.len !<
+end
+
+func void set_int[*Value v, int vv]
+    &v.tag VALUE_INT !<
+    &v.value.as_int vv !<
+end
+
+func void print_any_value[*Value v]
+    v.tag VALUE_INT == if
+        v.value.as_int print_int "\n" print
+        return
+    end
+    v.tag VALUE_STRING == if
+        &v.value.as_string print "\n" print
+        return
+    end
+end
+
+var values Value[2];
+
+func void main[]
+    &values[0] "is it string?" call set_string
+    &values[1] 42              call set_int
+
+    &values[0] call print_any_value
+    &values[1] call print_any_value
+end

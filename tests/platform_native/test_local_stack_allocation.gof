@@ -1,0 +1,13 @@
+/// Test that it is possible to locate quite chunky variable on the stack
+
+// TODO!: Due to some limitation it is impossible to have more than 504 bytes
+
+#define TESTKIT_EXPECTED_EXIT_CODE 32
+
+func int main[]
+    var v i8[1024]
+
+    &v[0] TESTKIT_EXPECTED_EXIT_CODE !<
+
+    v[0] typecast i64
+end
