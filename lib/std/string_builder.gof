@@ -15,7 +15,7 @@ pub func *StringBuilder sb_new[]
     var sb *StringBuilder;
     
     &sb sizeof StringBuilder 
-    call static_heap_alloc typecast sb !<
+    call static_heap_alloc typecast *StringBuilder !<
 
     &sb.data SB_DEFAULT_CAP static_heap_alloc typecast CStr !<
 
