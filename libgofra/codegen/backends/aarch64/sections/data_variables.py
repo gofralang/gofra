@@ -17,7 +17,7 @@ from libgofra.types.composite.slice import SliceType
 from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.character import CharType
-from libgofra.types.primitive.integers import I64Type
+from libgofra.types.primitive.integers import I8Type, I16Type, I32Type, I64Type
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -82,7 +82,7 @@ def _write_static_segment_variable_initializer(
 
     assert variable.initial_value is not None
     match variable.type:
-        case CharType() | I64Type():
+        case CharType() | I64Type() | I32Type() | I16Type() | I8Type():
             assert isinstance(variable.initial_value, int)
             ddd = _get_ddd_for_type(variable.type)
             writer.label(symbol_name)
@@ -207,13 +207,13 @@ def _write_static_segment_structure_initializer(
         prev_taken_bytes += field_t.size_in_bytes + padding
 
 
-def _get_ddd_for_type(t: PrimitiveType) -> Literal["byte", "half", "word", "quad"]:
+def _get_ddd_for_type(t: PrimitiveType) -> Literal["byte", "short", "word", "quad"]:
     """Get Data Definition Directive for type based on byte size."""
     type_size = t.size_in_bytes
     if type_size <= 1:
         return "byte"
     if type_size <= 2:
-        return "half"
+        return "short"
     if type_size <= 4:
         return "word"
     if type_size <= 8:
