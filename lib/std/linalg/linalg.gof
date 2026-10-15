@@ -1,0 +1,8 @@
+// ==============================================
+// Linear algebra functions for vectors and matrices
+// TODO: Generic function with container type holders
+// TODO: Sorta of vectors as array
+// ==============================================
+
+#include "arrays.gof"
+#include "matrices.gof"

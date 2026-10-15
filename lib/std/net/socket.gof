@@ -141,9 +141,9 @@ end
 // Close and deallocate socket
 pub func int net_close_socket[*NetSocket socket]
     socket.fd call os_close_socket
-    socket typecast *void sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
+    socket sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
     socket.addr typecast int 0 != if
-        socket.addr typecast *void sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
+        socket.addr sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
     end
 end
 

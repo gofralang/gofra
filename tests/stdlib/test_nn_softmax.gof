@@ -1,5 +1,5 @@
 /// Test softmax
-#include "std/nn.gof"
+#include "nn"
 
 var a int[3] = [1000, 1000, 1000]
 var b int[3] = [0, 0, 10000]

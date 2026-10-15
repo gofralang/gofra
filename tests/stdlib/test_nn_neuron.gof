@@ -1,5 +1,5 @@
 /// Test neuron
-#include "std/nn.gof"
+#include "nn"
 
 var w int[3] = [1, 0, -1]
 var x int[3] = [1, 2, 3]

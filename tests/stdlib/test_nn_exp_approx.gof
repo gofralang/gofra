@@ -1,5 +1,5 @@
 /// Test exp_approx(0) = 1000
-#include "std/nn.gof"
+#include "nn"
 
 #define TESTKIT_EXPECTED_EXIT_CODE 232  // 1000 % 256 = 232
 

@@ -22,7 +22,6 @@
 #ifndef RAYLIB_STRUCT_COLORS
     type Color int
 
-
     const var WHITE = 0xFFFFFFFF
     const var BLACK = 0xFF000000
 #endif 

@@ -4,22 +4,24 @@
 
 // TODO: Move back string length helpers, as they currently broken due to probably memory reading pollution (e.g read only single char byte instead of CPU WORD
 // TODO: idk how to express that but we possibly may introduce swapping variable address with an other address, or this may be fixed with named arguments
-// TODO: This requires legacy variant with callee-allocated buffer for int64_to_cstr
-#include "std/os/io/output.gof"
 
+
+// TODO: Probably this may be inlined into compiler and language itself: 
+// https://github.com/kirillzhosul/gofra/issues/27
+pub func CStr string_to_cstr[*string sv]
+    sv.data return
+end
 
 // Convert int64 to string
 // TODO: negative numbers is not supported
+// TODO: remove these weird af numbers
 var int64_to_cstr_swap_buf char[20] // Max 64 bit cap
 var int64_to_cstr_buf      char[20] // Max 64 bit cap
-pub func CStr int64_to_cstr[int num]
+pub func CStr int_to_cstr[int num]
     var idx int = 0;
 
-    &idx 0 !<
-    
     num 0 < if
-        // TODO: negative numbers is not supported
-        "int64_to_cstr got negative number!\n" eprint_fatal
+        0 typecast CStr return // TODO: negative numbers is not supported
     end
 
     num 0 == if
@@ -29,6 +31,7 @@ pub func CStr int64_to_cstr[int num]
         &int64_to_cstr_buf return
     end
 
+    // TODO: for loop
     while num 0 > do
         &int64_to_cstr_swap_buf[idx]
             num 10 % // Get last digit of an number 
@@ -49,10 +52,7 @@ pub func CStr int64_to_cstr[int num]
         &int64_to_cstr_buf[b] int64_to_cstr_swap_buf[a] typecast int !<
     end
 
-    // Null terminate before return
-    &int64_to_cstr_buf[idx] '\0' !<
-
-    &int64_to_cstr_buf return
+    &int64_to_cstr_buf[idx] '\0' !< // Null terminate
+    &int64_to_cstr_buf 
+    return
 end
-
-pub func CStr int_to_cstr[int num] num call int64_to_cstr end // Alias as default int is 64 bits

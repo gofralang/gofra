@@ -28,9 +28,9 @@
 #define FILE_TYPE_PIPE     0x0003
 
 // --- External symbols from kernel libraries (WINAPI) ---
-extern func void winapi_exit_process[int]                            #define ExitProcess winapi_exit_process
-extern func int  winapi_get_std_handle[int]                          #define GetStdHandle winapi_get_std_handle
-extern func bool winapi_write_console_a[int,CStr,int,CStr,int]       #define WriteConsoleA winapi_write_console_a
+extern func void winapi_exit_process[int]                             #define ExitProcess winapi_exit_process
+extern func int  winapi_get_std_handle[int]                           #define GetStdHandle winapi_get_std_handle
+extern func bool winapi_write_console_a[int,CStr,int,CStr,int]        #define WriteConsoleA winapi_write_console_a
 extern func bool winapi_write_file[int,CStr,int,CStr,int]             #define WriteFile winapi_write_file
 extern func int  winapi_get_file_type[int]                            #define GetFileType winapi_get_file_type
 
@@ -45,7 +45,6 @@ inline func bool win_write_file[int,CStr,int,*int]         WINAPI_LP_RESERVED ca
 inline func bool win_is_console_handle[int]               call winapi_get_file_type FILE_TYPE_CHAR ==     end
 
 // Wrapper around Windows write for POSIX
-// Signature: [raw handle, buffer, length]
 func int win_write[int handle, CStr ptr, int len]
     var error int = 0;
     var bytes_written int;

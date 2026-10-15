@@ -6,7 +6,6 @@
 
 #include "std"
 
-// TODO(@kirillzhosul): Research why non-existent file returns STDERR FD
 // TODO: add argc argv
 // TODO: Windows support
 const PATH = "test.txt"
@@ -28,11 +27,9 @@ func void main[]
         "Unable to open given file\n" eprint_fatal 
     end
 
-    // Read file
-    fd &sv call read_file_sv false == if 
+    fd &sv call read_file_sv lnot if 
         "Unable to read given file\n" eprint_fatal 
     end
 
-    // Print whole buffer
     &sv call print
 end

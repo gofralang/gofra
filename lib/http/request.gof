@@ -1,3 +1,6 @@
+// IO RX/TX buffer capacity expected
+#define HTTP_IO_BUFFER_CAP 128
+
 struct HTTPRequest
     // Request for HTTP server from client
 

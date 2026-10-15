@@ -1,14 +1,6 @@
 // ==============================================
 // Operating system interactions wrapper
+// TODO: Probably would be cool and more user friendly if including something like `file` will include `file.gof` if there is no variants for module include
 // ==============================================
 
-// OS-dependant native abstraction layer
-#ifdef OS_WINDOWS  #include "std/os/native/windows.gof" #endif
-#ifdef OS_DARWIN   #include "std/os/native/darwin.gof"  #endif
-#ifdef OS_LINUX    #include "std/os/native/linux.gof"   #endif
-#ifdef ARCH_WASM32 #include "std/os/native/wasm32.gof"  #endif
-
-
 #include "general.gof"
-
-// TODO: Probably would be cool and more user friendly if including something like `file` will include `file.gof` if there is no variants for module include

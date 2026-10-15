@@ -1,31 +1,25 @@
 // ==============================================
 // HTTP server implementation
+// TODO: Add async/thread support
 // ==============================================
-
-// IO RX/TX buffer capacity expected
-#define HTTP_IO_BUFFER_CAP 128
 
 #include "std/types.gof"
 #include "std/os/error.gof"
-
 #include "std/net"
 #include "std/memory/static_heap.gof"
+
 #include "http/request.gof"
 #include "http/response.gof"
 #include "http/status.gof"
 
-// TODO: Add async/thread support
-
-// Primitive allocator setup
 #ifndef STD_HTTP_SERVER_ALLOCATOR
+    // Primitive allocator setup
     #define STD_HTTP_SERVER_ALLOCATOR static_heap_alloc
     #define STD_HTTP_SERVER_DEALLOCATOR drop drop
 #endif
 
+
 const HTTP_DEFAULT_BACKLOG = 128
-
-
-
 
 type HTTPRequestHandler func void _[*HTTPRequest request]
 struct HTTPServer
@@ -33,9 +27,9 @@ struct HTTPServer
 
     socket *NetSocket // System socket opened for listening
 
-
-    handler HTTPRequestHandler 
+    request HTTPRequest // Internal single-request =0
 end
+
 
 pub func *HTTPServer http_server_new[]
     var server *HTTPServer;
@@ -52,18 +46,10 @@ pub func void http_server_close[*HTTPServer server]
     server STD_HTTP_SERVER_DEALLOCATOR
 end
 
-
-func void default_handler[*HTTPRequest request]
-    request.socket HTTP_STATUS_TEXT_OK "<h1>Hello from Gofra HTTP server!</h1><i>Built with Gofra and native HTTP library</i>";
-    call http_send_html_response drop
-end
-
-
-// Bootstrap HTTP server
-func void http_server_start[
+pub func void http_server_start[
     *HTTPServer server,
     HTTPRequestHandler handler,
-    *string ipv4
+    *string ipv4,
     int port
 ]
     &server.socket 
@@ -71,41 +57,32 @@ func void http_server_start[
         call net_ipv4_tcp_listener 
     !<
 
-    server.socket typecast int 0 == if 
-        "tcp listener failed" eprint_fatal
+    server.socket typecast int 0 == if
+        "TCP listener failed!" eprint_fatal
     end
     
-    &server.handler handler !<
-    "Listening..." println
+    "[http_server] Listening on " print ipv4 print ":" print port print_int "...\n" print
 
     var request HTTPRequest;
-    var socket *NetSocket;
     while true do
-        &request.socket
-            server.socket call net_accept_socket
-        !<
-        &socket request.socket !<
- 
-        socket.fd 0 < if
-            "Unable to accept to client socket on HTTP server socket\n" eprint_fatal
+        &request.socket server.socket call net_accept_socket !< // TODO: segmentation fault here
+
+        request.socket.fd 0 < if
+            "Failed to accept client socket!" eprint_fatal
         end
 
-        "[log_http] Request from: [redacted]" println
+        "[http_server][request]" println
 
-        &request call http_server_read_request drop
-        &request call default_handler
-
+        &request call _http_server_read_request drop
+        &request call handler
 
         request.socket call net_close_socket 0 < if
-            "WARNING: Unable to close client socket on HTTP server socket\n" eprint
+            "WARNING: Unable to close client socket!\n" eprint
         end
     end
 end
 
-
-
-// Read an HTTP request with headers
-func int http_server_read_request[*HTTPRequest request]
+func int _http_server_read_request[*HTTPRequest request]
     var bytes_read int = 0
 
     &bytes_read
@@ -115,9 +92,7 @@ func int http_server_read_request[*HTTPRequest request]
     call net_read_socket !<
 
     bytes_read 0 < if
-        "FATAL: Unable to read HTTP request: " eprint
-        bytes_read os_strerror eprint "\n" eprint
-        abort
+        "WARNING: Unable to read HTTP request!" eprint
     end
 
     bytes_read return

@@ -1,5 +1,5 @@
 /// Test matrix_scale
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var A int[2][2] = [
     1, 2, 

@@ -1,5 +1,5 @@
 /// Test array_var
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var a int[4] = [1, 2, 3, 4]
 

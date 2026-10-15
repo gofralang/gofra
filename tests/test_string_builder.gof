@@ -9,11 +9,11 @@ pub func void main[]
 
     &sb call sb_new !<
 
-    sb "Hello!\n" sb_append drop
-    sb "This is my big poem!\n" sb_append drop
-    sb "Bla-bla-bla\n" sb_append drop
-    sb "Bla-bla-bla\n" sb_append drop
-    sb "Bla-bla-bla\n" sb_append drop
+    sb "Hello!\n" sb_append
+    sb "This is my big poem!\n" sb_append
+    sb "Bla-bla-bla\n" sb_append
+    sb "Bla-bla-bla\n" sb_append
+    sb "Bla-bla-bla\n" sb_append
 
     sb &sv_out sb_to_string
     

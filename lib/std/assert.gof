@@ -1,17 +1,16 @@
 // ==============================================
 // Runtime assertions
 // Check is value are equals without proper error handling
+// TODO: add static assertions (https://github.com/kirillzhosul/gofra/issues/19)
+// TODO: add proper types to that function, as it may compare not only integers (generics)
 // ==============================================
 
 #include "types.gof"
-#include "std/os/io/output.gof"
+#include "std/io"
 
-// TODO: add static assertions (https://github.com/kirillzhosul/gofra/issues/19)
 
 // Check for equality at runtime with additional message
 // (assert two values are same)
-// TODO: add proper types to that function, as it may compare not only integers
-// probably this requires some overloading or something like that
 pub func void runtime_assert[int a, int b, *string sv]
     a b != if
         "runtime_assert: Assertion failed, " eprint

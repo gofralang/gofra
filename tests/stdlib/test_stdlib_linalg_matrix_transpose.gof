@@ -1,5 +1,5 @@
 /// Test matrix_transpose
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var A int[2][3] = [
     1, 2, 

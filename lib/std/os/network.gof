@@ -1,10 +1,11 @@
 // ==============================================
 // Network (TCP/UDP) helpers and wrappers
-// ==============================================
-
 // TODO: Add Windows support
 // TODO: Add proper OR to preprocessor
 // TODO: Inline functions has bad debug options and produce improper error messages
+// TODO: Migrate into internals?
+// ==============================================
+
 #include "general.gof"
 
 // --- Network constants ---
@@ -42,21 +43,27 @@
     pub func int os_socket[int domain, int type_, int protocol]          
         domain type_ protocol call sc_socket 
     end
+
     pub func int os_bind[int socket, *sockaddr_in address, int address_len]   
         socket address address_len call sc_bind
     end
+
     pub func int os_listen[int socket, int backlog]
         socket backlog call sc_listen 
     end
+
     pub func int os_accept[int socket, *sockaddr_in address, *int address_len] 
         socket address address_len call sc_accept 
     end
+
     pub func int os_read[int socket, CStr buf, int nbyte] 
         socket buf nbyte call sc_read
     end
+
     pub func int os_write[int socket, CStr buf, int nbyte]
         socket buf nbyte call sc_write
     end
+
     pub func int os_close_socket[int socket]
         socket call sc_close 
     end

@@ -11,6 +11,7 @@ func void main[]
     
     "Enter something: " print
     &buf sizeof buf input
+
     &sv.data &buf !<
     &sv.len sizeof buf !<
 

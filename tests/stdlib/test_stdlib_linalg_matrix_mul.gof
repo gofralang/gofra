@@ -1,5 +1,5 @@
 /// Test matrix_mul
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var A int[2][2] = [1, 2, 3, 4]
 var B int[2][2] = [5, 6, 7, 8]

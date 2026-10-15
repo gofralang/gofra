@@ -1,3 +1,7 @@
+// ==============================================
+// Utilities for working with characters (char type)
+// ==============================================
+
 pub func bool is_digit[char c]
     c typecast int '0' >= 
     c typecast int '9' <= 

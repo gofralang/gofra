@@ -38,7 +38,7 @@ pub func *void arena_alloc[*Arena a, int size]
     &aligned_size size ARENA_ALIGNMENT call align_up !<
     
     a.offset aligned_size + a.size > if
-        NULL_PTR return
+        0 typecast *void return
     end
     
     var ptr *void;

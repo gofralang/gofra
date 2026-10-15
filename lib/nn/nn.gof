@@ -2,8 +2,8 @@
 // Neural network primitives
 // ==============================================
 
-#include "math.gof"
-#include "linalg.gof"
+#include "std/math.gof"
+#include "std/linalg"
 
 /// === Extra linear algebra ===
 
@@ -224,4 +224,3 @@ pub func void embedding_lookup[_IMatrix table, int d, _IVec tokens, _IMatrix out
         end
     end
 end
-

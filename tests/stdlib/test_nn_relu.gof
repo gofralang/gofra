@@ -1,5 +1,5 @@
 /// Test relu
-#include "std/nn.gof"
+#include "nn"
 
 #define TESTKIT_EXPECTED_EXIT_CODE 5
 

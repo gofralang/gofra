@@ -2,10 +2,10 @@
 // Darwin native system interaction layer and constant
 // Must works on MacOS, iOS, watchOS and other Darwin kernel operating system
 // Interacts with kernel via system/supervisor calls
-// ==============================================
-
 // TODO: Add x86-64 Darwin layer
 // TODO: Add variadic function for `sc_syscall`
+// TODO: Migrate types into idk something
+// ==============================================
 
 #include "std/types.gof"
 #include "std/math.gof"
@@ -50,8 +50,8 @@ type struct timeval
 end
 
 type timezone char[16]
-type sc_argvp **char[]
-type sc_envp **char[]
+type sc_argvp *CStr
+type sc_envp *CStr
 type fd_t int
 
 // --- Syscall Numbers (Partial Table) ---
@@ -77,8 +77,6 @@ type fd_t int
     #define DARWIN_SYSCALL_MMAP         197
     #define DARWIN_SYSCALL_LSEEK        199
 #endif // ARCH_ARM64
-
-
 
 #define EPERM          1
 #define ENOENT         2

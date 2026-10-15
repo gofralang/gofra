@@ -1,0 +1,51 @@
+// ==============================================
+// Input manipulations based on operating system (wrapper)
+// ==============================================
+
+#include "std/os/general.gof"
+#include "std/types.gof"
+
+// TODO: Add proper OR to preprocessor
+// TODO: Inline functions has bad debug options and produce improper error messages
+// TODO: Test and implement missing features for Windows
+// TODO: Allow forward referencing functions
+
+// Print an string into given file descriptor / handle and return bytes written
+#ifdef OS_DARWIN  pub func int print_fd[int fd, *string str] fd; str.data; str.len call sc_write  end #endif
+#ifdef OS_LINUX   pub func int print_fd[int fd, *string str] fd; str.data; str.len call sc_write  end #endif
+#ifdef OS_WINDOWS pub func int print_fd[int fd, *string str] fd; str.data; str.len call win_write end #endif
+#ifdef __WASM
+    extern func int wasm32_print_fd[int fd, *string str]
+    func int print_fd[int fd, *string str] fd str call wasm32_print_fd end
+#endif #endif
+
+// Input a string from given file descriptor and returns number of bytes read
+#ifdef OS_LINUX   pub func int input_fd[int fd, CStr data, int len] fd data len call sc_read end #endif
+#ifdef OS_DARWIN  pub func int input_fd[int fd, CStr data, int len] fd data len call sc_read end #endif
+
+// Open file as file descriptor
+#ifdef OS_LINUX  pub func int open_file_fd_raw[*string sv, int f, int p] sv.data f p call sc_open end #endif
+#ifdef OS_DARWIN pub func int open_file_fd_raw[*string sv, int f, int p] sv.data f p call sc_open end #endif
+
+#ifdef OS_WINDOWS
+    #define STD_IN  STD_INPUT_HANDLE
+    #define STD_OUT STD_OUTPUT_HANDLE
+    #define STD_ERR STD_ERROR_HANDLE
+#endif // OS_WINDOWS
+#ifdef OS_DARWIN
+    #define STD_IN  STD_IN_FD
+    #define STD_OUT STD_OUT_FD
+    #define STD_ERR STD_ERR_FD
+#endif // OS_DARWIN
+#ifdef OS_LINUX
+    #define STD_IN  STD_IN_FD
+    #define STD_OUT STD_OUT_FD
+    #define STD_ERR STD_ERR_FD
+#endif // OS_LINUX
+#ifdef ARCH_WASM32
+    #ifdef OS_NONE
+        #define STD_IN  0
+        #define STD_OUT 1
+        #define STD_ERR 2
+    #endif // OS_NONE
+#endif //ARCH_WASM32

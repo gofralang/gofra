@@ -14,10 +14,6 @@ end
 
 // Randomize current PRNG random state
 pub func void prng_randomize_state_xorshift[] 
-    // Uses Xorshift generator algorithm
-    // &rs rs rs 13 << ^ !<
-    // &rs rs rs 17 << ^ !<
-    // &rs rs rs 5  << ^ !<
     &std_prng_random_state
         std_prng_random_state
         std_prng_random_state 13 <<
@@ -46,6 +42,5 @@ end
 
 // Get random number from PRNG withing range from 0 to argument
 pub func int random_range[int to]
-    call random
-    to %
+    call random to %
 end

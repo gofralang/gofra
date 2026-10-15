@@ -1,5 +1,5 @@
 /// Test array_sum
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var a int[3] = [1, 2, 3]
 

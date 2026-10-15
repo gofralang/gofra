@@ -2,12 +2,9 @@
 // Type definition and helpers
 // ==============================================
 
+// Generics for internal types
 type Array{T, N} T[N]
 type Pointer{T} *T
 
-type NullPtr *void
+// C-style string
 type CStr *char[]
-
-// Somewhere using terminology of NULL is more readable
-#define NULL     0
-#define NULL_PTR 0 typecast NullPtr

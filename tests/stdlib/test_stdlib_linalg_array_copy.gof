@@ -1,5 +1,5 @@
 /// Test array_copy
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var a int[3] = [1, 2, 3]
 var b int[3]

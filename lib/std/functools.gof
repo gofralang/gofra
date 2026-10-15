@@ -1,6 +1,7 @@
 // ==============================================
 // Functional tools
 // High-order functions like reduce, map for functional-like programming
+// TODO: Generics
 // ==============================================
 
 // Integer array reduce, reduce integer array to single element via reducer/callback

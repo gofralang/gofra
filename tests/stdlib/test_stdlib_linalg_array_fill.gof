@@ -1,5 +1,5 @@
 /// Test array_fill
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var a int[3]
 

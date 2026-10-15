@@ -1,5 +1,5 @@
 /// Test matrix_vec_linear
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var W int[2][3] = [
     1, 2, 3, 

@@ -1,5 +1,5 @@
 /// Test array_linear
-#include "std/linalg.gof"
+#include "std/linalg"
 
 var w int[3] = [1, 0, -1]
 var x int[3] = [1, 2, 3]

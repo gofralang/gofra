@@ -2,39 +2,33 @@
 // Works for IPv4
 
 #include "std/char.gof"
+#include "std/os/network.gof"
 
 // Parse IPv4 string (no port spec) into host-network-order integer
 // Returns 0 on error
 pub func int parse_ipv4_address[*string ipv4]
-    var host int  = 0;
+    var host  int = 0;
     var octet int = 0;
     var shift int = 24;
 
     var addr_len int;
     &addr_len ipv4.len !<
 
-    var cchar char;
     for c in 0..addr_len do
-        &cchar ipv4.data c + ?> typecast int 0x00000000FF & !<
-
-        cchar typecast int '.' == if
+        ipv4.data[c] typecast int '.' == if // TODO: remove typecast
             &host octet shift << host | !<
             &octet 0 !<
             &shift shift 8 - !<
         else
-            cchar call is_digit false == if 
-                0 return
-            end
+            ipv4.data[c] call is_digit lnot if 0 return end
 
             &octet
                 octet 10 * 
-                cchar call digit_to_int
+                ipv4.data[c] call digit_to_int
                 + 
             !<
 
-            octet 255 > if 
-                0 return // Error
-            end
+            octet 255 > if 0 return end // Error
         end
     end
 
@@ -45,8 +39,8 @@ end
 // Get specified octet by index from parsed IPv4
 pub func int ipv4_octet[int ipv4, int idx]
     ipv4
-        24 idx 8 * - // 24 - idx * 8
-    >> // addr >> (24 - idx * 8)
+        24 idx 8 * -
+    >>
     0xFF & return
 end
 
