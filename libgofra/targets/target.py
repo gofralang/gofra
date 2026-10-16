@@ -4,6 +4,7 @@ from typing import Literal
 type Triplet = Literal[
     "amd64-unknown-linux",
     "amd64-unknown-windows",
+    "amd64-apple-darwin",
     "arm64-apple-darwin",
     "wasm32-unknown-none",
 ]
@@ -23,7 +24,6 @@ class Target:
     vendor: Literal["unknown", "apple"]
     operating_system: Literal["Darwin", "Linux", "Windows", "None"]
 
-    cpu_word_size: Literal[8]
     cpu_pointer_width: Literal[8]
 
     endianness: Literal["little", "big"]
@@ -41,6 +41,21 @@ class Target:
     @staticmethod
     def from_triplet(triplet: Triplet) -> "Target":
         match triplet:
+            case "amd64-apple-darwin":
+                return Target(
+                    status="experimental",
+                    triplet=triplet,
+                    architecture="AMD64",
+                    vendor="apple",
+                    operating_system="Darwin",
+                    cpu_pointer_width=8,
+                    file_executable_suffix="",
+                    file_library_static_suffix=".a",
+                    file_library_dynamic_suffix=".dylib",
+                    file_object_suffix=".o",
+                    file_assembly_suffix=".s",
+                    endianness="little",
+                )
             case "arm64-apple-darwin":
                 return Target(
                     status="stable",
@@ -49,7 +64,6 @@ class Target:
                     architecture="ARM64",
                     operating_system="Darwin",
                     cpu_pointer_width=8,
-                    cpu_word_size=8,
                     file_executable_suffix="",
                     file_library_static_suffix=".a",
                     file_library_dynamic_suffix=".dylib",
@@ -65,7 +79,6 @@ class Target:
                     architecture="AMD64",
                     operating_system="Windows",
                     cpu_pointer_width=8,
-                    cpu_word_size=8,
                     file_executable_suffix=".exe",
                     file_library_static_suffix=".lib",
                     file_library_dynamic_suffix=".dll",
@@ -81,7 +94,6 @@ class Target:
                     architecture="AMD64",
                     operating_system="Linux",
                     cpu_pointer_width=8,
-                    cpu_word_size=8,
                     file_executable_suffix="",
                     file_library_static_suffix=".a",
                     file_library_dynamic_suffix=".so",
@@ -97,7 +109,6 @@ class Target:
                     architecture="WASM32",
                     operating_system="None",
                     cpu_pointer_width=8,
-                    cpu_word_size=8,
                     file_executable_suffix=".wasm",
                     file_library_static_suffix=".wasm",
                     file_library_dynamic_suffix=".wasm",

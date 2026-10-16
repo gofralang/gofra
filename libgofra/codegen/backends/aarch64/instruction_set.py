@@ -298,8 +298,8 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             assert isinstance(operator.tc_meta, Type)
             assert operator.tc_meta.size_in_bytes <= 8, operator.token.location
 
-            store_size = operator.tc_meta.size_in_bytes
-            load_memory_from_stack_arguments(writer, size_in_bytes=store_size)
+            read_size = operator.tc_meta.size_in_bytes
+            load_memory_from_stack_arguments(writer, size_in_bytes=read_size)
         case OperatorType.MEMORY_VARIABLE_WRITE:
             assert operator.tc_meta
             assert isinstance(operator.tc_meta, Type)

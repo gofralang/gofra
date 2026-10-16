@@ -109,6 +109,8 @@ class ClangAssemblerDriver(AssemblerDriverProtocol):
         match target.triplet:
             case "arm64-apple-darwin" | "amd64-unknown-linux" | "amd64-unknown-windows":
                 return target.triplet
+            case "amd64-apple-darwin":
+                return "x86_64-apple-darwin"
             case "wasm32-unknown-none":
                 raise ClangDoesNotSupportWasmError(target=target)
             case _:

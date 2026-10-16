@@ -50,6 +50,8 @@ def amd64_program_entry_point(
             _linux_sys_exit_epilogue(context, entry_point)
         case "Windows":
             _windows_sys_exit_epilogue(context, entry_point)
+        case "Darwin":
+            _darwin_sys_exit_epilogue(context, entry_point)
         case _:
             raise NotImplementedError
 
@@ -87,6 +89,29 @@ def _linux_sys_exit_epilogue(
             arguments_count=1,
             store_retval_onto_stack=False,
             injected_args=None,
+        )
+
+
+def _darwin_sys_exit_epilogue(
+    context: AMD64CodegenContext,
+    entry_point: Function,
+) -> None:
+    # Call syscall to exit without accessing protected system memory.
+    # `ret` into return-address will fail with segfault
+    if entry_point.has_return_value():
+        push_integer_onto_stack(context, 1)
+        ipc_syscall_linux(
+            context,
+            arguments_count=1,
+            store_retval_onto_stack=False,
+            injected_args=None,
+        )
+    else:
+        ipc_syscall_linux(
+            context,
+            arguments_count=1,
+            store_retval_onto_stack=False,
+            injected_args=[1, 0],  # TODO: refactor with aarch64
         )
 
 

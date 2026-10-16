@@ -31,7 +31,7 @@ def get_linker_command_composer_backend(
     target: Target,
 ) -> LinkerCommandComposer:
     """Get linker command composer backend suitable for that target and current host."""
-    if target.triplet == "arm64-apple-darwin":
+    if target.triplet in ("arm64-apple-darwin", "amd64-apple-darwin"):
         # Always use Apple linker on Darwin (e.g MacOS)
         return compose_apple_linker_command
 

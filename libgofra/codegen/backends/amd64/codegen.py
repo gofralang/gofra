@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import IO, TYPE_CHECKING, assert_never
 
-from libgofra.codegen.abi import LinuxAMD64ABI
+from libgofra.codegen.abi import DarwinAMD64ABI, LinuxAMD64ABI
 from libgofra.codegen.backends.amd64.executable_entry_point import (
     amd64_program_entry_point,
 )
@@ -57,7 +57,11 @@ class AMD64CodegenBackend:
         on_warning: Callable[[str], None],
         config: CodegenConfig,
     ) -> None:
-        assert target.operating_system == "Linux"
+        assert target.operating_system in ("Linux", "Darwin")
+
+        abi = (
+            LinuxAMD64ABI() if target.operating_system == "Linux" else DarwinAMD64ABI()
+        )
 
         self.target = target
         self.module = module
@@ -65,7 +69,7 @@ class AMD64CodegenBackend:
             on_warning=on_warning,
             fd=fd,
             target=self.target,
-            abi=LinuxAMD64ABI(),
+            abi=abi,
             config=config,  # TODO: DWARF CFI / Alignment
         )
 
@@ -158,6 +162,15 @@ def amd64_operator_instructions(
                 )
                 context.write(f"jmp {label_to}")
             context.fd.write(f"{label}:\n")
+        case OperatorType.CONDITIONAL_ELSE:
+            assert isinstance(operator.jumps_to_operator_idx, int)
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (
+                owner_function.name,
+                operator.jumps_to_operator_idx,
+            )
+            context.write(f"jmp {label}")
+            label = CODEGEN_GOFRA_CONTEXT_LABEL % (owner_function.name, idx)
+            context.fd.write(f"{label}:\n")
         case OperatorType.PUSH_STRING:
             assert isinstance(operator.operand, str)
             string_raw = str(operator.token.text[1:-1])
@@ -238,8 +251,8 @@ def amd64_operator_instructions(
         case OperatorType.MEMORY_VARIABLE_READ:
             assert operator.tc_meta
             assert isinstance(operator.tc_meta, Type)
-            assert operator.tc_meta.size_in_bytes == 8
-            load_memory_from_stack_arguments(context)
+            read_size = operator.tc_meta.size_in_bytes
+            load_memory_from_stack_arguments(context, size_in_bytes=read_size)
         case OperatorType.PUSH_VARIABLE_VALUE:
             assert isinstance(operator.operand, str)
             _push_variable_address(context, owner_function, variable=operator.operand)
@@ -251,13 +264,13 @@ def amd64_operator_instructions(
             pop_cells_from_stack_into_registers(context, "rax", "rbx")
             push_register_onto_stack(context, "rax")
             push_register_onto_stack(context, "rbx")
-            store_into_memory_from_stack_arguments(context)
+            store_into_memory_from_stack_arguments(context, size_in_bytes=8)
         case OperatorType.MEMORY_VARIABLE_WRITE:
             assert operator.tc_meta
             assert isinstance(operator.tc_meta, Type)
-            assert operator.tc_meta.size_in_bytes == 8
 
-            store_into_memory_from_stack_arguments(context)
+            store_size = operator.tc_meta.size_in_bytes
+            store_into_memory_from_stack_arguments(context, size_in_bytes=store_size)
         case OperatorType.DEBUGGER_BREAKPOINT:
             context.write("int3")
         case OperatorType.STRUCT_FIELD_OFFSET:
@@ -284,8 +297,7 @@ def amd64_operator_instructions(
             raise NotImplementedError(operator)
         case OperatorType.FUNCTION_CALL_FROM_STACK_POINTER:
             raise NotImplementedError(operator)
-        case OperatorType.CONDITIONAL_ELSE:
-            raise NotImplementedError(operator)
+
         case _:
             assert_never(operator.type)
 

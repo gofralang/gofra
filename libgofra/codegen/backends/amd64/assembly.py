@@ -187,16 +187,49 @@ def push_local_variable_address_from_frame_offset(
     push_register_onto_stack(context, register="rax")
 
 
-def store_into_memory_from_stack_arguments(context: AMD64CodegenContext) -> None:
+def store_into_memory_from_stack_arguments(
+    context: AMD64CodegenContext,
+    *,
+    size_in_bytes: int,
+) -> None:
     """Store value from into memory pointer, pointer and value acquired from stack."""
     pop_cells_from_stack_into_registers(context, "rax", "rbx")
-    context.write("movq %rax, (%rbx)")
+
+    match size_in_bytes:
+        case 1:
+            context.write("movb %al, (%rbx)")
+        case 2:
+            context.write("movw %ax, (%rbx)")
+        case 4:
+            context.write("movl %eax, (%rbx)")
+        case 8:
+            context.write("movq %rax, (%rbx)")
+        case _:
+            msg = f"Unsupported store size: {size_in_bytes} bytes"
+            raise GofraError(msg)
 
 
-def load_memory_from_stack_arguments(context: AMD64CodegenContext) -> None:
+def load_memory_from_stack_arguments(
+    context: AMD64CodegenContext,
+    *,
+    size_in_bytes: int = 8,
+) -> None:
     """Load memory as value using arguments from stack."""
     pop_cells_from_stack_into_registers(context, "rax")
-    context.write("movq (%rax), %rax")
+
+    match size_in_bytes:
+        case 1:
+            context.write("movzbq (%rax), %rax")
+        case 2:
+            context.write("movzwq (%rax), %rax")
+        case 4:
+            context.write("movslq (%rax), %eax")
+        case 8:
+            context.write("movq (%rax), %rax")
+        case _:
+            msg = f"Unsupported load size: {size_in_bytes} bytes"
+            raise GofraError(msg)
+
     push_register_onto_stack(context, "rax")
 
 

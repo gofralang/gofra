@@ -156,6 +156,7 @@ def add_target_group(parser: ArgumentParser) -> None:
         "arm64-apple-darwin",
         "amd64-unknown-windows",
         "wasm32-unknown-none",
+        "amd64-apple-darwin",
         # Shortcuts
         "wasm",
     ]  # TODO: Proper --help

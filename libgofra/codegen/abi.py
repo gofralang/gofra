@@ -122,3 +122,39 @@ class LinuxAMD64ABI(AMD64ABI):
     retval_composite_64bit_register = "rdx"
     retval_composite_32bit_register = "edx"
     retval_indirect_pointer_register = "rdi"
+
+
+@dataclass(frozen=True, slots=True, init=True)
+class DarwinAMD64ABI(AMD64ABI):
+    """ABI for Darwin on AMD64 (x86-64)."""
+
+    # TODO: This ABI is same as Linux one, must refactor?
+
+    arguments_64bit_registers: Sequence[AMD64_GP_REGISTERS] = field(
+        default_factory=lambda: [
+            "rdi",
+            "rsi",
+            "rdx",
+            "rcx",
+            "r8",
+            "r9",
+        ],
+    )
+
+    syscall_arguments_registers: Sequence[AMD64_GP_REGISTERS] = field(
+        default_factory=lambda: [
+            "rdi",
+            "rsi",
+            "rdx",
+            "r10",
+            "r8",
+            "r9",
+        ],
+    )
+
+    syscall_number_register = "rax"
+    retval_primitive_64bit_register = "rax"
+    retval_primitive_32bit_register = "eax"
+    retval_composite_64bit_register = "rdx"
+    retval_composite_32bit_register = "edx"
+    retval_indirect_pointer_register = "rdi"

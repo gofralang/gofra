@@ -61,6 +61,10 @@ def write_initialized_data_section(
             symbol_name=name,
         )
 
+    if not strings.is_empty():
+        # 8 byte alignment for string descriptors
+        context.fd.write(".align 8\n")
+
     for data, name in strings.get_view():
         # TODO: Proper alignment
         decoded_string = data.encode().decode("unicode_escape")
