@@ -16,10 +16,9 @@
 #define OS_LINESEP "\r\n"
 
 // --- Standard Handle Constants ---
-// TODO: Add negative numbers
-#define STD_INPUT_HANDLE   0 10 -
-#define STD_OUTPUT_HANDLE  0 11 -
-#define STD_ERROR_HANDLE   0 12 -
+#define STD_INPUT_HANDLE   -10
+#define STD_OUTPUT_HANDLE  -11
+#define STD_ERROR_HANDLE   -12
 
 // --- File Type Constants ---
 #define FILE_TYPE_UNKNOWN  0x0000

@@ -9,7 +9,7 @@
 struct Arena
     /// Data holder of allocated arena
 
-    base *void
+    base *void[]
     size int
     offset int
 end

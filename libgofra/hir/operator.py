@@ -19,7 +19,6 @@ class OperatorType(Enum):
     # Push arbitrary number (integer of arbitrary byte size) onto stack
     # it is up to the next layers (e.g codegen) to infer that size with corresponding storage
     # any type which is scalar/arithmetical is treated as an integer (e.g bool)
-    # TODO(@kirillzhosul): Proper inference of integer size
     PUSH_INTEGER = auto()
     PUSH_FLOAT = auto()
     PUSH_FUNCTION_POINTER = auto()

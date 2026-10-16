@@ -12,6 +12,7 @@ from libgofra.hir.operator import (
 )
 from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.optimizer.helpers.call_graph import CallGraph
+from libgofra.typecheck.casts import resolve_type_cast_to_kind
 from libgofra.typecheck.entry_point import validate_entry_point_signature
 from libgofra.typecheck.errors.cannot_cast_to_given_type import (
     CannotCastToGivenTypeError,
@@ -513,19 +514,29 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 scope.pop_type_from_stack(),
             )
 
-            if isinstance(a, PointerType):
-                # Pointer arithmetics
-                if isinstance(b, IntegerType):
-                    if isinstance(a.points_to, ArrayType):
-                        scope.push_types(
-                            PointerType(
-                                points_to=a.points_to.element_type,
-                                memory_location=a.memory_location,
-                            ),
-                        )
-                        return None
-                    scope.push_types(a)
+            def _resolve_pointer_arithmetics(a: Type, b: Type) -> Type | None:
+                if isinstance(b, PointerType):
+                    b, a = a, b  # commutative PA
+
+                assert isinstance(a, PointerType)
+                if not isinstance(b, IntegerType):
                     return None
+
+                if isinstance(a.points_to, ArrayType):
+                    return PointerType(
+                        points_to=a.points_to.element_type,
+                        memory_location=a.memory_location,
+                    )
+
+                if a.points_to.size_in_bytes == 0:
+                    return None  # *void + int
+
+                return a
+
+            if isinstance(a, PointerType) or isinstance(b, PointerType):
+                new_type = _resolve_pointer_arithmetics(a, b)
+                if new_type:
+                    return scope.push_types(new_type)
                 raise TypecheckInvalidPointerArithmeticsError(
                     actual_lhs_type=a,
                     actual_rhs_type=b,
@@ -616,6 +627,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             argument_type = scope.pop_type_from_stack()
             scope.push_types(argument_type, argument_type)
         case OperatorType.COMPARE_EQUALS | OperatorType.COMPARE_NOT_EQUALS:
+            # TODO: Generic on same type (i16 <-> i32 error)
             scope.raise_for_operator_arguments(
                 operator,
                 (I64Type, BoolType),
@@ -700,7 +712,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 at=operator.token.location,
             )
 
-            kind = _resolve_cast_kind(a=previous_type, b=to_type_cast)
+            kind = resolve_type_cast_to_kind(source=previous_type, target=to_type_cast)
             if kind is None:
                 raise CannotCastToGivenTypeError(
                     source=previous_type,
@@ -773,38 +785,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
         case _:
             assert_never(operator.type)
 
-    return None
-
-
-def _resolve_cast_kind(a: Type, b: Type) -> TypecastMeta.Kind | None:  # noqa: PLR0911
-    """Resolve expression in form of `cast type A to type B` into bit operation required to do such operation."""
-    if a is b:
-        return TypecastMeta.Kind.REINTERPRET
-
-    if isinstance(a, PointerType) and isinstance(b, PointerType):
-        return TypecastMeta.Kind.REINTERPRET  # *a -> *b
-
-    if isinstance(a, IntegerType) and isinstance(b, PointerType):
-        return TypecastMeta.Kind.REINTERPRET  # int -> *T
-
-    if isinstance(a, PointerType) and isinstance(b, I64Type):
-        return TypecastMeta.Kind.REINTERPRET  # *T -> i64
-
-    if isinstance(a, IntegerType) and isinstance(b, BoolType):
-        return TypecastMeta.Kind.NORMALIZE_BOOL  # int -> bool
-
-    if isinstance(a, BoolType) and isinstance(b, IntegerType):
-        return TypecastMeta.Kind.REINTERPRET  # int -> bool
-
-    if isinstance(a, (IntegerType, CharType)) and isinstance(
-        b,
-        (IntegerType, CharType),
-    ):
-        if a.size_in_bytes > b.size_in_bytes:
-            return TypecastMeta.Kind.TRUNCATE  # i64 -> i8
-        if a.size_in_bytes < b.size_in_bytes:
-            return TypecastMeta.Kind.EXTEND
-        return TypecastMeta.Kind.REINTERPRET  # i8 -> i64
     return None
 
 

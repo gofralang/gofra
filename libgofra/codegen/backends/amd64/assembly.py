@@ -66,9 +66,6 @@ def push_integer_onto_stack(
 ) -> None:
     """Push given integer onto stack.
 
-    Negative numbers is disallowed.
-
-    TODO(@kirillzhosul, @stepanzubkov): Negative numbers IS disallowed
     TODO(@kirillzhosul, @stepanzubkov): Review max and etc like in AARCH64_MacOS
     """
     assert value.bit_count() <= 8 * 8, (

@@ -3,7 +3,7 @@
 #endif
 
 var __STATIC_HEAP char[STATIC_HEAP_SIZE];
-var __STATIC_HEAP_BASE *void;
+var __STATIC_HEAP_BASE *void[];
 
 pub func *void static_heap_alloc[int size]
     var allocated *void;

@@ -54,6 +54,7 @@ def execute(args: TargetsArguments) -> NoReturn:
                 "triplet": t.triplet,
                 "architecture": t.architecture,
                 "os": t.operating_system,
+                "status": t.status,
                 "is_host": t.triplet == host_triplet,
             }
             for t in known_targets

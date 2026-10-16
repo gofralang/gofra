@@ -84,10 +84,6 @@ def push_integer_onto_stack(
     """Push given integer onto stack with auto shifting less-significant bytes.
 
     Value must be less than 16 bytes (18_446_744_073_709_551_615).
-    Negative numbers is disallowed.
-
-    TODO(@kirillzhosul): Negative numbers IS disallowed:
-        Consider using signed two complement representation with sign bit (highest bit) set
     """
     assert value <= AARCH64_DOUBLE_WORD_BITS, (
         "Tried to push integer that exceeding 16 bytes (64 bits register)."
