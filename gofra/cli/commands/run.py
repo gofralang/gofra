@@ -13,7 +13,8 @@ from gofra.cli.errors.error_handler import cli_gofra_error_handler
 from gofra.cli.is_segmentation_fault import is_segmentation_fault
 from gofra.cli.output import cli_fatal_abort, cli_message
 from gofra.execution import execute_native_binary_executable
-from libgofra.targets.infer_host import get_host_compliance
+from libgofra.targets.infer_host import infer_host_target
+from libgofra.targets.target import Target
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,27 @@ def execute(args: RunArguments) -> NoReturn:
         _execute_after_compilation(args)
 
 
+def _can_run_native_on_host(target: Target) -> bool:
+    host = infer_host_target()
+    if host is None:
+        return False
+    if target.operating_system != host.operating_system:
+        return False
+
+    if target.architecture == host.architecture:
+        return True
+
+    if (  # noqa: SIM103
+        host.operating_system == "Darwin"
+        and host.architecture == "ARM64"
+        and target.architecture == "AMD64"
+    ):
+        # Exclussion for Rosetta
+        return True
+
+    return False
+
+
 def _execute_after_compilation(args: RunArguments) -> NoReturn:
     """Run executable after compilation if user requested."""
     if args.parent.output_format != BuildOutputFormat.EXECUTABLE:
@@ -86,7 +108,7 @@ def _execute_after_compilation(args: RunArguments) -> NoReturn:
             text="Cannot execute after compilation due to output format is not set to an executable!",
         )
 
-    host_compliance = get_host_compliance(args.parent.target)
+    host_compliance = _can_run_native_on_host(args.parent.target)
     if not host_compliance:
         cli_fatal_abort(
             "Target differs from host target, cannot execute on current host without emulation layer, please execute on your own!\nFile was compiled, please remove execute flag!",

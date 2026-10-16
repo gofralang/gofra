@@ -1,4 +1,4 @@
-from platform import system
+from platform import machine, system
 
 from libgofra.targets.target import Target, Triplet
 
@@ -12,22 +12,14 @@ def infer_host_target() -> Target | None:
 
 
 def infer_host_target_triplet() -> Triplet | None:
-    match system():
-        case "Darwin":
+    match (system(), machine().lower()):
+        case ("Darwin", "arm64"):
             return "arm64-apple-darwin"
-        case "Linux":
+        case ("Darwin", "x86_64") | ("Darwin", "amd64"):
+            return "amd64-apple-darwin"
+        case ("Linux", "x86_64") | ("Linux", "amd64"):
             return "amd64-unknown-linux"
-        case "Windows":
+        case ("Windows", "x86_64") | ("Windows", "amd64"):
             return "amd64-unknown-windows"
         case _:
             return None
-
-
-def get_host_compliance(target: Target) -> bool:
-    host_target = infer_host_target()
-    if host_target is None:
-        return False
-    return (
-        target.architecture == host_target.architecture
-        and target.operating_system == host_target.operating_system
-    )

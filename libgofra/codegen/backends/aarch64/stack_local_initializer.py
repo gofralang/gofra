@@ -13,6 +13,7 @@ from libgofra.hir.initializer import (
     T_AnyVariableInitializer,
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
+    VariableIntSliceInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
 )
@@ -91,7 +92,8 @@ def _write_initializer_for_stack_variable(
     if isinstance(
         initial_value,
         VariableIntFieldedStructureInitializerValue
-        | VariableStringPtrArrayInitializerValue,
+        | VariableStringPtrArrayInitializerValue
+        | VariableIntSliceInitializerValue,
     ):  # pyright: ignore[reportUnnecessaryIsInstance]
         msg = f"{initial_value} is not implemented on-stack within codegen"
         raise NotImplementedError(msg)
