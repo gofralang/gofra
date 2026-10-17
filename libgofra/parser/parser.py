@@ -289,6 +289,7 @@ def _consume_keyword_token(context: ParserScope, token: Token) -> None:  # noqa:
             | Keyword.ATTR_FUNC_PUBLIC
             | Keyword.ATTR_FUNC_NO_RETURN
             | Keyword.ATTR_FUNC_NAKED
+            | Keyword.ATTR_FUNC_NO_MANGLE
         ):
             return _unpack_function_definition_from_token(context, token)
         case Keyword.FUNCTION_CALL:
@@ -322,6 +323,7 @@ def _consume_keyword_token(context: ParserScope, token: Token) -> None:  # noqa:
         case Keyword.SIZEOF:
             return _unpack_sizeof_from_token(context, token)
         case Keyword.TRUE:
+            # TODO: literal
             context.push_new_operator(
                 OperatorType.PUSH_INTEGER,
                 token=token,
@@ -396,7 +398,9 @@ def _new_function_scope(
         if param.name == "_":
             new_scope.push_new_operator(OperatorType.STACK_DROP, token=token)
             continue
+        assert parent.module
         new_scope.variables[param.name] = Variable(
+            module=parent.module,
             name=param.name,
             defined_at=token.location,
             is_constant=False,
@@ -424,50 +428,50 @@ def _unpack_anonymous_lambda_function_from_token(
     assert token.value == Keyword.LAMBDA_DEF
     assert not context.is_top_level
 
-    def _parse_and_spill_enclosures() -> Function:
-        f_header_def = consume_function_definition(context, context.next_token())
+    f_header_def = consume_function_definition(context, context.next_token())
 
-        if f_header_def.qualifiers.is_extern:
-            raise LambdaWithExternAttrError(at=token.location)
+    if f_header_def.qualifiers.is_extern:
+        raise LambdaWithExternAttrError(at=token.location)
 
-        if f_header_def.qualifiers.is_inline:
-            raise LambdaWithInlineAttrError(at=token.location)
+    if f_header_def.qualifiers.is_inline:
+        raise LambdaWithInlineAttrError(at=token.location)
 
-        if f_header_def.qualifiers.is_public:
-            raise LambdaWithVisibilityAttrError(at=token.location)
+    if f_header_def.qualifiers.is_public:
+        raise LambdaWithVisibilityAttrError(at=token.location)
 
-        # TODO(@kirillzhosul): doesn't anonymous functions do not hold their names?
-        if context.query_name_holder(f_header_def.name):
-            msg = f"Function name {f_header_def.name} is already taken by other definition"
-            raise ValueError(msg)
+    assert not f_header_def.qualifiers.is_no_mangle, "no-mangled lambda"
 
-        if any(p.initializer is not None for p in f_header_def.parameters):
-            msg = f"{token.location}: Lambda cannot have default values for parameters for now."
-            raise GofraError(msg)
+    # TODO(@kirillzhosul): doesn't anonymous functions do not hold their names?
+    if context.query_name_holder(f_header_def.name):
+        msg = f"Function name {f_header_def.name} is already taken by other definition"
+        raise ValueError(msg)
 
-        new_context = _new_function_scope(context, token, f_header_def.parameters)
+    if any(p.initializer is not None for p in f_header_def.parameters):
+        msg = f"{token.location}: Lambda cannot have default values for parameters for now."
+        raise GofraError(msg)
 
-        function = Function.create_internal(
-            name=f_header_def.name,
-            defined_at=token.location,
-            operators=new_context.operators,
-            variables=new_context.variables,
-            parameters=f_header_def.parameters,
-            return_type=f_header_def.return_type,
-        )
-        function.attrs.leaf = new_context.is_leaf_context
-        function.attrs.naked = f_header_def.qualifiers.is_naked
-        function.attrs.no_return = f_header_def.qualifiers.is_no_return
+    new_context = _new_function_scope(context, token, f_header_def.parameters)
 
-        function.attrs.visibility = Visibility.PRIVATE
+    function = Function.create_internal(
+        name=f_header_def.name,
+        defined_at=token.location,
+        operators=new_context.operators,
+        variables=new_context.variables,
+        parameters=f_header_def.parameters,
+        return_type=f_header_def.return_type,
+    )
+    function.attrs.mangle = False
+    function.attrs.leaf = new_context.is_leaf_context
+    function.attrs.naked = f_header_def.qualifiers.is_naked
+    function.attrs.no_return = f_header_def.qualifiers.is_no_return
 
-        assert context.module
-        function.module = context.module
-        assert not context.is_top_level
-        context.add_function(function)
-        return function
+    function.attrs.visibility = Visibility.PRIVATE
 
-    function = _parse_and_spill_enclosures()
+    assert context.module
+    function.module = context.module
+    assert not context.is_top_level
+    context.add_function(function)
+
     context.push_new_operator(
         OperatorType.PUSH_FUNCTION_POINTER,
         token=token,
@@ -657,6 +661,9 @@ def _unpack_function_definition_from_token(
 ) -> None:
     f_header_def = consume_function_definition(context, token)
 
+    # TODO: Generally bad function
+    # references too many internal implementations
+
     if f_header_def.qualifiers.is_extern:
         function = Function.create_external(
             name=f_header_def.name,
@@ -665,6 +672,7 @@ def _unpack_function_definition_from_token(
             return_type=f_header_def.return_type,
         )
         function.attrs.no_return = f_header_def.qualifiers.is_no_return
+        function.attrs.mangle = False
         assert context.module
         function.module = context.module
         context.add_function(function)
@@ -701,6 +709,7 @@ def _unpack_function_definition_from_token(
         return
     if f_header_def.name == context.entry_point_name:  # TODO: Refactor
         f_header_def.qualifiers.is_public = True
+        f_header_def.qualifiers.is_no_mangle = True
 
     function = Function.create_internal(
         name=f_header_def.name,
@@ -713,9 +722,12 @@ def _unpack_function_definition_from_token(
 
     function.attrs.leaf = new_context.is_leaf_context
     function.attrs.naked = f_header_def.qualifiers.is_naked
+    function.attrs.naked = f_header_def.qualifiers.is_naked
+    function.attrs.mangle = not f_header_def.qualifiers.is_no_mangle
 
     if f_header_def.qualifiers.is_public:
         function.attrs.visibility = Visibility.PUBLIC
+
     function.attrs.no_return = f_header_def.qualifiers.is_no_return
     assert context.module
     function.module = context.module
@@ -752,6 +764,8 @@ def _enclosure_generate_native_holder_name(
     owner: Function,
     enclosure: Function,
 ) -> None:
+    assert not enclosure.attrs.mangle
+
     name = owner.name + "$enclosure"
     enclosure.name = name
     uid = 1

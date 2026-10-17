@@ -58,9 +58,7 @@ def function_begin_with_prologue(  # noqa: PLR0913
     # TODO: Checkout `BTI` when i have an proper hardware
     # TODO: Checkout PAC because it is suddenly does not work rn
 
-    name = f"_{name}"
     if global_name:
-        global_name = f"_{global_name}"
         writer.directive("globl", global_name)
 
     alignment = (

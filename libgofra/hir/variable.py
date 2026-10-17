@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from libgofra.hir.module import Module
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.types._base import PrimitiveType, Type
 
@@ -15,6 +16,8 @@ class Variable[T: Type]:
 
     # Actual name of the variable as defined in source code.
     name: str
+
+    module: Module = field(repr=False)
 
     # Source location of definition
     defined_at: TokenLocation

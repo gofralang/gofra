@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
+from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.hir.initializer import (
     VariableIntArrayInitializerValue,
@@ -45,14 +46,13 @@ def write_initialized_data_section(
 
     writer.section(SectionType.DATA)
     alignment = None
-    for name, variable in variables.items():
+    for variable in variables.values():
         if variable.type.alignment != alignment:
             writer.directive("align", variable.type.alignment)
             alignment = variable.type.alignment
         _write_static_segment_variable_initializer(
             writer,
             variable,
-            symbol_name=name,
             string_pool=strings,
         )
 
@@ -72,13 +72,14 @@ def write_initialized_data_section(
 def _write_static_segment_variable_initializer(
     writer: WriterProtocol,
     variable: Variable[Type],
-    symbol_name: str,
     string_pool: StringPool,
 ) -> None:
     type_size = variable.size_in_bytes
     assert type_size, (
         f"Variable {variable.name} defined at {variable.defined_at} has zero byte size (type {variable.type}) this variable will be not defined as symbol!"
     )
+
+    symbol_name = mangle_hir_symbol_name(variable)
 
     assert variable.initial_value is not None
     match variable.type:

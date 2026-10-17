@@ -258,8 +258,10 @@ def parse_for_range_qualifier(
             msg = f"For loop iterator {iterator_varname} used at {token.location} has conflict with variable of same name that has type {conflicting_variable.type}, if you use variable as iterator which is defined, its type must be an I64, otherwise use another name."
             raise ValueError(msg)
     else:
+        assert context.module
         context.variables[iterator_varname] = Variable(
             name=iterator_varname,
+            module=context.module,
             defined_at=iterator_identifier.location,
             storage_class=VariableStorageClass.STACK,
             scope_class=VariableScopeClass.FUNCTION,
@@ -314,7 +316,9 @@ def parse_for_range_qualifier(
             )
 
             # Back-patch iterator defined before as now we know that we iterate array
+            assert context.module
             context.variables[iterator_varname] = Variable(
+                module=context.module,
                 name=iterator_varname,
                 defined_at=iterator_identifier.location,
                 storage_class=VariableStorageClass.STACK,

@@ -30,6 +30,7 @@ from libgofra.codegen.backends.aarch64.subroutines import function_return
 from libgofra.codegen.backends.aarch64.svc_syscall import ipc_aarch64_syscall
 from libgofra.codegen.backends.aarch64.writer import WriterProtocol
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
+from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
 from libgofra.codegen.backends.string_pool import StringPool
 from libgofra.codegen.dwarf.dwarf import DWARF
 from libgofra.exceptions import GofraError
@@ -41,7 +42,7 @@ from libgofra.hir.operator import (
     OperatorType,
     TypecastMeta,
 )
-from libgofra.hir.variable import VariableStorageClass
+from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.types import CharType, PointerType, Type
 from libgofra.types.comparison import is_primitive_type
 from libgofra.types.composite.function import FunctionType
@@ -53,23 +54,35 @@ if TYPE_CHECKING:
 def _push_variable_address(
     writer: WriterProtocol,
     owner_function: Function,
-    variable: str,
+    variable: Variable[Type],
 ) -> None:
-    if variable in owner_function.variables:
-        hir_local_variable = owner_function.variables[variable]
-        assert hir_local_variable.is_function_scope
-        if hir_local_variable.storage_class != VariableStorageClass.STACK:
+    if variable.is_function_scope:
+        if variable.storage_class != VariableStorageClass.STACK:
             msg = "Non stack local variables storage class is not implemented yet"
             raise NotImplementedError(msg)
         push_local_variable_address_from_frame_offset(
             writer,
             owner_function.variables,
-            variable,
+            variable.name,
         )
         return
 
     # Global variable or memory
-    push_address_of_label_onto_stack(writer, label=variable)
+    label = mangle_hir_symbol_name(variable)
+    push_address_of_label_onto_stack(writer, label=label)
+
+
+def _find_variable_in_scopes(
+    function: Function,
+    module: Module,
+    name: str,
+) -> Variable[Type]:
+    if name in function.variables:
+        return function.variables[name]
+    if name in module.variables:
+        return module.variables[name]
+    msg = f"unresolved variable: {name}"
+    raise GofraError(msg)
 
 
 def aarch64_instruction_set(  # noqa: PLR0913, PLR0917
@@ -116,7 +129,16 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
     match operator.type:
         case OperatorType.PUSH_VARIABLE_ADDRESS:
             assert isinstance(operator.operand, str)
-            _push_variable_address(writer, owner_function, variable=operator.operand)
+
+            _push_variable_address(
+                writer,
+                owner_function,
+                variable=_find_variable_in_scopes(
+                    owner_function,
+                    module=program,
+                    name=operator.operand,
+                ),
+            )
         case OperatorType.PUSH_INTEGER:
             assert isinstance(operator.operand, int)
             push_integer_onto_stack(writer, operator.operand)
@@ -177,10 +199,11 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
                 f"Cannot find function symbol `{operator.operand.get_name()}` in module '{operator.operand.module}' (current: {program.path}), will emit linkage error"
             )
 
+            name = mangle_hir_symbol_name(function)
             function_abi_call_by_symbol(
                 writer,
                 abi,
-                name=function.name,
+                name=name,
                 parameters=function.parameter_types,
                 return_type=function.return_type,
                 call_convention="apple_aapcs64",
@@ -312,7 +335,15 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             assert operator.tc_meta
             assert isinstance(operator.tc_meta, Type)
             # TODO(@kirillzhosul): This was merged from two operations - must be refactored (and also optimized)
-            _push_variable_address(writer, owner_function, operator.operand)
+            _push_variable_address(
+                writer,
+                owner_function,
+                variable=_find_variable_in_scopes(
+                    owner_function,
+                    module=program,
+                    name=operator.operand,
+                ),
+            )
             load_size = operator.tc_meta.size_in_bytes
             load_memory_from_stack_arguments(writer, size_in_bytes=load_size)
         case OperatorType.LOAD_PARAM_ARGUMENT:
@@ -322,7 +353,15 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             _ = param_ref.initializer
 
             # TODO(@kirillzhosul): This was merged from two operations - must be refactored (and also optimized)
-            _push_variable_address(writer, owner_function, operator.operand)
+            _push_variable_address(
+                writer,
+                owner_function,
+                variable=_find_variable_in_scopes(
+                    owner_function,
+                    module=program,
+                    name=operator.operand,
+                ),
+            )
 
             # swap stack
             pop_cells_from_stack_into_registers(writer, "X0", "X1")
@@ -391,9 +430,10 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             else:
                 addressing_mode = AddressingMode.PAGE
 
+            label = mangle_hir_symbol_name(callee)
             push_address_of_label_onto_stack(
                 writer,
-                label=f"_{callee.name}",
+                label=label,
                 temp_register="X0",
                 mode=addressing_mode,
             )

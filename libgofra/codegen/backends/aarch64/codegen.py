@@ -25,6 +25,7 @@ from libgofra.codegen.backends.aarch64.writer import (
     WriterProtocol,
 )
 from libgofra.codegen.backends.frame import is_native_function_has_frame
+from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
 from libgofra.codegen.backends.string_pool import StringPool
 from libgofra.codegen.dwarf.dwarf import DWARF
 from libgofra.codegen.sections import SectionType
@@ -136,11 +137,12 @@ def function_define_with_instruction_set(  # noqa: PLR0913, PLR0917
     """
     has_frame = is_native_function_has_frame(writer.config, function)
 
+    label = mangle_hir_symbol_name(function)
     function_begin_with_prologue(
         writer,
         abi,
         string_pool,
-        name=function.name,
+        name=label,
         local_variables=function.variables,
         global_name=function.name if function.is_public else None,
         preserve_frame=has_frame,

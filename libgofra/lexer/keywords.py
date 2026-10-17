@@ -19,6 +19,7 @@ class Keyword(Enum):
     ATTR_FUNC_PUBLIC = auto()
     ATTR_FUNC_NO_RETURN = auto()
     ATTR_FUNC_NAKED = auto()
+    ATTR_FUNC_NO_MANGLE = auto()
 
     ATTR_STRUCT_PACKED = auto()
     ATTR_STRUCT_REORDER = auto()
@@ -90,6 +91,7 @@ WORD_TO_KEYWORD: dict[str, Keyword | PreprocessorKeyword] = {
     "pub": Keyword.ATTR_FUNC_PUBLIC,
     "no_return": Keyword.ATTR_FUNC_NO_RETURN,
     "extern": Keyword.ATTR_FUNC_EXTERN,
+    "no_mangle": Keyword.ATTR_FUNC_NO_MANGLE,
     # Boolean
     "true": Keyword.TRUE,
     "false": Keyword.FALSE,

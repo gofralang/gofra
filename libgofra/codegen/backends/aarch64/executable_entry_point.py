@@ -1,6 +1,7 @@
 from libgofra.codegen.abi import AARCH64ABI
 from libgofra.codegen.backends.aarch64.svc_syscall import ipc_aarch64_syscall
 from libgofra.codegen.backends.aarch64.writer import WriterProtocol
+from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
 from libgofra.codegen.dwarf.dwarf import DWARF
 from libgofra.hir.function import Function
 from libgofra.targets.target import Target
@@ -28,7 +29,6 @@ def aarch64_program_entry_point(  # noqa: PLR0913, PLR0917
     # TODO: add flag like `--bare-entry` to allow specify that Gofra `main` is real main
     # also requires reworking entry point flags / specification
 
-    system_entry_point_name = system_entry_point_name.removeprefix("_")
     # This is an executable entry point
     function_begin_with_prologue(
         writer,
@@ -45,10 +45,11 @@ def aarch64_program_entry_point(  # noqa: PLR0913, PLR0917
 
     # Prepare and execute main function
     assert isinstance(entry_point.return_type, VoidType | I64Type)
+    assert not entry_point.attrs.mangle
     function_abi_call_by_symbol(
         writer,
         abi,
-        name=entry_point.name,
+        name=mangle_hir_symbol_name(entry_point),
         parameters=[],
         return_type=entry_point.return_type,
         call_convention="apple_aapcs64",  # TODO: allow to specify / override call-conv?

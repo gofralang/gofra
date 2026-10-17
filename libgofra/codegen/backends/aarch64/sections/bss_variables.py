@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
 from libgofra.codegen.sections._factory import SectionType
 
 if TYPE_CHECKING:
@@ -37,5 +38,6 @@ def write_uninitialized_data_section(
             writer.directive("align", alignment)
             aligned_by = alignment
 
-        writer.label(name)
+        label = mangle_hir_symbol_name(variable)
+        writer.label(label)
         writer.sym_sect_directive("space", type_size)

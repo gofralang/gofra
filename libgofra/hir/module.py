@@ -54,6 +54,10 @@ class Module:
         default_factory=lambda: {StringType().name: StringType()},
     )
 
+    @property
+    def as_name(self) -> str:
+        return self.path.with_suffix("").name
+
     def visit_dependencies(
         self,
         *,

@@ -6,7 +6,6 @@
 #include "std/os/io.gof"
 
 #ifndef __WASM 
-
     // Open file in read-only mode
     pub func int open_file_fd_ro[*string sv] sv 0 0 call open_file_fd_raw end #endif
 
@@ -248,7 +247,7 @@ end
             // Decrement IDX
             &idx idx 1 - !<
         end
-        
+
         // TODO: Possibly would be good to introduce more capable `for` loop e.g:
         // `for i in idx..0`, but this is requires using `idx` as lhs range value which is currently disallowed in for loop range qualifier
     end

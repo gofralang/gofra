@@ -131,7 +131,9 @@ def unpack_variable_definition_from_token(
         raise TypeError(msg)
 
     assert var_t, "Must emit infer error"
+    assert context.module
     context.variables[varname] = Variable(
+        module=context.module,
         name=varname,
         type=var_t,
         defined_at=varname_token.location,

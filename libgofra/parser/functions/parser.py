@@ -46,6 +46,7 @@ class FunctionHeaderQualifiers:
     is_public: bool
     is_no_return: bool
     is_naked: bool
+    is_no_mangle: bool
 
 
 @dataclass
@@ -106,6 +107,7 @@ def consume_function_qualifiers(
         is_public=False,
         is_no_return=False,
         is_naked=False,
+        is_no_mangle=False,
     )
 
     next_token = token
@@ -135,7 +137,17 @@ def consume_function_qualifiers(
                     )
                 qualifiers.is_public = True
             case Keyword.ATTR_FUNC_NO_RETURN:
+                if qualifiers.is_no_return:
+                    raise ParserFunctionModifierReappliedError(
+                        modifier_token=next_token,
+                    )
                 qualifiers.is_no_return = True
+            case Keyword.ATTR_FUNC_NO_MANGLE:
+                if qualifiers.is_no_mangle:
+                    raise ParserFunctionModifierReappliedError(
+                        modifier_token=next_token,
+                    )
+                qualifiers.is_no_mangle = True
             case Keyword.ATTR_FUNC_NAKED:
                 if qualifiers.is_naked:
                     raise ParserFunctionModifierReappliedError(

@@ -94,6 +94,9 @@ class FunctionAttributes:
     # If true, has calls to itself, affects optimizations and some errors
     recursive: bool = field(repr=False, default=False)
 
+    # If true, codegen allowed to mangle this function symbol name
+    mangle: bool = field(default=True)
+
 
 @dataclass(frozen=False, slots=True, init=False)
 class Function:
@@ -254,6 +257,7 @@ class Function:
             inline=inline_attr,
             visibility=Visibility.PRIVATE,
             recursive=recursive_attr,
+            mangle=True,
         )
 
         # Assertion-style validation
