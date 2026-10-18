@@ -4,7 +4,6 @@ from difflib import get_close_matches
 from pathlib import Path
 from typing import TYPE_CHECKING, assert_never
 
-from libgofra.exceptions import GofraError
 from libgofra.feature_flags import FEATURE_ALLOW_FPU, FEATURE_ALLOW_MODULES
 from libgofra.hir.function import Function, FunctionParameter, Visibility
 from libgofra.hir.operator import FunctionCallOperand
@@ -446,10 +445,6 @@ def _unpack_anonymous_lambda_function_from_token(
         msg = f"Function name {f_header_def.name} is already taken by other definition"
         raise ValueError(msg)
 
-    if any(p.initializer is not None for p in f_header_def.parameters):
-        msg = f"{token.location}: Lambda cannot have default values for parameters for now."
-        raise GofraError(msg)
-
     new_context = _new_function_scope(context, token, f_header_def.parameters)
 
     function = Function.create_internal(
@@ -683,10 +678,6 @@ def _unpack_function_definition_from_token(
             conflicting_holder=f"Function '{f_header_def.name}' at {token.location}",
             name_holder=name_holder,
         )
-
-    if any(p.initializer is not None for p in f_header_def.parameters):
-        msg = f"{token.location}: Functions cannot have default values for parameters for now due to call expansion logic."
-        raise GofraError(msg)
 
     new_context = _new_function_scope(context, token, f_header_def.parameters)
 

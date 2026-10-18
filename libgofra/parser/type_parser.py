@@ -8,7 +8,6 @@ from libgofra.lexer.tokens import Token, TokenType
 from libgofra.parser._context import ParserScope
 from libgofra.parser.errors.unknown_primitive_type import UnknownPrimitiveTypeError
 from libgofra.parser.functions.exceptions import ParserFunctionNoNameError
-from libgofra.parser.variable_initializer import consume_variable_initializer
 from libgofra.types import Type
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.function import FunctionType
@@ -319,24 +318,10 @@ def parse_function_type_parameters(
         context.expect_token(TokenType.IDENTIFIER)
         t = context.next_token()
 
-        parameters.append(FunctionParameter(t.text, var_t, initializer=None))
+        parameters.append(FunctionParameter(t.text, var_t))
 
         if context.peek_token().type == TokenType.COMMA:
             _ = context.next_token()  # Next
-        elif context.peek_token().type == TokenType.ASSIGNMENT:
-            _ = context.next_token()  # consume =
-
-            # Parse value and infer type from that
-            # `var_t` can be changed if it is inferred type
-            # Or initializer modifies type (e.g incomplete array type)
-            # TODO(@kirillzhosul): Refactor general mix with variables?
-            initial_value, var_t = consume_variable_initializer(
-                context,
-                var_t,
-                varname_token=context.peek_token(),
-            )
-            parameters[-1].type = var_t
-            parameters[-1].initializer = initial_value
 
         elif context.peek_token().type == TokenType.RBRACKET:
             break  # Finished decl

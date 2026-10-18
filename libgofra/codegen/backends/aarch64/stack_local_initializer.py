@@ -9,13 +9,14 @@ from libgofra.codegen.backends.aarch64.primitive_instructions import (
     get_address_of_label,
 )
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
-from libgofra.hir.initializer import (
+from libgofra.codegen.backends.initializer import (
     T_AnyVariableInitializer,
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
     VariableIntSliceInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
+    literal_to_codegen_initializer,
 )
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
@@ -37,14 +38,17 @@ def write_function_local_stack_variables_initializer(
 ) -> None:
     local_offsets = build_local_variables_frame_offsets(local_variables)
     for variable in local_variables.values():
-        initial_value = variable.initial_value
-        if initial_value is None:
+        if variable.initial_value is None:
             continue
+        initializer = literal_to_codegen_initializer(
+            variable.initial_value,
+            target_type=variable.type,
+        )
 
         current_offset = local_offsets.offsets[variable.name]
         _write_initializer_for_stack_variable(
             writer,
-            initial_value,
+            initializer,
             string_pool,
             variable.type,
             current_offset,

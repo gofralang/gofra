@@ -19,7 +19,7 @@
     // Consume all character bytes from input buffer (e.g `input_fd`)
     // Use as safety method as reading and letting some character leak through 
     pub func void input_exhaust_buffer[]
-        var buffer char = 1;
+        var buffer char = '1';
 
         // TODO: Allow to compare non-integer types (e.g char)
         // TODO: Probably we may break from this loop if read zero bytes, but there is no break construction rn

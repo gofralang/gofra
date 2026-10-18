@@ -23,6 +23,8 @@ class LocalVariablesFrameOffsets(NamedTuple):
 
 def build_local_variables_frame_offsets(
     variables: Mapping[str, Variable[Type]],
+    *,
+    initial_offset: int = 8,
 ) -> LocalVariablesFrameOffsets:
     """Construct mapping from local variable name to stack frame offset where that variable should live.
 
@@ -44,7 +46,7 @@ def build_local_variables_frame_offsets(
     [SP - 16]: LR
     """
     offsets: dict[str, int] = {}
-    current_offset = 8
+    current_offset = initial_offset
 
     for var_name, var in variables.items():
         offsets[var_name] = current_offset

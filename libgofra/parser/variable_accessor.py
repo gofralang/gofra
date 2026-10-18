@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import assert_never
 
+from libgofra.hir.literals import IntegerLiteral
 from libgofra.hir.operator import OperatorType
 from libgofra.hir.variable import (
     Variable,
@@ -353,14 +354,19 @@ def _try_unwind_constant(
     if not expr.is_direct_expr():
         return False  # Chain, cant unwind
 
-    assert expr.variable.initial_value
+    assert expr.variable.initial_value is not None, (
+        expr.variable.defined_at,
+        token.location,
+    )
 
-    if isinstance(expr.variable.initial_value, int):
+    if isinstance(expr.variable.initial_value, IntegerLiteral):
         context.push_new_operator(
             type=OperatorType.PUSH_INTEGER,
             token=token,
-            operand=expr.variable.initial_value,
+            operand=expr.variable.initial_value.value,
         )
+
+        assert expr.variable.size_in_bytes == 8
         return True
 
     return False

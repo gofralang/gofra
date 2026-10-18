@@ -126,6 +126,10 @@ def ipc_syscall_linux(
             continue
         pop_cells_from_stack_into_registers(context, register)
 
+    if context.target.operating_system == "Darwin":
+        # TODO: BSD/MACH kernel weirdness, must be implemented not in compiler itself?
+        context.write("orq $0x2000000, %rax")
+
     context.write("syscall")
 
     if store_retval_onto_stack:

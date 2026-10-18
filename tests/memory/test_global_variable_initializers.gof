@@ -10,7 +10,7 @@ var b = 'a';
 var c = [1, 2, 3]
 var d = "hello"
 var e = ["abc", "def"]
-var f PrimitiveStruct = {x = 1, y = 2}
+var f PrimitiveStruct = PrimitiveStruct {x = 1, y = 2}
 
 func void main[]
     &a   &b   &c   &d   &e   &f

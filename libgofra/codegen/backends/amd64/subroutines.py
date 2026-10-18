@@ -70,6 +70,7 @@ def function_end_with_epilogue(
         if return_type.size_in_bytes > 16:
             msg = "Tried to return value which size in bytes requires indirect return register, NIP!"
             raise ValueError(msg)
+        assert return_type.size_in_bytes == 8, return_type
         pop_cells_from_stack_into_registers(
             context,
             abi.retval_primitive_64bit_register,

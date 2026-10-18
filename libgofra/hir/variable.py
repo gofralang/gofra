@@ -7,7 +7,7 @@ from libgofra.lexer.tokens import TokenLocation
 from libgofra.types._base import PrimitiveType, Type
 
 if TYPE_CHECKING:
-    from libgofra.hir.initializer import T_AnyVariableInitializer
+    from libgofra.hir.literals import Literal_T
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,11 +33,12 @@ class Variable[T: Type]:
     scope_class: "VariableScopeClass"
 
     # Type of an variable specified in source code
+    # None -> unknown type before inference by typechecker
     type: T
 
     # Value which this variables is filled by default
     # None means it has not initialized and must be zero-initialized
-    initial_value: "T_AnyVariableInitializer | None" = None
+    initial_value: "Literal_T | None" = None
 
     @property
     def is_global_scope(self) -> bool:

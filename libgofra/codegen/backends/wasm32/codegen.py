@@ -9,6 +9,12 @@ from collections.abc import (
 from typing import IO, Literal, assert_never
 
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
+from libgofra.codegen.backends.initializer import (
+    VariableIntArrayInitializerValue,
+    VariableIntFieldedStructureInitializerValue,
+    VariableStringPtrInitializerValue,
+    literal_to_codegen_initializer,
+)
 from libgofra.codegen.backends.wasm32.memory import (
     wasm_pack_integer_to_memory,
     wasm_pack_string_view_to_memory,
@@ -38,11 +44,6 @@ from libgofra.codegen.backends.wasm32.sexpr import (
 from libgofra.codegen.backends.wasm32.types import wasm_type_from_primitive
 from libgofra.codegen.config import CodegenConfig
 from libgofra.hir.function import Function
-from libgofra.hir.initializer import (
-    VariableIntArrayInitializerValue,
-    VariableIntFieldedStructureInitializerValue,
-    VariableStringPtrInitializerValue,
-)
 from libgofra.hir.module import Module
 from libgofra.hir.operator import (
     FunctionCallOperand,
@@ -123,21 +124,20 @@ class WASM32CodegenBackend:
         return memory
 
     def wasm_init_mem_from_var_initial_value(self, var: Variable[Type]) -> str:
-        match var.initial_value:
+        if var.initial_value is None:
+            return wasm_pack_integer_to_memory(0, size=var.size_in_bytes)
+        initializer = literal_to_codegen_initializer(var.initial_value, var.type)
+        match initializer:
             case int():
-                init_mem = wasm_pack_integer_to_memory(
-                    var.initial_value,
-                    size=var.size_in_bytes,
-                )
-            case None:
-                init_mem = wasm_pack_integer_to_memory(0, size=var.size_in_bytes)
+                return wasm_pack_integer_to_memory(initializer, size=var.size_in_bytes)
+
             case VariableIntFieldedStructureInitializerValue():
                 struct = var.type
                 assert isinstance(struct, StructureType)
                 prev_taken_bytes = 0
                 init_mem = ""
                 for field in struct.order:
-                    value = var.initial_value.values[field]
+                    value = initializer.values[field]
 
                     field_t = struct.get_field_type(field)
                     assert isinstance(field_t, PrimitiveType), field_t
@@ -152,8 +152,9 @@ class WASM32CodegenBackend:
                     )
 
                     prev_taken_bytes += field_t.size_in_bytes + padding
+                return init_mem
             case VariableStringPtrInitializerValue():
-                string_raw = var.initial_value.string
+                string_raw = initializer.string
                 self._strings_to_load[self._symtable_next_offset] = (
                     string_raw,
                     string_raw,
@@ -165,14 +166,13 @@ class WASM32CodegenBackend:
                 self._symtable_next_offset += slice_size
                 self._symtable_next_offset += str_size
 
-                init_mem = wasm_pack_integer_to_memory(offset, size=var.size_in_bytes)
-            case VariableIntArrayInitializerValue():
+                return wasm_pack_integer_to_memory(offset, size=var.size_in_bytes)
+            case VariableIntArrayInitializerValue(values=values):
                 init_mem = ""
                 assert isinstance(var.type, ArrayType)
-                values = var.initial_value.values
 
                 element_size = var.type.element_type.size_in_bytes
-                for value in var.initial_value.values:
+                for value in initializer.values:
                     init_mem += wasm_pack_integer_to_memory(
                         value,
                         size=element_size,
@@ -180,24 +180,22 @@ class WASM32CodegenBackend:
                 empty_cells = var.type.elements_count - len(values)
                 if not empty_cells:
                     return init_mem
-                if var.initial_value.default == 0:
+                if initializer.default == 0:
                     bytes_total = var.type.size_in_bytes
                     bytes_taken = len(values) * element_size
                     bytes_free = bytes_total - bytes_taken
                     init_mem += wasm_pack_integer_to_memory(0, size=bytes_free)
                 else:
-                    fill_with = var.initial_value.default
+                    fill_with = initializer.default
                     cell_size = I64Type().size_in_bytes
                     for _ in range(empty_cells):
                         init_mem += wasm_pack_integer_to_memory(
                             fill_with,
                             size=cell_size,
                         )
-
+                return init_mem
             case _:
                 raise NotImplementedError(var.initial_value, var)
-
-        return init_mem
 
     def build_and_allocate_data_node_from_variable(
         self,
@@ -235,16 +233,17 @@ class WASM32CodegenBackend:
             f"uninitialized symbol {var.name} for WASM"
         )
 
-        match var.initial_value:
+        initializer = literal_to_codegen_initializer(var.initial_value, var.type)
+        match initializer:
             case int():
                 return GlobalSymbolNode(
                     var.name,
                     store_type=wasm_type_from_primitive(var.type),
-                    initializer=I64ConstNode(var.initial_value),
+                    initializer=I64ConstNode(initializer),
                     is_mutable=var.is_constant,
                 )
             case VariableStringPtrInitializerValue():
-                string_raw = var.initial_value.string
+                string_raw = initializer.string
                 self._strings_to_load[self._symtable_next_offset] = (
                     string_raw,
                     string_raw,

@@ -6,7 +6,7 @@ struct S
     A int
 end
 
-var x S = {A = TESTKIT_EXPECTED_EXIT_CODE};
+var x S = S {A = TESTKIT_EXPECTED_EXIT_CODE};
 
 func int main[]
     x.A return

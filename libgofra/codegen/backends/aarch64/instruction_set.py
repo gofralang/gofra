@@ -43,8 +43,7 @@ from libgofra.hir.operator import (
     TypecastMeta,
 )
 from libgofra.hir.variable import Variable, VariableStorageClass
-from libgofra.types import CharType, PointerType, Type
-from libgofra.types.comparison import is_primitive_type
+from libgofra.types import CharType, Type
 from libgofra.types.composite.function import FunctionType
 
 if TYPE_CHECKING:
@@ -350,7 +349,6 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             assert isinstance(operator.operand, str)
 
             param_ref = owner_function.parameter_map[operator.operand]
-            _ = param_ref.initializer
 
             # TODO(@kirillzhosul): This was merged from two operations - must be refactored (and also optimized)
             _push_variable_address(
@@ -369,10 +367,7 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             push_register_onto_stack(writer, "X1")
 
             # TODO: must use tc meta
-            assert is_primitive_type(param_ref.type) or isinstance(
-                param_ref.type,
-                PointerType | FunctionType,
-            ), param_ref.type
+
             store_into_memory_from_stack_arguments(
                 writer,
                 size_in_bytes=param_ref.type.size_in_bytes,

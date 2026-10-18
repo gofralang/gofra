@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
-from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
-from libgofra.codegen.sections._factory import SectionType
-from libgofra.hir.initializer import (
+from libgofra.codegen.backends.initializer import (
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
     VariableIntSliceInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
+    literal_to_codegen_initializer,
 )
+from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
+from libgofra.codegen.sections._factory import SectionType
 from libgofra.types import BoolType
 from libgofra.types._base import PrimitiveType
 from libgofra.types.composite.array import ArrayType
@@ -83,14 +84,18 @@ def _write_static_segment_variable_initializer(
     symbol_name = mangle_hir_symbol_name(variable)
 
     assert variable.initial_value is not None
+    initializer = literal_to_codegen_initializer(
+        variable.initial_value,
+        target_type=variable.type,
+    )
     match variable.type:
         case CharType() | I64Type() | I32Type() | I16Type() | I8Type() | BoolType():
-            assert isinstance(variable.initial_value, int)
+            assert isinstance(initializer, int)
             ddd = _get_ddd_for_type(variable.type)
             writer.label(symbol_name)
-            writer.sym_sect_directive(ddd, variable.initial_value)
+            writer.sym_sect_directive(ddd, initializer)
         case ArrayType() if isinstance(variable.type.flatten().element_type, I64Type):
-            assert isinstance(variable.initial_value, VariableIntArrayInitializerValue)
+            assert isinstance(initializer, VariableIntArrayInitializerValue)
             ddd = _get_ddd_for_type(I64Type())
 
             flat = variable.type.flatten()
@@ -98,30 +103,30 @@ def _write_static_segment_variable_initializer(
             _write_static_array_initializer(
                 writer,
                 symbol_name,
-                init=variable.initial_value,
+                init=initializer,
                 total_count=flat.elements_count,
                 element_type=flat.element_type,
             )
         case ArrayType(element_type=PointerType(points_to=StringType())):
             assert isinstance(
-                variable.initial_value,
+                initializer,
                 VariableStringPtrArrayInitializerValue,
             )
 
-            values = variable.initial_value.values
+            values = initializer.values
             f_values = ", ".join(map(string_pool.add, values))
 
             writer.label(symbol_name)
             writer.sym_sect_directive("quad", f_values)
         case PointerType(points_to=StringType()):
-            assert isinstance(variable.initial_value, VariableStringPtrInitializerValue)
-            string_raw = variable.initial_value.string
+            assert isinstance(initializer, VariableStringPtrInitializerValue)
+            string_raw = initializer.string
             writer.label(symbol_name)
             writer.sym_sect_directive("quad", string_pool.add(string_raw))
         case SliceType():
-            assert isinstance(variable.initial_value, VariableIntSliceInitializerValue)
+            assert isinstance(initializer, VariableIntSliceInitializerValue)
 
-            init = variable.initial_value.data_initializer
+            init = initializer.data_initializer
             data_label = f"{symbol_name}$data"
             _write_static_array_initializer(
                 writer,
@@ -136,13 +141,13 @@ def _write_static_segment_variable_initializer(
             writer.sym_sect_directive("quad", len(init.values))
         case StructureType():
             assert isinstance(
-                variable.initial_value,
+                initializer,
                 VariableIntFieldedStructureInitializerValue,
             )
             _write_static_segment_structure_initializer(
                 writer,
                 struct=variable.type,
-                initial_value=variable.initial_value,
+                initial_value=initializer,
                 symbol_name=symbol_name,
             )
         case _:

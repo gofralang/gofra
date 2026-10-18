@@ -1,6 +1,6 @@
 from collections.abc import Iterable, MutableSequence
 from pathlib import Path
-from shlex import shlex, split
+from shlex import split
 from typing import Literal, assert_never
 
 from libgofra.linker.apple.architectures import (

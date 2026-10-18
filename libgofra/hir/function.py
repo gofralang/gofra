@@ -12,7 +12,6 @@ from libgofra.types.primitive.void import VoidType
 if TYPE_CHECKING:
     from collections.abc import Mapping, MutableSequence, Sequence
 
-    from libgofra.hir.initializer import T_AnyVariableInitializer
     from libgofra.hir.module import Module
     from libgofra.hir.operator import Operator
     from libgofra.hir.variable import Variable
@@ -40,14 +39,7 @@ class FunctionParameter:
     name: str
     type: Type
 
-    # Anything parsed that comes after = (e.g default value)
-    # actually means default value but uses initializer logic behind
-    initializer: T_AnyVariableInitializer | None = None
-
     def __repr__(self) -> str:
-        if self.initializer:
-            return f"{self.type} {self.name} = {self.initializer}"
-
         return f"{self.type} {self.name}"
 
 

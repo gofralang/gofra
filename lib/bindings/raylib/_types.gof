@@ -6,14 +6,13 @@ struct Color
 end
 
 
-const WHITE    Color = { r = 255, g = 255, b = 255, a = 255 }
-const BLACK    Color = { r = 0,   g = 0,   b = 0,   a = 254 }
-const RAYWHITE Color = { r = 245, g = 245, b = 245, a = 254 }
-const RED      Color = { r = 230, g = 41,  b = 55,  a = 254 }
-const GREEN    Color = { r = 0,   g = 248, b = 48,  a = 254 }
-const BLUE     Color = { r = 0,   g = 121, b = 241, a = 254 }
-const YELLOW   Color = { r = 253, g = 249, b = 0,   a = 255 }
-
+const WHITE    Color = Color { r = -1,  g = -1,  b = -1,  a = -1  }
+const BLACK    Color = Color { r = 0,   g = 0,   b = 0,   a = -2  }
+const RAYWHITE Color = Color { r = -11, g = -11, b = -11, a = -2  }
+const RED      Color = Color { r = -26, g = 41,  b = 55,  a = -2  }
+const GREEN    Color = Color { r = 0,   g = -8,  b = 48,  a = -2  }
+const BLUE     Color = Color { r = 0,   g = 121, b = -15, a = -2  }
+const YELLOW   Color = Color { r = -3,  g = -7,  b = 0,   a = -1  }
 const KEY_W      = 87
 const KEY_A      = 65
 const KEY_S      = 83

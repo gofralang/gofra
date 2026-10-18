@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping, MutableMapping
 from copy import deepcopy
 
 from libgofra.hir.function import Function
-from libgofra.hir.initializer import VariableIntArrayInitializerValue
+from libgofra.hir.literals import ArrayLiteral
 from libgofra.hir.variable import Variable
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.types._base import Type
@@ -55,12 +55,12 @@ def lint_variables_initializer(
     for v in variables.values():
         if not isinstance(v.type, ArrayType) or not isinstance(
             v.initial_value,
-            VariableIntArrayInitializerValue,
+            ArrayLiteral,
         ):
             continue
-        if v.initial_value.default == 0:
+        if v.initial_value.default is None:
             continue
-        if (v.type.elements_count - len(v.initial_value.values)) != 0:
+        if (v.type.elements_count - len(v.initial_value.elements)) != 0:
             continue
 
         on_lint_warning(

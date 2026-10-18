@@ -12,6 +12,9 @@ from libgofra.hir.operator import (
 )
 from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.optimizer.helpers.call_graph import CallGraph
+from libgofra.parser.errors.variable_with_void_type import (
+    VariableCannotHasVoidTypeParserError,
+)
 from libgofra.typecheck.casts import resolve_type_cast_to_kind
 from libgofra.typecheck.entry_point import validate_entry_point_signature
 from libgofra.typecheck.errors.cannot_cast_to_given_type import (
@@ -27,6 +30,7 @@ from libgofra.typecheck.errors.return_value_missing import (
 from libgofra.typecheck.errors.user_defined_compile_time_error import (
     UserDefinedCompileTimeError,
 )
+from libgofra.typecheck.inference import validate_variable_initializer
 from libgofra.typecheck.static_linter import (
     emit_no_return_attribute_propagation_warning,
     emit_unreachable_code_after_early_return_warning,
@@ -136,8 +140,7 @@ def validate_type_safety(
     lint_structure_types(on_lint_warning, module.structures)
     lint_variables_initializer(on_lint_warning, module.variables)
     global_var_references: MutableMapping[str, Variable[Type]] = {}
-    functions = list(module.functions.values())
-    for function in functions:
+    for function in module.functions.values():
         if function.attrs.external:
             # Skip symbols that are has no compile-time known executable operators as have nothing to typecheck
             continue
@@ -148,6 +151,37 @@ def validate_type_safety(
             on_lint_warning=on_lint_warning,
         )
         global_var_references |= func_block.global_references_variables
+
+    _typecheck_variables_stage(module, global_var_references, on_lint_warning)
+
+
+def validate_variable(variable: Variable[Type]) -> None:
+    var_t = variable.type
+    if isinstance(var_t, VoidType):
+        raise VariableCannotHasVoidTypeParserError(
+            varname=variable.name,
+            defined_at=variable.defined_at,
+        )
+
+    if var_t and var_t.size_in_bytes == 0:
+        msg = f"Variable {variable.name} defined at {variable.defined_at} has type {var_t}, which has zero byte size! Possible alternative to void, which is prohibited"
+        raise TypeError(msg)
+
+
+def _typecheck_variables_stage(
+    module: Module,
+    global_var_references: MutableMapping[str, Variable[Type]],
+    on_lint_warning: Callable[[str], None],
+) -> None:
+
+    for variable in module.variables.values():
+        validate_variable_initializer(variable, module)
+        validate_variable(variable)
+
+    for function in module.functions.values():
+        for variable in function.variables.values():
+            validate_variable_initializer(variable, module)
+            validate_variable(variable)
 
     unused_global_variables = [
         module.variables[vn]

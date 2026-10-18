@@ -17,12 +17,12 @@ struct Paddle
 end
 
 #define PADDLE_DEFAULT_SPEED 3 
-var player Paddle = {
+var player Paddle = Paddle {
     speed = PADDLE_DEFAULT_SPEED,
     score = 0,
     x = 0, y = 0,
 }
-var enemy Paddle = {
+var enemy Paddle = Paddle {
     speed = PADDLE_DEFAULT_SPEED,
     score = 0,
     x = 0, y = 0,

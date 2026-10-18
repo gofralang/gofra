@@ -5,12 +5,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, assert_never
 
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
-from libgofra.hir.initializer import (
+from libgofra.codegen.backends.initializer import (
     T_AnyVariableInitializer,
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
+    VariableIntSliceInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
+    literal_to_codegen_initializer,
 )
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
@@ -37,7 +39,7 @@ def write_function_local_stack_variables_initializer(
         current_offset = local_offsets.offsets[variable.name]
         _write_initializer_for_stack_variable(
             context,
-            initial_value,
+            literal_to_codegen_initializer(initial_value, variable.type),
             variable.type,
             current_offset,
         )
@@ -85,7 +87,8 @@ def _write_initializer_for_stack_variable(
     if isinstance(
         initial_value,
         VariableIntFieldedStructureInitializerValue
-        | VariableStringPtrArrayInitializerValue,
+        | VariableStringPtrArrayInitializerValue
+        | VariableIntSliceInitializerValue,
     ):  # pyright: ignore[reportUnnecessaryIsInstance]
         msg = f"{initial_value} is not implemented on-stack within codegen"
         raise NotImplementedError(msg)

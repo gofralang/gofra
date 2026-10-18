@@ -49,16 +49,19 @@ class PeekableTokenizer:
     def advance_token(self) -> None:
         self.next_token()
 
-    def peek_token(self) -> Token:
-        if not self._peeked:
-            n = next(self._tokenizer)
-            self._peeked.append(n)
-        return self._peeked[0]
+    def peek_token(self, n: int = 0) -> Token:
+        while len(self._peeked) <= n:
+            self._peeked.append(next(self._tokenizer))
+        return self._peeked[n]
 
-    def expect_token(self, type: TokenType) -> None:  # noqa: A002
+    def expect_token(self, type: TokenType | tuple[TokenType, ...]) -> None:  # noqa: A002
         token = self.peek_token()
-        if token.type != type:
-            raise ExpectedTokenByParserError(expected=type, got=token)
+        if not isinstance(type, tuple):
+            type = (type,)  # noqa: A001
+
+        # TODO: proper error
+        if token.type not in type:
+            raise ExpectedTokenByParserError(expected=type[0], got=token)
 
     def push_token_back_upfront_peeked(self, token: Token) -> None:
         """Push token in front of peeked ones, so next/peek will take it last in order of peeked."""

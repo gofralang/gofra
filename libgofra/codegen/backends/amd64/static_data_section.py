@@ -1,21 +1,20 @@
 from collections.abc import Mapping
 
 from libgofra.codegen.backends.amd64._context import AMD64CodegenContext
-from libgofra.codegen.backends.string_pool import StringPool
-from libgofra.codegen.sections._factory import SectionType
-from libgofra.hir.initializer import (
+from libgofra.codegen.backends.initializer import (
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
+    literal_to_codegen_initializer,
 )
+from libgofra.codegen.backends.string_pool import StringPool
+from libgofra.codegen.sections._factory import SectionType
+from libgofra.hir.literals import IntegerLiteral
 from libgofra.hir.variable import Variable
 from libgofra.types._base import PrimitiveType, Type
 from libgofra.types.composite.array import ArrayType
-from libgofra.types.composite.pointer import PointerType
-from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
-from libgofra.types.primitive.character import CharType
 from libgofra.types.primitive.integers import I64Type
 
 
@@ -72,7 +71,7 @@ def write_initialized_data_section(
         context.fd.write(f"{name}: \n\t.quad {name}d\n\t.quad {length}\n")
 
 
-def _get_ddd_for_type(t: PrimitiveType) -> str:
+def _get_ddd_for_type(t: Type) -> str:
     """Get Data Definition Directive for type based on byte size."""
     type_size = t.size_in_bytes
     if type_size <= 1:
@@ -101,9 +100,9 @@ def _write_static_segment_const_variable_initializer(
     ptr_t_ddd = _get_ddd_for_type(I64Type())
 
     assert variable.initial_value is not None
-    match variable.type:
-        case CharType() | I64Type():
-            assert isinstance(variable.initial_value, int)
+    initializer = literal_to_codegen_initializer(variable.initial_value, variable.type)
+    match initializer:
+        case int():
             if type_size == 0:
                 context.on_warning(
                     f"Variable {variable.name} has zero byte size (type {variable.type}) this variable will be not defined as symbol!",
@@ -111,17 +110,14 @@ def _write_static_segment_const_variable_initializer(
                 return
             # TODO(@kirillzhosul): review realignment of static variables
             ddd = _get_ddd_for_type(variable.type)
-            context.fd.write(f"{symbol_name}: {ddd} {variable.initial_value}\n")
-        case PointerType(points_to=StringType()):
-            assert isinstance(variable.initial_value, VariableStringPtrInitializerValue)
-            string_raw = variable.initial_value.string
+            context.fd.write(f"{symbol_name}: {ddd} {initializer}\n")
+        case VariableStringPtrInitializerValue():
             context.fd.write(
-                f"{symbol_name}: \n\t{ptr_t_ddd} {context.string_pool.add(string_raw)}\n",
+                f"{symbol_name}: \n\t{ptr_t_ddd} {context.string_pool.add(initializer.string)}\n",
             )
-        case ArrayType(element_type=I64Type()):
-            assert isinstance(variable.initial_value, VariableIntArrayInitializerValue)
+        case VariableIntArrayInitializerValue(values=values):
+            assert isinstance(variable.type, ArrayType)
 
-            values = variable.initial_value.values
             f_values = ", ".join(map(str, values))
 
             context.fd.write(f"{symbol_name}: \n\t{ptr_t_ddd} {f_values}\n")
@@ -131,37 +127,29 @@ def _write_static_segment_const_variable_initializer(
             empty_cells = variable.type.elements_count - len(values)
             if not empty_cells:
                 return
-            if variable.initial_value.default == 0:
+            assert isinstance(initializer.default, IntegerLiteral | None)
+            if initializer.default is None or initializer.default.value == 0:
                 bytes_total = variable.type.size_in_bytes
                 bytes_taken = len(values) * element_size
                 bytes_free = bytes_total - bytes_taken
                 context.fd.write(f"\t.zero {bytes_free}\n")
             else:
-                fill_with = variable.initial_value.default
+                fill_with = initializer.default.value
                 cell_size = I64Type().size_in_bytes
                 context.fd.write(f"\t.fill {empty_cells}, {cell_size}, {fill_with}")
                 context.comment_eol(f"Filler ({fill_with})")
 
-        case ArrayType(element_type=PointerType(points_to=StringType())):
-            assert isinstance(
-                variable.initial_value,
-                VariableStringPtrArrayInitializerValue,
-            )
-
-            values = variable.initial_value.values
+        case VariableStringPtrArrayInitializerValue(value=values):
             f_values = ", ".join(map(context.string_pool.add, values))
 
             context.fd.write(f"{symbol_name}: \n\t.quad {f_values}\n")
 
-        case StructureType():
-            assert isinstance(
-                variable.initial_value,
-                VariableIntFieldedStructureInitializerValue,
-            )
+        case VariableIntFieldedStructureInitializerValue():
+            assert isinstance(variable.type, StructureType)
             _write_static_segment_structure_initializer(
                 context,
                 struct=variable.type,
-                initial_value=variable.initial_value,
+                initial_value=initializer,
                 symbol_name=symbol_name,
             )
         case _:

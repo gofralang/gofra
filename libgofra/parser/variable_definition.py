@@ -1,8 +1,4 @@
-from libgofra.hir.variable import (
-    Variable,
-    VariableScopeClass,
-    VariableStorageClass,
-)
+from libgofra.hir.variable import Variable, VariableScopeClass, VariableStorageClass
 from libgofra.lexer.keywords import Keyword
 from libgofra.lexer.tokens import Token, TokenType
 from libgofra.parser._context import ParserScope
@@ -12,18 +8,15 @@ from libgofra.parser.errors.constant_variable_requires_initializer import (
 from libgofra.parser.errors.general_name_conflict_error import (
     GeneralNameHolderConflictError,
 )
-from libgofra.parser.errors.variable_with_void_type import (
-    VariableCannotHasVoidTypeParserError,
-)
 from libgofra.parser.errors.wildcard_cannot_be_used_as_symbol_name import (
     WildcardCannotBeUsedAsSymbolNameError,
 )
 from libgofra.parser.exceptions import ParserVariableNameAlreadyDefinedAsVariableError
+from libgofra.parser.literals import parse_any_literal
 from libgofra.parser.type_parser import (
     parse_concrete_type_from_tokenizer,
 )
-from libgofra.parser.variable_initializer import consume_variable_initializer
-from libgofra.types.primitive.void import VoidType
+from libgofra.typecheck.inference import infer_type_from_literal
 
 
 def _consume_variable_modifier_is_const(
@@ -49,7 +42,7 @@ def _consume_variable_modifier_is_const(
     return True
 
 
-def _validate_variable_redefinition(
+def _validate_variable_name_redefinition(
     context: ParserScope,
     name: str,
     token: Token,
@@ -59,6 +52,9 @@ def _validate_variable_redefinition(
             token=token,
             name=name,
         )
+
+    if name == "_":
+        raise WildcardCannotBeUsedAsSymbolNameError(at=token.location)
 
     if name_holder := context.query_name_holder(name):
         raise GeneralNameHolderConflictError(
@@ -71,27 +67,15 @@ def unpack_variable_definition_from_token(
     context: ParserScope,
     token: Token,
 ) -> None:
+    assert context.module
     assert token.type == TokenType.KEYWORD
     modifier_is_const = _consume_variable_modifier_is_const(context, token)
 
-    varname_token = context.next_token()
-    if varname_token.type != TokenType.IDENTIFIER:
-        msg = f"Expected variable name after variable keyword but got {varname_token.type.name} at {varname_token.location}"
-        raise ValueError(msg)
-    assert isinstance(varname_token.value, str)
+    context.expect_token(TokenType.IDENTIFIER)
+    token = context.next_token()
 
-    varname = varname_token.text
-
-    if varname == "_":
-        raise WildcardCannotBeUsedAsSymbolNameError(at=token.location)
-
-    _validate_variable_redefinition(context, varname, varname_token)
-
-    var_t = None  # Infer by default
-    if context.peek_token().type == TokenType.ASSIGNMENT:
-        pass
-    else:
-        var_t = parse_concrete_type_from_tokenizer(context)
+    name = token.text
+    _validate_variable_name_redefinition(context, name, token)
 
     storage_class = (
         VariableStorageClass.STATIC
@@ -104,39 +88,31 @@ def unpack_variable_definition_from_token(
         else VariableScopeClass.FUNCTION
     )
 
+    var_t = None
+    if context.peek_token().type != TokenType.ASSIGNMENT:
+        var_t = parse_concrete_type_from_tokenizer(context)
+
     initial_value = None
 
     if context.peek_token().type == TokenType.ASSIGNMENT:
-        _ = context.next_token()  # consume =
+        context.advance_token()  # consume =
+        initial_value = parse_any_literal(context)
 
-        # Parse value and infer type from that
-        # `var_t` can be changed if it is inferred type
-        # Or initializer modifies type (e.g incomplete array type)
-        initial_value, var_t = consume_variable_initializer(
-            context,
-            var_t,
-            varname_token=varname_token,
-        )
-    elif modifier_is_const:
-        raise ConstantVariableRequiresInitializerError(varname, token.location)
+    # Inference
+    if var_t is None:
+        if initial_value is None:
+            msg = "Empty variable definition"
+            raise ValueError(msg)
+        var_t = infer_type_from_literal(initial_value, module=context.module)
 
-    if isinstance(var_t, VoidType):
-        raise VariableCannotHasVoidTypeParserError(
-            varname=varname,
-            defined_at=varname_token,
-        )
+    if modifier_is_const and initial_value is None:
+        raise ConstantVariableRequiresInitializerError(name, token.location)
 
-    if var_t and var_t.size_in_bytes == 0:
-        msg = f"Variable {varname} defined at {varname_token.location} has type {var_t}, which has zero byte size! Possible alternative to void, which is prohibited"
-        raise TypeError(msg)
-
-    assert var_t, "Must emit infer error"
-    assert context.module
-    context.variables[varname] = Variable(
+    context.variables[name] = Variable(
+        name=name,
         module=context.module,
-        name=varname,
+        defined_at=token.location,
         type=var_t,
-        defined_at=varname_token.location,
         scope_class=scope_class,
         storage_class=storage_class,
         initial_value=initial_value,
