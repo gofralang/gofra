@@ -1,5 +1,6 @@
 from collections.abc import Iterable, MutableSequence
 from pathlib import Path
+from shlex import shlex, split
 from typing import Literal, assert_never
 
 from libgofra.linker.apple.architectures import (
@@ -166,9 +167,6 @@ def compose_raw_apple_linker_command(  # noqa: PLR0913
         )
         command.extend(("-syslibroot", path))
 
-    # Do not search standard directories, we will propagate them by own
-    command.append("-Z")
-
     # Treat warnings as errors and additional warnings
     command.extend(("-fatal_warnings", "-arch_errors_fatal"))
     command.extend(("-warn_duplicate_libraries",))
@@ -213,7 +211,9 @@ def compose_raw_apple_linker_command(  # noqa: PLR0913
 
     # Propagated linker flags from above.
     if additional_flags:
-        command.extend(additional_flags)
+        for flag in additional_flags:
+            # TODO: general shlex
+            command.extend(split(flag))
 
     # Do not perform some optimizations
     # must only be enabled for debug builds
