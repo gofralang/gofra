@@ -1,0 +1,2 @@
+extern pub func void DrawLine[int startPosX, int startPosY, int endPosX, int endPosY ,Color color]              
+extern pub func void DrawRectangle[int posX, int posY, int width, int height, Color color]         

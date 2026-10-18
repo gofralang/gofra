@@ -5,8 +5,7 @@
 // MacOS: `-lraylib`
 // ==============================================
 
-#define RAYLIB_STRUCT_COLORS
-#include "bindings/raylib.gof"
+#include "bindings/raylib"
 #include "std"
 
 const PADDLE_WIDTH = 25
@@ -231,12 +230,12 @@ end
 
 
 func void game_loop[]
-    call draw_game
     call handle_player_movement
     call handle_enemy_ai
     call update_ball_movement
     call handle_ball_wall_bounce
     call handle_ball_paddle_bounce
+    call draw_game
 end
 
 func void main[]

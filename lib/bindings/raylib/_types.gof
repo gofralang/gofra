@@ -1,0 +1,31 @@
+struct Color
+    r char        // Color red value
+    g char        // Color green value
+    b char        // Color blue value
+    a char        // Color alpha value
+end
+
+
+const WHITE    Color = { r = 255, g = 255, b = 255, a = 255 }
+const BLACK    Color = { r = 0,   g = 0,   b = 0,   a = 254 }
+const RAYWHITE Color = { r = 245, g = 245, b = 245, a = 254 }
+const RED      Color = { r = 230, g = 41,  b = 55,  a = 254 }
+const GREEN    Color = { r = 0,   g = 248, b = 48,  a = 254 }
+const BLUE     Color = { r = 0,   g = 121, b = 241, a = 254 }
+const YELLOW   Color = { r = 253, g = 249, b = 0,   a = 255 }
+
+const KEY_W      = 87
+const KEY_A      = 65
+const KEY_S      = 83
+const KEY_D      = 68
+
+const KEY_UP     = 265
+const KEY_DOWN   = 264
+const KEY_LEFT   = 263
+const KEY_RIGHT  = 262
+
+const KEY_SPACE  = 32
+const KEY_ESCAPE = 256
+
+
+func void __internal[] end

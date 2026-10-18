@@ -1,0 +1,2 @@
+extern pub func void DrawText[CStr text, int posX, int posY, int fontSize, Color color]             
+extern pub func void DrawFPS[int posX, int posY]                         

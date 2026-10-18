@@ -1,0 +1,9 @@
+#include "_types.gof"
+#include "_etc.gof"
+
+#include "rcore.gof"
+#include "rshapes.gof"
+#include "rtext.gof"
+
+
+

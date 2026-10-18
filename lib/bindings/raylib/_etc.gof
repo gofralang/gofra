@@ -1,0 +1,10 @@
+pub func int rgba_to_raylib_argb[int r, int g, int b, int a]
+    var color int = 0;
+
+    &color a 24 << color | !<
+    &color r 16 << color | !<
+    &color g 8  << color | !<
+    &color b       color | !<
+
+    color return
+end

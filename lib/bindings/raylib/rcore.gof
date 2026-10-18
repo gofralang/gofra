@@ -1,0 +1,45 @@
+#include "std/types"
+
+extern pub func void InitWindow[int width,int height,CStr name]
+extern pub func void CloseWindow[]
+extern pub func bool WindowShouldClose[]                          
+extern pub func bool IsWindowReady[]                          
+extern pub func bool IsWindowFullscreen[]                          
+extern pub func bool IsWindowHidden[]                          
+extern pub func bool IsWindowMinimized[]                          
+extern pub func bool IsWindowMaximized[]                          
+extern pub func bool IsWindowFocused[]                          
+extern pub func bool IsWindowResized[]                          
+extern pub func bool IsWindowState[int flag]                          
+extern pub func void SetWindowState[int flags]                          
+extern pub func void ClearWindowState[int flags]                          
+extern pub func void ToggleFullscreen[]                          
+extern pub func void ToggleBorderlessWindowed[]                          
+extern pub func void MaximizeWindow[]                          
+extern pub func void MinimizeWindow[]                          
+extern pub func void RestoreWindow[]                          
+// SetWindowIcon
+// SetWindowIcons
+extern pub func void SetWindowTitle[CStr title]                          
+extern pub func void SetWindowPosition[int x, int y]                          
+extern pub func void SetWindowMonitor[int monitor]                          
+extern pub func void SetWindowMinSize[int width, int height]                          
+extern pub func void SetWindowMaxSize[int width, int height]                          
+extern pub func void SetWindowSize[int width, int height]                          
+// SetWindowOpacity
+extern pub func void SetWindowFocused[]                          
+extern pub func *void GetWindowHandle[]                          
+
+extern pub func void ClearBackground[Color color]                 
+extern pub func void EndDrawing[]                                 
+extern pub func void BeginDrawing[]                               
+
+extern pub func void SetTargetFPS[int fps]                        
+
+extern pub func void TraceLog[int logLevel, CStr text]                        
+
+extern pub func bool IsKeyPressed[int key]                    
+extern pub func bool IsKeyDown[int key]                       
+extern pub func bool IsKeyReleased[int key]                    
+
+extern func int GetRandomValue[int min, int max]
