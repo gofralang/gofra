@@ -11,6 +11,7 @@ from libgofra.hir.initializer import (
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
 )
+from libgofra.types import BoolType
 from libgofra.types._base import PrimitiveType
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerType
@@ -83,7 +84,7 @@ def _write_static_segment_variable_initializer(
 
     assert variable.initial_value is not None
     match variable.type:
-        case CharType() | I64Type() | I32Type() | I16Type() | I8Type():
+        case CharType() | I64Type() | I32Type() | I16Type() | I8Type() | BoolType():
             assert isinstance(variable.initial_value, int)
             ddd = _get_ddd_for_type(variable.type)
             writer.label(symbol_name)

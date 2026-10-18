@@ -9,6 +9,7 @@ from libgofra.hir.initializer import (
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
 )
+from libgofra.lexer import Keyword
 from libgofra.lexer.tokens import Token, TokenType
 from libgofra.parser._context import ParserScope
 from libgofra.parser.errors.type_has_no_compile_time_initializer import (
@@ -53,17 +54,22 @@ def consume_variable_initializer(  # noqa: PLR0911
             return initial_value, var_t
         case BoolType():
             value_token = context.next_token()
-            if value_token.type != TokenType.INTEGER:
-                msg = f"Expected INTEGER for initializer (type {var_t}), but got {value_token.type.name} at {value_token.location}"
-                raise ValueError(msg)
+            if value_token.type == TokenType.INTEGER:
+                assert isinstance(value_token.value, int)
+                initial_value = value_token.value
 
-            assert isinstance(value_token.value, int)
-            initial_value = value_token.value
+                if initial_value not in (0, 1):
+                    msg = f"Default value for boolean must be in two states: 0 or 1, but got {initial_value} as initial value at {value_token.location}"
+                    raise ValueError(msg)
+                return initial_value, var_t
+            if value_token.type == TokenType.KEYWORD and value_token.value in (
+                Keyword.TRUE,
+                Keyword.FALSE,
+            ):
+                return int(value_token.value == Keyword.TRUE), var_t
 
-            if initial_value not in (0, 1):
-                msg = f"Default value for boolean must be in two states: 0 or 1, but got {initial_value} as initial value at {value_token.location}"
-                raise ValueError(msg)
-            return initial_value, var_t
+            msg = f"Expected INTEGER for initializer (type {var_t}), but got {value_token.type.name} at {value_token.location}"
+            raise ValueError(msg)
         case SliceType():
             array_initializer, _ = _consume_int_array_initializer(
                 context,

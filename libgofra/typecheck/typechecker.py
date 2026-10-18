@@ -248,7 +248,7 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
                 pass
             case OperatorType.CONDITIONAL_DO | OperatorType.CONDITIONAL_IF:
                 # Treat integer also as *comparable*
-                scope.raise_for_operator_arguments(operator, (BoolType, IntegerType))
+                scope.raise_for_operator_arguments(operator, (BoolType,))
 
                 # Acquire where this block jumps, shift due to emulation layers
                 assert operator.jumps_to_operator_idx
@@ -562,7 +562,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             value_holder_type = mut_scope[-2]
             store_type = mut_scope[-1]
             if not isinstance(value_holder_type, PointerType):
-                msg = f"Tried to write into {value_holder_type} at {operator.location}, but it is not a pointer"
+                msg = f"Tried to write {store_type} into {value_holder_type} at {operator.location}, but it is not a pointer"
                 raise GofraError(msg)
             if (
                 value_holder_type.memory_location
