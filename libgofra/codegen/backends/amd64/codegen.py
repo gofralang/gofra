@@ -11,6 +11,7 @@ from libgofra.codegen.backends.amd64.executable_entry_point import (
 from libgofra.codegen.backends.frame import is_native_function_has_frame
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
 from libgofra.codegen.sections._factory import SectionType
+from libgofra.hir.function import Visibility
 from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
 from libgofra.hir.variable import VariableStorageClass
 from libgofra.types import Type
@@ -311,6 +312,9 @@ def amd64_executable_functions(
     Provides an prolog and epilogue.
     """
     for function in program.executable_functions:
+        if function.name == program.entry_point_ref:
+            function.attrs.visibility = Visibility.PUBLIC
+            function.attrs.mangle = False
         has_frame = is_native_function_has_frame(context.config, function)
 
         function_begin_with_prologue(

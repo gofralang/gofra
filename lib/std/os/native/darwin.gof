@@ -37,14 +37,14 @@
 #define OS_LINESEP "\n" // Line separator
 
 // Network socket address in structure
-type struct sockaddr_in
+struct sockaddr_in
     sin_family char[2]
     sin_port   char[2]
     sin_addr   char[4]
     sin_zero   int   // zero padding
 end
 
-type struct timeval
+struct timeval
     tv_sec int
     tv_usec int
 end

@@ -6,7 +6,7 @@ from libgofra.hir.operator import OperatorType
 from libgofra.hir.variable import Variable, VariableScopeClass, VariableStorageClass
 from libgofra.lexer.keywords import Keyword
 from libgofra.lexer.tokens import Token, TokenType
-from libgofra.parser._context import ParserScope
+from libgofra.parser._context import ParserContext
 from libgofra.parser.exceptions import (
     ParserEmptyIfBodyError,
     ParserEndAfterWhileError,
@@ -39,7 +39,7 @@ type RangeQualifier = RangeQualifierForeach | RangeQualifierRange
 
 
 def consume_conditional_block_keyword_from_token(  # noqa: PLR0911
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
 ) -> None:
     assert isinstance(token.value, Keyword)
@@ -237,7 +237,7 @@ def consume_conditional_block_keyword_from_token(  # noqa: PLR0911
 
 
 def parse_for_range_qualifier(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
 ) -> RangeQualifier:
     iterator_identifier = context.next_token()
@@ -246,30 +246,27 @@ def parse_for_range_qualifier(
         raise ValueError(msg)
 
     iterator_varname = iterator_identifier.text
-    if context.query_name_holder(
-        iterator_varname,
-    ):  # TODO(@kirillzhosul): proper name holder error
-        conflicting_variable = context.search_variable_in_context_parents(
-            iterator_varname,
-        )
-        assert conflicting_variable
-        if not isinstance(conflicting_variable.type, I64Type):
+    if holder := context.scope.lookup(iterator_varname):
+        if isinstance(holder, Variable) and not isinstance(holder.type, I64Type):
             # TODO(@kirillzhosul): Saying about i64 but may be back-patched
-            msg = f"For loop iterator {iterator_varname} used at {token.location} has conflict with variable of same name that has type {conflicting_variable.type}, if you use variable as iterator which is defined, its type must be an I64, otherwise use another name."
+            # TODO(@kirillzhosul): proper name holder error
+            msg = f"For loop iterator {iterator_varname} used at {token.location} has conflict with variable of same name that has type {holder.type}, if you use variable as iterator which is defined, its type must be an I64, otherwise use another name."
             raise ValueError(msg)
     else:
-        assert context.module
-        context.variables[iterator_varname] = Variable(
-            name=iterator_varname,
-            module=context.module,
-            defined_at=iterator_identifier.location,
-            storage_class=VariableStorageClass.STACK,
-            scope_class=VariableScopeClass.FUNCTION,
-            type=I64Type(),
-            is_constant=False,
+        context.scope.declare_variable(
+            iterator_varname,
+            Variable(
+                name=iterator_varname,
+                module=context.module,
+                defined_at=iterator_identifier.location,
+                storage_class=VariableStorageClass.STACK,
+                scope_class=VariableScopeClass.FUNCTION,
+                type=I64Type(),
+                is_constant=False,
+            ),
         )
 
-    iterator = context.variables[iterator_varname]
+    iterator = context.scope.variables[iterator_varname]
     in_token = context.next_token()
     if in_token.type != TokenType.KEYWORD or in_token.value != Keyword.IN:
         msg = f"Expected `IN` keyword in for block but got {in_token.type} at {in_token.location}"
@@ -285,25 +282,25 @@ def parse_for_range_qualifier(
             context.push_token_back_upfront_peeked(iterable_identifier_tok)
             range_from_qualifier_name = context.next_token().text
 
-            range_from_qualifier = context.search_variable_in_context_parents(
-                range_from_qualifier_name,
-            )
+            range_from_qualifier = context.scope.lookup(range_from_qualifier_name)
             if not range_from_qualifier:
                 msg = f"Unknown variable `{range_from_qualifier}` in `for-loop` block."
                 raise ValueError(msg)
-            if not isinstance(range_from_qualifier.type, (I64Type, ArrayType)):
+            if isinstance(range_from_qualifier, Variable) and not isinstance(
+                range_from_qualifier.type,
+                (I64Type, ArrayType),
+            ):
                 msg = f"Expected `{range_from_qualifier_name}` to be an I64/Array type but got {range_from_qualifier.type} in `for-loop` block at {in_token.location}, as it used as range qualifier bounds."
                 raise ValueError(msg)
         else:
             iterable_identifier_name = iterable_identifier_tok.text
 
-            iterable = context.search_variable_in_context_parents(
-                iterable_identifier_name,
-            )
+            iterable = context.scope.lookup(iterable_identifier_name)
 
             if not iterable:
                 msg = f"Unknown variable `{iterable}` in `for-loop` block used as iterable at {iterable_identifier_tok.location}."
                 raise ValueError(msg)
+            assert isinstance(iterable, Variable)
             if iterable.storage_class == VariableStorageClass.STACK:
                 msg = "Prohibited to use stack located iterable, currently leads to segmentation faults"
                 raise ValueError(msg)
@@ -316,8 +313,8 @@ def parse_for_range_qualifier(
             )
 
             # Back-patch iterator defined before as now we know that we iterate array
-            assert context.module
-            context.variables[iterator_varname] = Variable(
+            # TODO: must not bypass `declare_variable` - redeclare properly
+            context.scope.variables[iterator_varname] = Variable(
                 module=context.module,
                 name=iterator_varname,
                 defined_at=iterator_identifier.location,
@@ -356,16 +353,18 @@ def parse_for_range_qualifier(
     elif context.peek_token().type == TokenType.IDENTIFIER:
         range_to_qualifier_name = context.next_token().text
 
-        range_to_qualifier = context.search_variable_in_context_parents(
-            range_to_qualifier_name,
-        )
+        range_to_qualifier = context.scope.lookup(range_to_qualifier_name)
         if not range_to_qualifier:
             msg = f"Unknown variable `{range_to_qualifier_name}` in `for-loop` block."
             raise ValueError(msg)
-        if not isinstance(range_to_qualifier.type, (I64Type, ArrayType)):
+        if isinstance(range_to_qualifier, Variable) and not isinstance(
+            range_to_qualifier.type,
+            (I64Type, ArrayType),
+        ):
             msg = f"Expected `{range_to_qualifier_name}` to be an I64/Array type but got {range_to_qualifier.type} in `for-loop` block at {in_token.location}, as it used as range qualifier bounds."
             raise ValueError(msg)
 
+        assert isinstance(range_to_qualifier, Variable)
     else:
         msg = "Either integer or identifier expected, but got here somehow, unreachable"
         raise ValueError(msg)
@@ -378,14 +377,14 @@ def parse_for_range_qualifier(
     )
 
 
-def _consume_dot_dot_syntax(context: ParserScope) -> None:
+def _consume_dot_dot_syntax(context: ParserContext) -> None:
     context.expect_token(TokenType.DOT)
     context.next_token()
     context.expect_token(TokenType.DOT)
     context.next_token()
 
 
-def _peek_for_dot_dot_syntax(context: ParserScope) -> bool:
+def _peek_for_dot_dot_syntax(context: ParserContext) -> bool:
     """Check if next tokens are containing `..` (dot-dot) syntax."""
     dot_t1 = context.next_token()
     if dot_t1.type != TokenType.DOT:
@@ -404,7 +403,7 @@ def _peek_for_dot_dot_syntax(context: ParserScope) -> bool:
 
 
 def unwrap_for_operators_syntactical_sugar(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     qualifier: RangeQualifier,
 ) -> None:
@@ -526,7 +525,7 @@ def unwrap_for_operators_syntactical_sugar(
 
 
 def operators_read_sint64_variable(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     variable: Variable[Type],
 ) -> None:
@@ -540,7 +539,7 @@ def operators_read_sint64_variable(
 
 
 def operators_set_sint64_variable(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     value: int,
     variable: Variable[Type],

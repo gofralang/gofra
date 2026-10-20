@@ -15,6 +15,7 @@ from libgofra.types.comparison import is_types_same
 from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.pointer import PointerMemoryLocation, PointerType
 from libgofra.types.composite.structure import StructureType
+from libgofra.types.registry import TypeRegistry
 from libgofra.types.reordering import reorder_type_fields
 
 
@@ -24,9 +25,10 @@ def _is_identifier_marked_as_redundant(identifier: str) -> bool:
 
 def lint_structure_types(
     on_lint_warning: Callable[[str], None],
-    structures: MutableMapping[str, StructureType],
+    types: TypeRegistry,
 ) -> None:
-    for struct in structures.values():
+    structures = [t for t in types.values() if isinstance(t, StructureType)]
+    for struct in structures:
         if struct.is_reordering_allowed or struct.is_packed:
             continue
         new_order, has_possible_reorder = reorder_type_fields(

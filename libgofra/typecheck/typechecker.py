@@ -44,6 +44,7 @@ from libgofra.typecheck.static_linter import (
     lint_unused_parameters,
     lint_variables_initializer,
 )
+from libgofra.typecheck.visibility import validate_function_existence_and_visibility
 from libgofra.types import Type
 from libgofra.types.comparison import is_types_same, is_typestack_same
 from libgofra.types.composite.array import ArrayType
@@ -137,7 +138,7 @@ def validate_type_safety(
                 f"Unused private module function {function.name} defined at {function.defined_at}! Either remove it or make public!",
             )
 
-    lint_structure_types(on_lint_warning, module.structures)
+    lint_structure_types(on_lint_warning, module.types)
     lint_variables_initializer(on_lint_warning, module.variables)
     global_var_references: MutableMapping[str, Variable[Type]] = {}
     for function in module.functions.values():
@@ -153,6 +154,7 @@ def validate_type_safety(
         global_var_references |= func_block.global_references_variables
 
     _typecheck_variables_stage(module, global_var_references, on_lint_warning)
+    validate_function_existence_and_visibility(root=module, module=module)
 
 
 def validate_variable(variable: Variable[Type]) -> None:

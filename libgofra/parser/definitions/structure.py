@@ -1,20 +1,21 @@
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from libgofra.lexer.keywords import Keyword
 from libgofra.lexer.tokens import Token, TokenType
-from libgofra.parser._context import ParserScope
+from libgofra.parser._context import ParserContext
+from libgofra.parser.definitions._aggregates import (
+    parse_aggregate_definition_members,
+    validate_aggregate_name_redefinition,
+)
 from libgofra.parser.errors.structure_field_has_zero_size import (
     StructureFieldHasZeroError,
 )
 from libgofra.parser.errors.structure_has_no_fields import StructureHasNoFieldsError
 from libgofra.parser.errors.structure_has_zero_size import StructureHasZeroSizeError
-from libgofra.parser.errors.wildcard_cannot_be_used_as_symbol_name import (
-    WildcardCannotBeUsedAsSymbolNameError,
-)
 from libgofra.parser.type_parser import (
     consume_generic_type_parameters,
-    parse_concrete_type_from_tokenizer,
     parse_generic_type_alias_from_tokenizer,
 )
 from libgofra.types.composite.structure import StructureType
@@ -24,42 +25,28 @@ if TYPE_CHECKING:
     from libgofra.types._base import Type
 
 
-def unpack_structure_definition_from_token(context: ParserScope) -> None:
-    attr_is_packed, attr_reorder = _consume_structure_attributes(context)
+@dataclass
+class _StructureSpec:
+    name: str
+    is_packed: bool
+    reorder: bool
+    token: Token
 
-    name_token = context.next_token()
-    if name_token.type != TokenType.IDENTIFIER:
-        msg = f"Expected structure name at {name_token.location} to be an identifier but got {name_token.type.name}"
-        raise ValueError(msg)
 
-    name = name_token.text
-    if name == "_":
-        raise WildcardCannotBeUsedAsSymbolNameError(at=name_token.location)
+def parse_structure_definition(context: ParserContext) -> None:
+    """Parse and define structure (as type) starting from name token."""
+    spec = _parse_structure_spec(context)
+    validate_aggregate_name_redefinition(context, spec.name, spec.token.location)
 
-    if context.query_name_holder(name):
-        msg = f"Structure name {name} is already taken by other definition"
-        raise ValueError(msg)
-    if (
-        context.peek_token().type == TokenType.LCURLY
-        and not context.peek_token().has_trailing_whitespace
-    ):
+    if context.peek_token().type == TokenType.LCURLY:
         type_params = consume_generic_type_parameters(context)
-        _consume_generic_structure_type_definition(
-            context,
-            name,
-            type_params=type_params,
-        )
+        _parse_generic_structure_definition(context, spec, type_params=type_params)
         return
 
-    _consume_concrete_structure_type_definition(
-        context,
-        name,
-        attr_is_packed=attr_is_packed,
-        attr_reorder=attr_reorder,
-    )
+    _parse_concrete_structure_definition(context, spec)
 
 
-def _consume_structure_attributes(context: ParserScope) -> tuple[bool, bool]:
+def _parse_structure_spec(context: ParserContext) -> _StructureSpec:
     attr_is_packed, attr_reorder = False, False
 
     while context.peek_token().type == TokenType.KEYWORD:
@@ -75,28 +62,34 @@ def _consume_structure_attributes(context: ParserScope) -> tuple[bool, bool]:
             case _:
                 raise ValueError(attr_token)
 
-    return attr_is_packed, attr_reorder
+    context.expect_token(TokenType.IDENTIFIER)
+    name_token = context.next_token()
+
+    name = name_token.text
+    return _StructureSpec(
+        name,
+        attr_is_packed,
+        attr_reorder,
+        token=name_token,
+    )
 
 
-def _consume_generic_structure_type_definition(
-    context: ParserScope,
-    name: str,
+def _parse_generic_structure_definition(
+    context: ParserContext,
+    spec: _StructureSpec,
     type_params: Mapping[str, Token],
 ) -> None:
     # Forward declare this struct so users may use that type in structure definition
     # this must to be back-patched after parsing types
-    attr_is_packed, attr_reorder = _consume_structure_attributes(context)
 
     ref = GenericStructureType(
-        name=name,
+        name=spec.name,
         fields={},
         fields_ordering=[],
-        is_packed=attr_is_packed,
-        reorder=attr_reorder,
+        is_packed=spec.is_packed,
+        reorder=spec.reorder,
     )
-    context.types[name] = (
-        ref  # TODO(@kirillzhosul): Codebase is a mess with these type/structure containers - can be single one ?
-    )
+    context.scope.declare_type(spec.name, ref)
 
     fields: dict[str, Type | GenericParametrizedType] = {}
     fields_ordering: list[str] = []
@@ -123,51 +116,29 @@ def _consume_generic_structure_type_definition(
     ref.fields_ordering = fields_ordering
 
 
-def _consume_concrete_structure_type_definition(
-    context: ParserScope,
-    name: str,
-    *,
-    attr_is_packed: bool,
-    attr_reorder: bool,
+def _parse_concrete_structure_definition(
+    context: ParserContext,
+    spec: _StructureSpec,
 ) -> None:
     # Forward declare this struct so users may use that type in structure definition
     # this must to be back-patched after parsing types
     ref = StructureType(
-        name=name,
+        name=spec.name,
         fields={},
         order=[],
-        is_packed=attr_is_packed,
-        reorder=attr_reorder,
+        is_packed=spec.is_packed,
+        reorder=spec.reorder,
     )
-    context.structs[name] = ref
+    context.scope.declare_type(spec.name, ref)
 
-    fields: dict[str, Type] = {}
-    fields_ordering: list[str] = []
-
-    has_forward_reference = False
-    while token := context.next_token():
-        if token.type == TokenType.KEYWORD and token.value == Keyword.END:
-            # End of structure block definition
-            break
-        field_name_token = token
-
-        if field_name_token.type != TokenType.IDENTIFIER:
-            msg = f"Expected structure field name at {field_name_token.location} to be an identifier but got {field_name_token.type.name}"
-            raise ValueError(msg)
-        field_name = field_name_token.text
-        field_type = parse_concrete_type_from_tokenizer(context)
-        if id(field_type) == id(ref):
-            has_forward_reference = True
-
-        fields_ordering.append(field_name)
-        fields[field_name] = field_type
+    members_flat, references_self = parse_aggregate_definition_members(context, ref)
 
     # Back-patch reference
     ref.backpatch(
-        fields=fields,
-        order=fields_ordering,
+        fields=dict(members_flat),
+        order=[k for k, _ in members_flat],
         # TODO: proper backpatch
-        has_forward_reference=has_forward_reference,
+        has_forward_reference=references_self,
     )
 
     for field_name, field_type in ref.natural_fields.items():

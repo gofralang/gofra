@@ -7,7 +7,7 @@ from libgofra.hir.variable import (
     Variable,
 )
 from libgofra.lexer.tokens import Token, TokenLocation, TokenType
-from libgofra.parser._context import ParserScope
+from libgofra.parser._context import ParserContext
 from libgofra.parser.errors.field_access_on_non_aggregate import (
     FieldAccessOnNonAggregateTypeError,
 )
@@ -115,7 +115,7 @@ def _check_compile_time_oob(
 
 
 def _lower_index_accessor_expr(
-    context: ParserScope,
+    context: ParserContext,
     bound_type: Type,
     accessor: IndexAccessor,
     token: Token,
@@ -199,7 +199,7 @@ def _lower_index_accessor_expr(
 
 
 def _lower_try_derefence_to_aggregate_type(
-    context: ParserScope,
+    context: ParserContext,
     t: Type,
     token: Token,
 ) -> Type:
@@ -231,7 +231,7 @@ def _lower_try_derefence_to_aggregate_type(
 
 
 def _lower_field_accessor_expr(
-    context: ParserScope,
+    context: ParserContext,
     bound_type: Type,
     accessor: FieldAccessor,
     token: Token,
@@ -273,7 +273,7 @@ def _lower_field_accessor_expr(
 
 
 def _lower_expr_into_offset_reference(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     expr: _VariableAccessorExpr,
 ) -> Type:
@@ -320,8 +320,8 @@ def _lower_expr_into_offset_reference(
     return PointerType(bound_type)
 
 
-def try_push_variable_reference(context: ParserScope, token: Token) -> bool:
-    if not (expr := _resolve_variable_expr(context, token)):
+def try_parse_variable_accessor_expr(context: ParserContext, token: Token) -> bool:
+    if not (expr := _try_parse_variable_accesor_expr_spec(context, token)):
         return False
 
     if _try_unwind_constant(context, token, expr):
@@ -343,7 +343,7 @@ def try_push_variable_reference(context: ParserScope, token: Token) -> bool:
 
 
 def _try_unwind_constant(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     expr: _VariableAccessorExpr,
 ) -> bool:
@@ -372,8 +372,8 @@ def _try_unwind_constant(
     return False
 
 
-def _resolve_variable_expr(
-    context: ParserScope,
+def _try_parse_variable_accesor_expr_spec(
+    context: ParserContext,
     token: Token,
 ) -> _VariableAccessorExpr | None:
     assert token.type == TokenType.IDENTIFIER
@@ -384,8 +384,8 @@ def _resolve_variable_expr(
         is_reference = True
         varname = varname.removeprefix("&")
 
-    variable = context.search_variable_in_context_parents(varname)
-    if not variable:
+    variable = context.scope.lookup(varname)
+    if variable is None or not isinstance(variable, Variable):
         return None
 
     expr = _VariableAccessorExpr(
@@ -422,10 +422,8 @@ def _resolve_variable_expr(
             # Variable index access
             assert elements_token.type == TokenType.IDENTIFIER
             assert isinstance(elements_token.value, str)
-            index_var = context.search_variable_in_context_parents(
-                elements_token.value,
-            )
-            if index_var is None:
+            index_var = context.scope.lookup(elements_token.value)
+            if index_var is None or not isinstance(index_var, Variable):
                 msg = f"Expected known variable at {token.location} as index but got unknown variable '{elements_token.value}'"
                 raise ValueError(msg)
 

@@ -51,6 +51,12 @@ class FunctionInlineAttribute(Enum):
     def __bool__(self) -> bool:
         return self.value == FunctionInlineAttribute.ALWAYS.value
 
+    @staticmethod
+    def from_flag(flag: bool) -> FunctionInlineAttribute:  # noqa: FBT001
+        return (
+            FunctionInlineAttribute.ALWAYS if flag else FunctionInlineAttribute.DEFAULT
+        )
+
 
 @dataclass(init=True, repr=True, eq=False, frozen=False, kw_only=True)
 class FunctionAttributes:

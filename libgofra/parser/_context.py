@@ -4,7 +4,6 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from libgofra.hir.function import Function
 from libgofra.hir.operator import (
     FunctionCallOperand,
     Operator,
@@ -13,74 +12,58 @@ from libgofra.hir.operator import (
 )
 from libgofra.lexer import Token
 from libgofra.parser.errors.general_expect_token import ExpectedTokenByParserError
-from libgofra.types.composite.structure import StructureType
-from libgofra.types.registry import (
-    TypeRegistry,
-    get_default_propagated_type_registry,
-)
 
 if TYPE_CHECKING:
     from collections.abc import (
         Callable,
         Generator,
-        MutableMapping,
         MutableSequence,
     )
     from pathlib import Path
 
+    from libgofra.hir.function import Function
     from libgofra.hir.module import Module
-    from libgofra.hir.variable import Variable
     from libgofra.lexer.tokens import TokenType
-    from libgofra.parser.exprs.conditional_blocks import RangeQualifier
+    from libgofra.parser.scope import Scope
+    from libgofra.parser.statements.control_flow import RangeQualifier
     from libgofra.types._base import Type
-    from libgofra.types.generics import GenericParametrizedType
 
 
 @dataclass
-class PeekableTokenizer:
+class TokenStream:
     _tokenizer: Generator[Token] = field()
     _peeked: deque[Token] = field(default_factory=deque[Token], init=False)
 
-    def next_token(self) -> Token:
+    def next(self) -> Token:
         if self._peeked:
             return self._peeked.popleft()
         return next(self._tokenizer)
 
-    def advance_token(self) -> None:
-        self.next_token()
+    def advance(self) -> None:
+        self.next()
 
-    def peek_token(self, n: int = 0) -> Token:
+    def peek(self, n: int = 0) -> Token:
         while len(self._peeked) <= n:
             self._peeked.append(next(self._tokenizer))
         return self._peeked[n]
 
-    def expect_token(self, type: TokenType | tuple[TokenType, ...]) -> None:  # noqa: A002
-        token = self.peek_token()
-        if not isinstance(type, tuple):
-            type = (type,)  # noqa: A001
-
-        # TODO: proper error
-        if token.type not in type:
-            raise ExpectedTokenByParserError(expected=type[0], got=token)
-
-    def push_token_back_upfront_peeked(self, token: Token) -> None:
+    def push_back_upfront_peeked(self, token: Token) -> None:
         """Push token in front of peeked ones, so next/peek will take it last in order of peeked."""
         self._peeked.appendleft(token)
 
 
 @dataclass(frozen=False)
-class ParserScope(PeekableTokenizer):
+class ParserContext:
     """Context for parsing which only required from internal usages."""
+
+    tokens: TokenStream
+    scope: Scope
+    module: Module
 
     # Will be called when scope encounters import request
     # goal of this callback to load specified named import and inject as dependency
     # both scope and parser itself is not responsible for loading near modules
     on_import_request: Callable[[str, Path], None] = field(repr=False, kw_only=True)
-
-    # If this scope not an top level (e.g root of the file) either an function or something like that
-    parent: ParserScope | None = field(default=None)
-
-    module: Module | None = field(default=None)
 
     # Resulting operators from parsing
     operators: MutableSequence[Operator] = field(default_factory=list[Operator])
@@ -88,18 +71,6 @@ class ParserScope(PeekableTokenizer):
     context_stack: deque[tuple[int, Operator, RangeQualifier | None]] = field(
         default_factory=deque[tuple[int, Operator, "RangeQualifier | None"]],
     )
-
-    variables: MutableMapping[str, Variable[Type]] = field(
-        default_factory=dict[str, "Variable[Type]"],
-    )
-
-    structs: MutableMapping[str, StructureType] = field(
-        default_factory=dict[str, StructureType],
-    )
-    functions: MutableMapping[str, Function] = field(
-        default_factory=dict[str, Function],
-    )
-    types: TypeRegistry = field(default_factory=get_default_propagated_type_registry)
 
     entry_point_name: str = "main"
 
@@ -115,86 +86,30 @@ class ParserScope(PeekableTokenizer):
         assert self.module
         return self.module.path
 
-    @staticmethod
-    def from_parent(parent: ParserScope, tokenizer: Generator[Token]) -> ParserScope:
-        """Create a new scope with the specified scope as the parent propagating fields to the child."""
-        return ParserScope(
-            module=parent.module,
-            _tokenizer=tokenizer,
-            functions=dict(parent.functions),
-            parent=parent,
-            entry_point_name=parent.entry_point_name,  # TODO: Refactor
-            on_import_request=parent.on_import_request,
-        )
+    def next_token(self) -> Token:
+        return self.tokens.next()
 
-    def query_name_holder(
-        self,
-        name: str,
-    ) -> (
-        StructureType
-        | Function
-        | Variable[Type]
-        | Type
-        | GenericParametrizedType
-        | None
-    ):
-        if name in self.structs:
-            return self.structs.get(name)
+    def advance_token(self) -> None:
+        return self.tokens.advance()
 
-        if name in self.variables:
-            return self.variables.get(name)
+    def peek_token(self, n: int = 0) -> Token:
+        return self.tokens.peek(n)
 
-        if name in self.functions:
-            return self.functions.get(name)
+    def expect_token(self, type: TokenType | tuple[TokenType, ...]) -> None:  # noqa: A002
+        token = self.peek_token()
+        if not isinstance(type, tuple):
+            type = (type,)  # noqa: A001
 
-        if name in self.types:
-            return self.types.get(name)
+        # TODO: proper error
+        if token.type not in type:
+            raise ExpectedTokenByParserError(expected=type[0], got=token)
 
-        if self.parent:
-            return self.parent.query_name_holder(name)
-        return None
+    def push_token_back_upfront_peeked(self, token: Token) -> None:
+        """Push token in front of peeked ones, so next/peek will take it last in order of peeked."""
+        return self.tokens.push_back_upfront_peeked(token)
 
     def has_context_stack(self) -> bool:
         return len(self.context_stack) > 0
-
-    def get_struct(self, name: str) -> StructureType | None:
-        if name in self.structs:
-            return self.structs[name]
-        if self.parent:
-            return self.parent.get_struct(name)
-        return None
-
-    def get_type(self, name: str) -> Type | GenericParametrizedType | None:
-        if name in self.types:
-            return self.types[name]
-        if self.parent:
-            return self.parent.get_type(name)
-        return None
-
-    def add_function(self, function: Function) -> Function:
-        self.functions[function.name] = function
-
-        return function
-
-    def search_variable_in_context_parents(
-        self,
-        variable: str,
-    ) -> Variable[Type] | None:
-        context_ref = self
-
-        while True:
-            if variable in context_ref.variables:
-                return context_ref.variables[variable]
-
-            if context_ref.parent:
-                context_ref = context_ref.parent
-                continue
-
-            return None
-
-    @property
-    def is_top_level(self) -> bool:
-        return self.parent is None
 
     @property
     def current_operator(self) -> int:
@@ -238,14 +153,12 @@ class ParserScope(PeekableTokenizer):
         if is_contextual:
             self.context_stack.append((self.current_operator - 1, operator, None))
 
-    def merge_scope_into_module(self, module: Module) -> None:
-        assert module.path == self.path, (
-            "Tried to merge parser scope into module that belongs to other path"
+    def finalize(self) -> None:
+        self.module.functions.update(self.scope.functions)
+        self.module.variables.update(self.scope.variables)
+        self.module.types.update(self.scope.types)
+
+        self.module.entry_point_ref = self.scope.functions.get(
+            self.entry_point_name,
+            None,
         )
-
-        module.functions.update(self.functions)
-        module.variables.update(self.variables)
-        module.structures.update(self.structs)
-        module.types.update(self.types)
-
-        module.entry_point_ref = self.functions.get(self.entry_point_name, None)

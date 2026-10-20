@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from libgofra.types.composite.string import StringType
 from libgofra.types.registry import get_default_propagated_type_registry
 
 if TYPE_CHECKING:
@@ -13,7 +12,6 @@ if TYPE_CHECKING:
     from libgofra.hir.function import Function
     from libgofra.hir.variable import Variable
     from libgofra.types._base import Type
-    from libgofra.types.composite.structure import StructureType
     from libgofra.types.registry import TypeRegistry
 
 
@@ -47,11 +45,6 @@ class Module:
     # notice that static variables inside function is held inside functions
     variables: MutableMapping[str, Variable[Type]] = field(
         default_factory=dict[str, "Variable[Type]"],
-    )
-
-    # Structures that this module defines (can be unused)
-    structures: MutableMapping[str, StructureType] = field(
-        default_factory=lambda: {StringType().name: StringType()},
     )
 
     @property

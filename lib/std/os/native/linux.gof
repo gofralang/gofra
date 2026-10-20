@@ -19,7 +19,7 @@
 #define OS_LINESEP "\n" // Line separator
 
 type timezone char[16]
-type struct timeval
+struct timeval
     tv_sec int
     tv_usec int
 end

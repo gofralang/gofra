@@ -93,7 +93,7 @@ class DWARF(DWARFFieldWriter):
         self._write_string_pool()
 
     def __init__(self, writer: "WriterProtocol", unit_path: Path) -> None:
-        self.unit_path: Path = unit_path.absolute()
+        self.unit_path = unit_path.absolute()
 
         self.writer = writer
 
@@ -201,7 +201,7 @@ class DWARF(DWARFFieldWriter):
                         self.byte_field(3, comment=attr.name)
                         self.addr_field(variable.name, comment=attr.name)
                     case DWARFAttribute.DW_AT_declaration_line:
-                        assert form == DWARFForm.DW_FORM_data1
+                        assert form == DWARFForm.DW_FORM_data2
                         self.byte_field(
                             variable.defined_at.line_number,
                             comment=attr.name,

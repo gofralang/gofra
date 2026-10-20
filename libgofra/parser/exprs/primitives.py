@@ -1,9 +1,9 @@
 from libgofra.lexer import Token
-from libgofra.parser._context import ParserScope
+from libgofra.parser._context import ParserContext
 from libgofra.parser.operators import IDENTIFIER_TO_OPERATOR_TYPE, OperatorType
 
 
-def push_string_operator(context: ParserScope, token: Token) -> None:
+def push_string_operator(context: ParserContext, token: Token) -> None:
     assert isinstance(token.value, str)
     context.push_new_operator(
         type=OperatorType.PUSH_STRING,
@@ -12,7 +12,7 @@ def push_string_operator(context: ParserScope, token: Token) -> None:
     )
 
 
-def push_integer_operator(context: ParserScope, token: Token) -> None:
+def push_integer_operator(context: ParserContext, token: Token) -> None:
     assert isinstance(token.value, int)
     context.push_new_operator(
         type=OperatorType.PUSH_INTEGER,
@@ -21,7 +21,7 @@ def push_integer_operator(context: ParserScope, token: Token) -> None:
     )
 
 
-def push_float_operator(context: ParserScope, token: Token) -> None:
+def push_float_operator(context: ParserContext, token: Token) -> None:
     assert isinstance(token.value, float)
     context.push_new_operator(
         type=OperatorType.PUSH_FLOAT,
@@ -30,7 +30,7 @@ def push_float_operator(context: ParserScope, token: Token) -> None:
     )
 
 
-def try_push_intrinsic_operator(context: ParserScope, token: Token) -> bool:
+def try_push_intrinsic_operator(context: ParserContext, token: Token) -> bool:
     assert isinstance(token.value, str)
 
     operator_type = IDENTIFIER_TO_OPERATOR_TYPE.get(token.value)

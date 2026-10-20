@@ -35,7 +35,9 @@ def infer_type_from_literal(literal: Literal_T, module: Module) -> Type:
             if not name:
                 msg = f"Cannot infer type for structure literal with no name {literal.token.location}"
                 raise ValueError(msg)
-            return module.structures[name]
+            structure = module.types.get(name)
+            assert isinstance(structure, StructureType)
+            return structure
         case ArrayLiteral(elements=elements):
             if not elements:
                 msg = "Cannot infer type for array literal with no elements"

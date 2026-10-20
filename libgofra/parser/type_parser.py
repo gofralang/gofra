@@ -3,9 +3,10 @@ from typing import cast
 
 from libgofra.feature_flags import FEATURE_ALLOW_SLICES
 from libgofra.hir.function import FunctionParameter
+from libgofra.hir.variable import Variable
 from libgofra.lexer.keywords import Keyword
 from libgofra.lexer.tokens import Token, TokenType
-from libgofra.parser._context import ParserScope
+from libgofra.parser._context import ParserContext
 from libgofra.parser.errors.unknown_primitive_type import UnknownPrimitiveTypeError
 from libgofra.parser.functions.exceptions import ParserFunctionNoNameError
 from libgofra.types import Type
@@ -28,7 +29,7 @@ from libgofra.types.generics import (
 # TODO(@kirillzhosul): distinguish array-of-pointers and pointer-to-array
 # TODO(@kirillzhosul): Type parsing is weird (especially new allow_inferring_variable_types) must be separated in complex-type parsing system ?
 def parse_concrete_type_from_tokenizer(
-    context: ParserScope,
+    context: ParserContext,
     *,
     allow_inferring_variable_types: bool = False,
 ) -> Type:
@@ -53,24 +54,24 @@ def parse_concrete_type_from_tokenizer(
     context.expect_token(TokenType.IDENTIFIER)
     t = context.next_token()
 
-    aggregated_type: Type | GenericParametrizedType | None = context.get_type(t.text)
-    if isinstance(aggregated_type, GenericParametrizedType):
-        type_params = consume_concrete_generic_type_parameters(context)
-        params_required = get_generic_type_parameters_count(aggregated_type)
+    holder = context.scope.lookup(t.text)
+    if isinstance(holder, Variable) and allow_inferring_variable_types:
+        aggregated_type = holder.type
+    else:
+        if holder is not None and not isinstance(
+            holder,
+            Type | GenericParametrizedType,
+        ):
+            raise ValueError
+        aggregated_type: Type | GenericParametrizedType | None = holder
+        if isinstance(aggregated_type, GenericParametrizedType):
+            type_params = consume_concrete_generic_type_parameters(context)
+            params_required = get_generic_type_parameters_count(aggregated_type)
 
-        if params_required != len(type_params):
-            msg = f"Incompatible type params amount for generic type {t.text} at {t.location}. Expected {params_required} but got {len(type_params)}"
-            raise ValueError(msg)
-        return apply_generic_type_into_concrete(aggregated_type, type_params)
-
-    if not aggregated_type:
-        # Unable to get from primitive registry - probably an structure type definition
-        aggregated_type = context.get_struct(t.text)
-
-    if allow_inferring_variable_types and not aggregated_type:
-        variable = context.search_variable_in_context_parents(t.text)
-        if variable:
-            aggregated_type = variable.type
+            if params_required != len(type_params):
+                msg = f"Incompatible type params amount for generic type {t.text} at {t.location}. Expected {params_required} but got {len(type_params)}"
+                raise ValueError(msg)
+            return apply_generic_type_into_concrete(aggregated_type, type_params)
 
     if not aggregated_type:
         raise UnknownPrimitiveTypeError(t.text, t.location)
@@ -86,7 +87,7 @@ def parse_concrete_type_from_tokenizer(
     return aggregated_type
 
 
-def _parse_pointer_type(context: ParserScope) -> PointerType:
+def _parse_pointer_type(context: ParserContext) -> PointerType:
     assert context.peek_token().type == TokenType.STAR  # Must be an pointer
     context.advance_token()
     inner_type = parse_concrete_type_from_tokenizer(
@@ -97,7 +98,7 @@ def _parse_pointer_type(context: ParserScope) -> PointerType:
 
 
 def _parse_slice_type(
-    context: ParserScope,
+    context: ParserContext,
     *,
     allow_inferring_variable_types: bool = False,
 ) -> SliceType:
@@ -118,7 +119,7 @@ def _parse_slice_type(
 
 
 def _parse_array_suffixes(
-    context: ParserScope,
+    context: ParserContext,
     base: Type | GenericParametrizedType,
     *,
     generic_params: Mapping[str, Token] | None = None,
@@ -148,7 +149,7 @@ def _parse_array_suffixes(
 
 
 def _parse_array_size_qualifier(
-    context: ParserScope,
+    context: ParserContext,
     *,
     generic_params: Mapping[str, Token] | None = None,
 ) -> int | GenericParameter:
@@ -190,7 +191,7 @@ def _parse_array_size_qualifier(
     raise ValueError(msg)
 
 
-def _parse_function_type(context: ParserScope) -> FunctionType:
+def _parse_function_type(context: ParserContext) -> FunctionType:
     assert context.peek_token().type == TokenType.KEYWORD
     assert context.peek_token().value == Keyword.FUNCTION
     _, function_params, function_return_type = consume_concrete_function_signature(
@@ -205,7 +206,7 @@ def _parse_function_type(context: ParserScope) -> FunctionType:
 
 
 def consume_concrete_function_signature(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
 ) -> tuple[str, list[FunctionParameter], Type]:
     """Consume parser context into function signature assuming given token is `function` keyword.
@@ -228,7 +229,7 @@ def consume_concrete_function_signature(
 
 
 def consume_type_function_signature(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     generic_type_params: Mapping[str, Token],
 ) -> tuple[
@@ -264,7 +265,7 @@ def consume_type_function_signature(
 
 
 def parse_generic_function_type_parameters(
-    context: ParserScope,
+    context: ParserContext,
     generic_type_params: Mapping[str, Token],
 ) -> list[tuple[str, Type | GenericParametrizedType]]:
     # TODO: Refactor with `parse_function_parameters`, same functions except generic type
@@ -301,7 +302,7 @@ def parse_generic_function_type_parameters(
 
 
 def parse_function_type_parameters(
-    context: ParserScope,
+    context: ParserContext,
 ) -> list[FunctionParameter]:
     parameters: list[FunctionParameter] = []
 
@@ -332,13 +333,13 @@ def parse_function_type_parameters(
 
 
 def parse_generic_type_alias_from_tokenizer(
-    context: ParserScope,
+    context: ParserContext,
     *,
     generic_type_params: Mapping[str, Token],
 ) -> Type | GenericParametrizedType:
     if generic_type_params:
         for generic_type_param in generic_type_params.values():
-            if context.query_name_holder(generic_type_param.text):
+            if context.scope.lookup(generic_type_param.text):
                 msg = f"Generic type param '{generic_type_param.text}' name is already taken by other definition at {generic_type_param.location}"
                 raise ValueError(msg)
 
@@ -389,8 +390,11 @@ def parse_generic_type_alias_from_tokenizer(
     token = context.next_token()
     typename = token.text
 
+    holder = context.scope.lookup(typename)
+    if holder is not None and not isinstance(holder, Type | GenericParametrizedType):
+        raise ValueError
     base_t: Type | GenericParametrizedType | None
-    base_t = context.get_type(typename) or context.get_struct(typename)
+    base_t = holder
 
     if typename in generic_type_params:
         base_t = GenericParameter(
@@ -412,7 +416,7 @@ def parse_generic_type_alias_from_tokenizer(
 
 
 def consume_concrete_generic_type_parameters(
-    context: ParserScope,
+    context: ParserContext,
 ) -> Mapping[str, Type | int]:
     generic_type_params: Mapping[str, Type | int] = {}
     if context.peek_token().type == TokenType.LCURLY:
@@ -426,7 +430,7 @@ def consume_concrete_generic_type_parameters(
 
 
 def _consume_concrete_generic_type_parameters_list(
-    context: ParserScope,
+    context: ParserContext,
 ) -> Mapping[str, Type | int]:
     type_params: Mapping[
         str,
@@ -461,7 +465,7 @@ def _consume_concrete_generic_type_parameters_list(
     return type_params
 
 
-def consume_generic_type_parameters(context: ParserScope) -> Mapping[str, Token]:
+def consume_generic_type_parameters(context: ParserContext) -> Mapping[str, Token]:
     """Consume parameters for generic type definition if specified (e.g cursor points at `{`.
 
     e.g X{T, N}
@@ -479,7 +483,7 @@ def consume_generic_type_parameters(context: ParserScope) -> Mapping[str, Token]
 
 
 def _consume_generic_type_parameters_list(
-    context: ParserScope,
+    context: ParserContext,
 ) -> Mapping[str, Token]:
     """Read `consume_generic_type_parameters`."""
     type_params: Mapping[str, Token] = {}

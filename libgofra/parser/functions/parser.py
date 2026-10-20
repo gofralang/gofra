@@ -13,14 +13,13 @@ extern func puts[*char[]] int
 Extern functions cannot have a body so they do not have `end` block (assuming that - does not have any body block).
 """
 
-from collections.abc import Generator
 from dataclasses import dataclass
 
 from libgofra.hir.function import FunctionParameter
 from libgofra.lexer import Token
-from libgofra.lexer.keywords import KEYWORD_TO_NAME, WORD_TO_KEYWORD, Keyword
-from libgofra.lexer.tokens import TokenLocation, TokenType
-from libgofra.parser._context import ParserScope
+from libgofra.lexer.keywords import Keyword
+from libgofra.lexer.tokens import TokenType
+from libgofra.parser._context import ParserContext
 from libgofra.parser.errors.wildcard_cannot_be_used_as_symbol_name import (
     WildcardCannotBeUsedAsSymbolNameError,
 )
@@ -30,13 +29,9 @@ from libgofra.types import Type
 from .exceptions import (
     ParserExpectedFunctionAfterFunctionModifiersError,
     ParserExpectedFunctionKeywordError,
-    ParserFunctionInvalidTypeError,
     ParserFunctionIsBothInlineAndExternalError,
     ParserFunctionModifierReappliedError,
 )
-
-# TODO(@kirillzhosul): Refactor these ALL errors
-_ = ParserFunctionInvalidTypeError
 
 
 @dataclass
@@ -60,7 +55,7 @@ class FunctionHeaderDefinition:
 
 
 def consume_function_definition(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
 ) -> FunctionHeaderDefinition:
     token, qualifiers = consume_function_qualifiers(context, token)
@@ -82,7 +77,7 @@ def consume_function_definition(
 
 
 def consume_function_qualifiers(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
 ) -> tuple[Token, FunctionHeaderQualifiers]:
     """Consume parser context assuming given token is last popped, and it is a function modifier (or base function).
@@ -171,36 +166,3 @@ def consume_function_qualifiers(
         raise ParserExpectedFunctionAfterFunctionModifiersError(modifier_token=token)
 
     return (next_token, qualifiers)
-
-
-def consume_function_body_tokens(context: ParserScope) -> Generator[Token]:
-    opened_context_blocks = 0
-
-    context_keywords = (Keyword.IF, Keyword.DO, Keyword.LAMBDA_DEF)
-    end_keyword_text = KEYWORD_TO_NAME[Keyword.END]
-
-    while token := context.next_token():
-        if token.type == TokenType.EOF:
-            msg = f"Expected function to be closed but got end of file at {token.location}"
-            raise ValueError(msg)
-        if token.type != TokenType.KEYWORD:
-            yield token
-            continue
-
-        if token.text == end_keyword_text:
-            if opened_context_blocks <= 0:
-                break
-            opened_context_blocks -= 1
-
-        is_context_keyword = WORD_TO_KEYWORD[token.text] in context_keywords
-        if is_context_keyword:
-            opened_context_blocks += 1
-
-        yield token
-
-    yield Token(
-        type=TokenType.EOL,
-        text="",
-        value="",
-        location=TokenLocation.toolchain(),
-    )

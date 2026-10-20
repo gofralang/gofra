@@ -144,6 +144,13 @@ def evaluate_test_case(  # noqa: PLR0911
             path=path,
             error=e,
         )
+    except Exception as e:  # noqa: BLE001
+        return Test(
+            target=build_target,
+            status=TestStatus.TOOLCHAIN_ERROR,
+            path=path,
+            error=GofraError(f"Internal error when evaluating test case: {e}"),
+        )
 
     if args.build_only_no_execute:
         return Test(

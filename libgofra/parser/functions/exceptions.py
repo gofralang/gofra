@@ -77,15 +77,3 @@ class ParserExpectedFunctionKeywordError(GofraError):
 
 But got something else.
 Do you have unfinished function definition?"""
-
-
-class ParserFunctionInvalidTypeError(GofraError):
-    def __init__(self, *args: object, type_token: Token, requested_type: str) -> None:
-        super().__init__(*args)
-        self.type_token = type_token
-        self.requested_type = requested_type
-
-    def __repr__(self) -> str:
-        return f"""Unknown type `{self.requested_type}` used in function definition at {self.type_token.location}.
-
-Expected one of known types"""

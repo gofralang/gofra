@@ -29,6 +29,7 @@ from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
 from libgofra.codegen.backends.string_pool import StringPool
 from libgofra.codegen.dwarf.dwarf import DWARF
 from libgofra.codegen.sections import SectionType
+from libgofra.hir.function import Visibility
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -92,6 +93,10 @@ class AARCH64CodegenBackend:
         self.writer.section(SectionType.INSTRUCTIONS)
 
         for function in self.module.executable_functions:
+            if function == self.module.entry_point_ref:
+                function.attrs.visibility = Visibility.PUBLIC
+                function.attrs.mangle = False
+
             function_define_with_instruction_set(
                 self.writer,
                 self.abi,

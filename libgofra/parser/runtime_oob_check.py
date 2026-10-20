@@ -1,13 +1,14 @@
+from libgofra.hir.function import Function
 from libgofra.hir.operator import OperatorType
 from libgofra.hir.variable import (
     Variable,
 )
 from libgofra.lexer.tokens import Token, TokenType
-from libgofra.parser._context import ParserScope
+from libgofra.parser._context import ParserContext
 
 
 def emit_runtime_hir_oob_check(
-    context: ParserScope,
+    context: ParserContext,
     token: Token,
     index_var: Variable,
     elements_const: int,
@@ -18,7 +19,8 @@ def emit_runtime_hir_oob_check(
     Possibly introduce runtime include library, should requires via something like `require_runtime_function`
     """
     assert context.rt_array_oob_check
-    if "eprint_fatal" not in context.functions:
+    panic = context.scope.lookup("eprint_fatal")
+    if panic is None or not isinstance(panic, Function):
         msg = "Cannot do runtime array oob check unless stdlib (`eprint_fatal`) is available for panic"
         raise ValueError(msg)
     panic_msg = "Runtime OOB error: tried to access array with out-of-bounds index, step into debugger for help!\\n"
