@@ -1,5 +1,3 @@
-from typing import assert_never
-
 from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,
@@ -11,44 +9,10 @@ from libgofra.hir.literals import (
 )
 from libgofra.hir.module import Module
 from libgofra.hir.variable import Variable
-from libgofra.types import ArrayType, BoolType, CharType, I64Type, PointerType, Type
-from libgofra.types.composite.pointer import PointerMemoryLocation
+from libgofra.types import ArrayType, BoolType, CharType, PointerType, Type
 from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.integers import IntegerType
-
-
-def infer_type_from_literal(literal: Literal_T, module: Module) -> Type:
-    match literal:
-        case IntegerLiteral():
-            return I64Type()
-        case CharacterLiteral():
-            return CharType()
-        case StringLiteral():
-            return PointerType(
-                points_to=StringType(),
-                memory_location=PointerMemoryLocation.STATIC,
-            )
-        case BooleanLiteral():
-            return BoolType()
-        case StructureLiteral(name=name):
-            if not name:
-                msg = f"Cannot infer type for structure literal with no name {literal.token.location}"
-                raise ValueError(msg)
-            structure = module.types.get(name)
-            assert isinstance(structure, StructureType)
-            return structure
-        case ArrayLiteral(elements=elements):
-            if not elements:
-                msg = "Cannot infer type for array literal with no elements"
-                raise ValueError(msg)
-            element_literal = elements[0]
-            return ArrayType(
-                element_type=infer_type_from_literal(element_literal, module),
-                elements_count=len(elements),
-            )
-        case _:
-            assert_never(literal)
 
 
 def validate_literal_initializer_against_type(
@@ -63,12 +27,15 @@ def validate_literal_initializer_against_type(
             validate_numeric_literal_fits_type(type, literal)
         case (BooleanLiteral(), BoolType()):
             pass
-        case (StructureLiteral(token=token, fields=fields), StructureType()):
+        case (StructureLiteral(token=token, fields=fields, name=name), StructureType()):
             abnormals_fields = set(fields.keys()).difference(type.natural_fields)
             if abnormals_fields:
                 msg = f"Abnormal field(s) for structure initializer: {abnormals_fields} at {token.location}"
                 raise ValueError(msg)
 
+            if name is not None and name != type.name:
+                msg = f"{token.location}: expected matching structure name, either drop name or suply correct one"
+                raise ValueError(msg)
             missing_fields = set(type.natural_fields).difference(fields.keys())
             if missing_fields:
                 msg = f"Missing field(s) for structure initializer: {missing_fields} at {token.location}"

@@ -4,14 +4,15 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, assert_never
 
 from libgofra.exceptions import GofraError
-from libgofra.feature_flags import FEATURE_ALLOW_MODULES
 from libgofra.hir.operator import (
     FunctionCallOperand,
     OperatorType,
     TypecastMeta,
 )
 from libgofra.hir.variable import Variable, VariableStorageClass
-from libgofra.optimizer.helpers.call_graph import CallGraph
+from libgofra.parser.errors.user_defined_compile_time_error import (
+    UserDefinedCompileTimeError,
+)
 from libgofra.parser.errors.variable_with_void_type import (
     VariableCannotHasVoidTypeParserError,
 )
@@ -27,22 +28,12 @@ from libgofra.typecheck.errors.read_only_memory_assignment import (
 from libgofra.typecheck.errors.return_value_missing import (
     ReturnValueMissingTypecheckError,
 )
-from libgofra.typecheck.errors.user_defined_compile_time_error import (
-    UserDefinedCompileTimeError,
-)
-from libgofra.typecheck.inference import validate_variable_initializer
+from libgofra.typecheck.literals import validate_variable_initializer
 from libgofra.typecheck.static_linter import (
     emit_no_return_attribute_propagation_warning,
     emit_unreachable_code_after_early_return_warning,
     emit_unreachable_code_after_no_return_call_warning,
-    emit_unused_global_variable_warning,
-    lint_empty_function_executable_body,
     lint_stack_memory_retval,
-    lint_structure_types,
-    lint_typecast_same_type,
-    lint_unused_function_local_variables,
-    lint_unused_parameters,
-    lint_variables_initializer,
 )
 from libgofra.typecheck.visibility import validate_function_existence_and_visibility
 from libgofra.types import Type
@@ -67,7 +58,7 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, MutableMapping, Sequence
+    from collections.abc import Callable, Sequence
 
     from libgofra.hir.function import Function
     from libgofra.hir.module import Module
@@ -89,13 +80,6 @@ class EmulatedTypeBlock:
         "early-return",  # Hit `return` (not for end-of-block)
         "no-return-func-call",  # Called to a function which is defined as no return - imply that cannot really execute anything after that
     ]
-    references_variables: MutableMapping[str, Variable[Type]]
-
-    @property
-    def global_references_variables(self) -> MutableMapping[str, Variable[Type]]:
-        return {
-            v.name: v for v in self.references_variables.values() if v.is_global_scope
-        }
 
 
 def on_lint_warning_suppressed(_: str) -> None:
@@ -120,40 +104,18 @@ def validate_type_safety(
             raise NoMainEntryFunctionError(expected_entry_name=entry_point_name)
         validate_entry_point_signature(entry_point)
 
-    if FEATURE_ALLOW_MODULES:
-        on_lint_warning(
-            "Skipped unused private module function check due to module system feature enabled",
-        )
-    else:
-        cg = CallGraph(module=module)
-
-        for function in (
-            f
-            for f in cg.get_root_functions()
-            if not f.is_public
-            and not f.attrs.external
-            and not f.attrs.inline  # TODO(@kirillzhosul): Inline ones are always internal private but probably track usages?
-        ):
-            on_lint_warning(
-                f"Unused private module function {function.name} defined at {function.defined_at}! Either remove it or make public!",
-            )
-
-    lint_structure_types(on_lint_warning, module.types)
-    lint_variables_initializer(on_lint_warning, module.variables)
-    global_var_references: MutableMapping[str, Variable[Type]] = {}
     for function in module.functions.values():
         if function.attrs.external:
             # Skip symbols that are has no compile-time known executable operators as have nothing to typecheck
             continue
 
-        func_block = validate_function_type_safety(
+        validate_function_type_safety(
             function=function,
             module=module,
             on_lint_warning=on_lint_warning,
         )
-        global_var_references |= func_block.global_references_variables
 
-    _typecheck_variables_stage(module, global_var_references, on_lint_warning)
+    _typecheck_variables_stage(module)
     validate_function_existence_and_visibility(root=module, module=module)
 
 
@@ -172,8 +134,6 @@ def validate_variable(variable: Variable[Type]) -> None:
 
 def _typecheck_variables_stage(
     module: Module,
-    global_var_references: MutableMapping[str, Variable[Type]],
-    on_lint_warning: Callable[[str], None],
 ) -> None:
 
     for variable in module.variables.values():
@@ -184,16 +144,6 @@ def _typecheck_variables_stage(
         for variable in function.variables.values():
             validate_variable_initializer(variable, module)
             validate_variable(variable)
-
-    unused_global_variables = [
-        module.variables[vn]
-        for vn in set(module.variables) - set(global_var_references)
-    ]
-    for variable in unused_global_variables:
-        if variable.is_constant:
-            # TODO(@kirillzhosul): Compiler (parser) actually inlines them and TC does not knows about their usages
-            continue
-        emit_unused_global_variable_warning(on_lint_warning, variable)
 
 
 def validate_function_type_safety(
@@ -220,19 +170,6 @@ def validate_function_type_safety(
         msg = f"Cannot return value from function '{function.name}' defined at {function.defined_at}, it has no_return attribute"
         raise ValueError(msg)
 
-    if module.entry_point_ref != function:
-        lint_empty_function_executable_body(on_lint_warning, function)
-
-    lint_unused_parameters(
-        on_lint_warning,
-        function,
-        func_block.references_variables,
-    )
-    lint_unused_function_local_variables(
-        on_lint_warning,
-        function,
-        func_block.references_variables,
-    )
     if not function.has_return_value() and func_block.types:
         # function must not return any
         raise TypecheckFunctionTypeContractOutViolatedError(
@@ -258,7 +195,6 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
     current_function: Function,
     on_lint_warning: Callable[[str], None],
     blocks_idx_shift: int = 0,
-    references_variables: MutableMapping[str, Variable[Type]] | None = None,
 ) -> EmulatedTypeBlock:
     """Emulate and return resulting type stack from given operators.
 
@@ -266,8 +202,6 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
     """
     scope = TypecheckScope(types=list(initial_type_stack))
 
-    if references_variables is None:
-        references_variables = {}  # merge into scope?
     idx_max, idx = len(operators), 0
     while idx < idx_max:
         operator, idx = operators[idx], idx + 1
@@ -301,7 +235,6 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
                     blocks_idx_shift=blocks_idx_shift + idx,
                     current_function=current_function,
                     on_lint_warning=on_lint_warning,
-                    references_variables=references_variables,
                 )
 
                 if block.reason not in (
@@ -333,7 +266,6 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
                         blocks_idx_shift=blocks_idx_shift + jumps_to_idx + 1,
                         current_function=current_function,
                         on_lint_warning=on_lint_warning,
-                        references_variables=references_variables,
                     )
 
                     if else_block.reason not in (
@@ -361,7 +293,6 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
                     module,
                     operator,
                     scope,
-                    references_variables,
                     idx,
                     on_lint_warning,
                     is_sub_scope=blocks_idx_shift == 0,
@@ -372,7 +303,6 @@ def emulate_type_stack_for_operators(  # noqa: PLR0913, PLR0917
     return EmulatedTypeBlock(
         scope.types,
         reason="end-of-block",
-        references_variables=references_variables,
     )
 
 
@@ -382,7 +312,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
     module: Module,
     operator: Operator,
     scope: TypecheckScope,
-    references_variables: MutableMapping[str, Variable[Type]],
     idx: int,
     on_lint_warning: Callable[[str], None],
     *,
@@ -429,9 +358,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             varname = operator.operand
             variable = {**module.variables, **current_function.variables}[varname]
 
-            # Track usages of each variable
-            references_variables[varname] = variable
-
             memory_location = {
                 VariableStorageClass.STACK: PointerMemoryLocation.STACK,
                 VariableStorageClass.STATIC: PointerMemoryLocation.STATIC,
@@ -451,7 +377,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             type_block = EmulatedTypeBlock(
                 scope.types,
                 reason="early-return",
-                references_variables=references_variables,
             )
             if operators[idx:]:
                 emit_unreachable_code_after_early_return_warning(
@@ -506,7 +431,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 return EmulatedTypeBlock(
                     scope.types,
                     reason="no-return-func-call",
-                    references_variables=references_variables,
                 )
             if function.has_return_value():
                 scope.push_types(function.return_type)
@@ -644,9 +568,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             varname = operator.operand
             variable = {**module.variables, **current_function.variables}[varname]
 
-            # Track usages of each variable
-            references_variables[varname] = variable
-
             memory_location = {
                 VariableStorageClass.STACK: PointerMemoryLocation.STACK,
                 VariableStorageClass.STATIC: PointerMemoryLocation.STATIC,
@@ -740,13 +661,6 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
 
             to_type_cast = operator.operand
             previous_type = scope.pop_type_from_stack()
-
-            lint_typecast_same_type(
-                on_lint_warning,
-                t_from=previous_type,
-                t_to=to_type_cast,
-                at=operator.token.location,
-            )
 
             kind = resolve_type_cast_to_kind(source=previous_type, target=to_type_cast)
             if kind is None:

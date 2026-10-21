@@ -56,6 +56,7 @@ def build_parser(subparsers: "_SubParsersAction[ArgumentParser]") -> ArgumentPar
     groups.add_target_group(parser)
     groups.add_output_group(parser)
     groups.add_logging_group(parser)
+    groups.add_lint_group(parser)
 
     groups.add_debug_group(parser)
     groups.add_preprocessor_group(parser)

@@ -1,7 +1,7 @@
 from libgofra.hir.operator import OperatorType
 from libgofra.lexer.tokens import Token, TokenType
 from libgofra.parser._context import ParserContext
-from libgofra.typecheck.errors.user_defined_compile_time_error import (
+from libgofra.parser.errors.user_defined_compile_time_error import (
     UserDefinedCompileTimeError,
 )
 

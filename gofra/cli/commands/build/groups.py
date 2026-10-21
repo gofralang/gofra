@@ -1,6 +1,8 @@
 import argparse
 from argparse import ArgumentParser
 
+from libgofra.targets.target import get_target_choices
+
 
 def add_logging_group(parser: ArgumentParser) -> None:
     """Construct and inject argument group with debug options into given parser."""
@@ -23,6 +25,14 @@ def add_logging_group(parser: ArgumentParser) -> None:
         help="If passed will display commands that compiler performed if any.",
     )
 
+
+def add_lint_group(parser: ArgumentParser) -> None:
+    """Construct and inject argument group with lint options into given parser."""
+    group = parser.add_argument_group(
+        title="Lint",
+        description="Flags for the linter, fine control how lint rules are treated.",
+    )
+
     group.add_argument(
         "--no-lint",
         "--no-lint-warnings",
@@ -31,6 +41,26 @@ def add_logging_group(parser: ArgumentParser) -> None:
         default=True,
         required=False,
         help="If passed, will hide linter warnings (e.g unused functions and etc)",
+    )
+
+    group.add_argument(
+        "--allow",
+        dest="lint_allow",
+        action="append",
+        default=[],
+        required=False,
+        metavar="<RULE>",
+        help="Disable given lint rule by its id (may be passed multiple times)",
+    )
+
+    group.add_argument(
+        "--deny",
+        dest="lint_deny",
+        action="append",
+        default=[],
+        required=False,
+        metavar="<RULE>",
+        help="Treat given lint rule as an error, aborting the compilation (may be passed multiple times)",
     )
 
 
@@ -150,16 +180,7 @@ def add_codegen_group(parser: ArgumentParser) -> None:
 def add_target_group(parser: ArgumentParser) -> None:
     """Construct and inject argument group with target options into given parser."""
     group = parser.add_argument_group("Target", "Compilation target configuration")
-    choices = [
-        # Triplets
-        "amd64-unknown-linux",
-        "arm64-apple-darwin",
-        "amd64-unknown-windows",
-        "wasm32-unknown-none",
-        "amd64-apple-darwin",
-        # Shortcuts
-        "wasm",
-    ]  # TODO: Proper --help
+    choices = get_target_choices()
     group.add_argument(
         "--target",
         type=str,

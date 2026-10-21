@@ -19,8 +19,8 @@ from libgofra.parser.literals import parse_any_literal
 from libgofra.parser.type_parser import (
     parse_concrete_type_from_tokenizer,
 )
-from libgofra.typecheck.inference import infer_type_from_literal
 from libgofra.types import Type
+from libgofra.types.inference import infer_type_from_literal
 
 # TODO: attributes for variable definitions
 
@@ -57,7 +57,7 @@ def _infer_variable_type(  # noqa: ANN202
 
     assert scope.module
     assert initializer is not None
-    return infer_type_from_literal(initializer, module=scope.module)
+    return infer_type_from_literal(initializer, types=scope.module.types)
 
 
 def _define_variable(

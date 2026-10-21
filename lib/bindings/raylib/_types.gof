@@ -25,6 +25,3 @@ const KEY_RIGHT  = 262
 
 const KEY_SPACE  = 32
 const KEY_ESCAPE = 256
-
-
-func void __internal[] end

@@ -8,6 +8,7 @@ from libgofra.driver.request import CompilationRequest, DriverOutputFormat
 from libgofra.exceptions import GofraError
 from libgofra.linker.output_format import LinkerOutputFormat
 from libgofra.linker.profile import LinkerProfile
+from libgofra.linter.config import LintConfig
 from libgofra.optimizer.config import OptimizerConfig
 from libgofra.targets.target import Target
 
@@ -63,6 +64,7 @@ class BuildArguments:
     target: Target
 
     display_lint_warnings: bool
+    lint_config: LintConfig
 
     build_cache_dir: Path
     delete_build_cache: bool
@@ -100,6 +102,7 @@ class BuildArguments:
             executable_entry_point=self.executable_entry_point,
             runtime_array_oob_checks=self.runtime_array_oob_checks,
             display_lint_warnings=self.display_lint_warnings,
+            lint_config=self.lint_config,
             optimizer=self.optimizer,
             codegen_config=self.codegen_config,
             debug_symbols=self.debug_symbols,

@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, assert_never, cast, get_args
+from typing import TYPE_CHECKING, Literal, assert_never, cast
 
 from gofra.cli.commands.build.arguments import BuildArguments, BuildOutputFormat
 from gofra.cli.output import cli_fatal_abort
 from libgofra.codegen.config import CodegenConfig
 from libgofra.linker.profile import LinkerProfile
+from libgofra.linter.config import LintConfig
+from libgofra.linter.diagnostics import LintLevel
+from libgofra.linter.registry import get_default_registry
 from libgofra.optimizer.config import (
     OptimizerConfig,
     build_default_optimizer_config_from_level,
@@ -17,7 +20,7 @@ from libgofra.preprocessor.include.distribution import (
 )
 from libgofra.targets import Target
 from libgofra.targets.infer_host import infer_host_target
-from libgofra.targets.target import Triplet
+from libgofra.targets.target import resolve_target_triplet
 
 if TYPE_CHECKING:
     from argparse import Namespace
@@ -39,6 +42,7 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
 
     optimizer = _process_optimizer_config(args, output_format)
     codegen_config = _process_codegen_config(args, optimizer)
+    lint_config = _process_lint_config(args)
 
     return BuildArguments(
         # Goals.
@@ -71,6 +75,7 @@ def parse_cli_arguments(args: Namespace) -> BuildArguments:
         cli_debug_user_friendly_errors=bool(args.cli_debug_user_friendly_errors),
         incremental_compilation=bool(args.incremental_compilation),
         display_lint_warnings=bool(args.display_lint_warnings),
+        lint_config=lint_config,
         codegen_config=codegen_config,
         runtime_array_oob_checks=bool(args.runtime_array_oob_checks),
         call_graph_only=bool(args.call_graph_only),
@@ -130,20 +135,48 @@ def _validate_mutually_exclusive_goals(args: Namespace) -> None:
 def _process_target(args: Namespace) -> Target:
     """Process target arguments as only allowed triplets and auto inference if not specified."""
     if args.target:
-        # Expect only type literal triplets.
-        args.target = {
-            "wasm": "wasm32-unknown-none",
-        }.get(args.target, args.target)
-        assert args.target in get_args(Triplet.__value__)
-        args.target = cast("Triplet", args.target)
+        triplet = resolve_target_triplet(args.target)
+        if triplet is None:
+            return cli_fatal_abort(
+                text=f"Unknown compilation target '{args.target}'",
+            )
+        args.target = triplet
 
-        return Target.from_triplet(args.target)
+        return Target.from_triplet(triplet)
     target = infer_host_target()
     if target is None:
         return cli_fatal_abort(
             text="Unable to infer compilation target due to no fallback for current operating system",
         )
     return target
+
+
+def _process_lint_config(args: Namespace) -> LintConfig:
+    """Process lint rule overrides requested by user via CLI."""
+    known_rule_ids = {rule.id for rule in get_default_registry().all()}
+
+    overrides: dict[str, LintLevel] = {}
+    for rule_id in args.lint_allow:
+        _validate_lint_rule(known_rule_ids, rule_id)
+        overrides[rule_id] = LintLevel.ALLOW
+
+    for rule_id in args.lint_deny:
+        _validate_lint_rule(known_rule_ids, rule_id)
+        # Deny wins over allow when the same rule is requested both ways
+        overrides[rule_id] = LintLevel.DENY
+
+    return LintConfig(overrides=overrides)
+
+
+def _validate_lint_rule(known_rule_ids: set[str], rule_id: str) -> None:
+    if rule_id in known_rule_ids:
+        return None
+    return cli_fatal_abort(
+        text=(
+            f"Unknown lint rule '{rule_id}'. "
+            f"Available rules: {', '.join(sorted(known_rule_ids))}"
+        ),
+    )
 
 
 def _process_definitions(args: Namespace) -> dict[str, str]:

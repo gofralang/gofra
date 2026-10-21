@@ -14,7 +14,7 @@ def driver_run_typecheck_stage(
         diag.warning if request.display_lint_warnings else on_lint_warning_suppressed
     )
     is_executable = request.output_format == DriverOutputFormat.EXECUTABLE
-    with diag.timer("Frontend (typecheck + lint)"):
+    with diag.timer("Frontend (typechecker)"):
         for mod in frontend.root.visit_dependencies(include_self=True):
             is_root_mod = mod is frontend.root
             must_has_entry_point = (

@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, cast, get_args
 
 type Triplet = Literal[
     "amd64-unknown-linux",
@@ -8,6 +9,33 @@ type Triplet = Literal[
     "arm64-apple-darwin",
     "wasm32-unknown-none",
 ]
+
+# Short aliases that may be used instead of a full triplet
+TARGET_TRIPLET_SHORTCUTS: Mapping[str, Triplet] = {
+    "wasm": "wasm32-unknown-none",
+}
+
+
+def get_all_target_triplets() -> tuple[Triplet, ...]:
+    """Get all target triplets that are known to the toolchain."""
+    return get_args(Triplet.__value__)
+
+
+def get_target_choices() -> list[str]:
+    """Get all names that may be used to specify a target by the user."""
+    return [
+        *sorted(get_all_target_triplets()),
+        *sorted(TARGET_TRIPLET_SHORTCUTS),
+    ]
+
+
+def resolve_target_triplet(name: str) -> Triplet | None:
+    """Resolve user-provided target name into a triplet, if such name is known."""
+    if name in TARGET_TRIPLET_SHORTCUTS:
+        return TARGET_TRIPLET_SHORTCUTS[name]
+    if name in get_all_target_triplets():
+        return cast("Triplet", name)
+    return None
 
 
 @dataclass(eq=True)

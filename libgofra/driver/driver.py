@@ -7,6 +7,7 @@ from libgofra.driver.stages.assembler import driver_run_assembler_stage
 from libgofra.driver.stages.codegen import driver_run_codegen_stage
 from libgofra.driver.stages.frontend import driver_run_frontend_stage
 from libgofra.driver.stages.linker import driver_run_linker_stage
+from libgofra.driver.stages.linter import driver_run_linter_stage
 from libgofra.driver.stages.optimize import driver_run_optimize_stage
 from libgofra.driver.stages.typecheck import driver_run_typecheck_stage
 
@@ -35,8 +36,8 @@ class Driver:
 
         frontend = driver_run_frontend_stage(request, diag)
         frontend = driver_run_typecheck_stage(request, frontend, diag)
+        frontend = driver_run_linter_stage(request, frontend, diag)
         frontend = driver_run_optimize_stage(request, frontend, diag)
-
         assembly = driver_run_codegen_stage(request, layout, frontend, diag)
         objects = driver_run_assembler_stage(request, layout, assembly, diag)
         linked = driver_run_linker_stage(request, objects, diag)

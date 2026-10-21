@@ -8,6 +8,7 @@ from libgofra.exceptions import GofraError
 from libgofra.lexer.tokens import TokenLocation
 from libgofra.linker.output_format import LinkerOutputFormat
 from libgofra.linker.profile import LinkerProfile
+from libgofra.linter.config import LintConfig
 from libgofra.optimizer.config import OptimizerConfig
 from libgofra.targets.target import Target
 
@@ -75,6 +76,8 @@ class CompilationRequest:
     delete_build_cache: bool
     incremental_compilation: bool
     definitions_location: TokenLocation = field(default_factory=TokenLocation.cli)
+
+    lint_config: LintConfig = field(default_factory=LintConfig)
 
     def deps_dir(self, root_artifact_path: Path) -> Path:
         return root_artifact_path.parent / f"{self.source_filepath.stem}$deps"
