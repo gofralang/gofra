@@ -20,8 +20,9 @@ IDENTIFIER_TO_OPERATOR_TYPE = {
     "<<": OperatorType.SHIFT_LEFT,
     "lnot": OperatorType.LOGICAL_NOT,
     "|": OperatorType.BITWISE_OR,
-    "&": OperatorType.BITWISE_AND,
     "^": OperatorType.BITWISE_XOR,
     "?>": OperatorType.MEMORY_VARIABLE_READ,
     "!<": OperatorType.MEMORY_VARIABLE_WRITE,
 }
+# NOTE: "&" is not here - it is a dedicated token (TokenType.AMPERSAND) and is either
+# an address-of accessor or a bitwise-and operator, depending on its adjacency.

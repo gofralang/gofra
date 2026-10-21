@@ -21,10 +21,21 @@ class LexerState:
     _line: str = ""
 
     def current_location(self) -> TokenLocation:
+        """Location of a token at the current cursor position.
+
+        Note that for non-file sources the location still carries a real line/column
+        (so error messages are useful), only the origin is different.
+        """
         if self.source == "cli":
-            return TokenLocation.cli()
+            return TokenLocation.cli(
+                line_number=self.row,
+                col_number=self.col,
+            )
         if self.source == "toolchain":
-            return TokenLocation.toolchain()
+            return TokenLocation.toolchain(
+                line_number=self.row,
+                col_number=self.col,
+            )
 
         return TokenLocation(
             filepath=self.source,
@@ -43,3 +54,4 @@ class LexerState:
     def set_line(self, row: int, line: str) -> None:
         self._row = row
         self._line = line
+        self.col = 0

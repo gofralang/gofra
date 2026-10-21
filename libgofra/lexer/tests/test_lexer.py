@@ -1,4 +1,3 @@
-import pytest
 
 from libgofra.lexer.lexer import tokenize_from_raw
 from libgofra.lexer.tokens import TokenType
@@ -50,10 +49,6 @@ def test_simple_integer_numbers() -> None:
     )
 
 
-@pytest.mark.xfail(
-    reason="Bug for now",
-    strict=True,
-)  # TODO(@kirillzhosul): unsupported for now
 def test_escaped_inline_character_quote() -> None:
     assert_token_types("'\\\\'", expected=[TokenType.CHARACTER])
 

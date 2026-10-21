@@ -1,17 +1,34 @@
+"""Character-driven lexer that splits Gofra source code into tokens.
+
+Token boundaries are determined by the character class (and not by whitespace), so
+`a+b` is three tokens (`a`, `+`, `b`) exactly like `a + b` is.
+
+Whitespace still matters in a few places and is tracked explicitly on each token
+(`has_leading_whitespace` / `has_trailing_whitespace`):
+
+- `&x` (glued) is an address-of, while `& x` (separated) is a bitwise-and operator;
+- `a.b` (glued) is a field accessor, while `a . b` (separated) is not.
+"""
+
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Literal
 
 from libgofra.lexer._state import LexerState
-from libgofra.lexer.helpers import (
-    find_word_end,
-    find_word_start,
+from libgofra.lexer.errors.unknown_preprocessor_directive import (
+    UnknownPreprocessorDirectiveError,
 )
-from libgofra.lexer.keywords import WORD_TO_KEYWORD
+from libgofra.lexer.errors.unknown_symbol import UnknownSymbolError
+from libgofra.lexer.keywords import WORD_TO_KEYWORD, WORD_TO_PREPROCESSOR_KEYWORD
 from libgofra.lexer.literals.character import tokenize_character_literal
-from libgofra.lexer.literals.numeric import try_tokenize_numerable_into_token
+from libgofra.lexer.literals.numeric import DECIMAL_DIGITS, scan_number
 from libgofra.lexer.literals.string import tokenize_string_literal
-from libgofra.lexer.tokens import Token, TokenLocation, TokenType
+from libgofra.lexer.symbols import (
+    STRUCTURAL_SYMBOL_TO_TOKEN_TYPE,
+    match_symbol_at,
+)
+from libgofra.lexer.tokens import Token, TokenType
 
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
@@ -34,11 +51,7 @@ def tokenize_from_raw(
     for row, line in enumerate(lines, start=0):
         state.set_line(row, line)
 
-        state.col = find_word_start(line, 0)
-
-        col_ends_at = len(state.line)
-        while state.col < col_ends_at and (token := _tokenize_line_next_token(state)):
-            yield token
+        yield from _tokenize_line(state)
 
         yield Token(
             type=TokenType.EOL,
@@ -49,101 +62,86 @@ def tokenize_from_raw(
 
     yield Token(
         type=TokenType.EOF,
-        text="\n",
+        text="",
         value=0,
         location=state.current_location(),
     )
 
 
-def _tokenize_line_next_token(state: LexerState) -> Token | None:
-    """Acquire token from current state and modify it to apply next tokenize, or None if reached end (EOL/EOF).
+def _tokenize_line(state: LexerState) -> Generator[Token]:
+    """Tokenize a single line of source code."""
+    line = state.line
+    length = len(line)
 
-    :returns token: Token from state or None if state must go to the next line (no tokens).
-    """
-    # First symbol of an token, as we exclusively tokenize character/string tokens due to their fixed/variadic length.
-    symbol = state.line[state.col]
+    # There is always a line break between a previous token and the first token of a line
+    has_leading_whitespace = True
 
-    match symbol:
-        case "'":
-            return tokenize_character_literal(state)
-        case '"':
-            return tokenize_string_literal(state)
-        case _:
-            return _tokenize_word_into_token(state)
+    while state.col < length:
+        current = line[state.col]
 
+        if current.isspace():
+            state.col += 1
+            has_leading_whitespace = True
+            continue
 
-SINGLE_SYMBOLS_MAPPING = {
-    "[": TokenType.LBRACKET,
-    "]": TokenType.RBRACKET,
-    "(": TokenType.LPAREN,
-    ")": TokenType.RPAREN,
-    ",": TokenType.COMMA,
-    ".": TokenType.DOT,
-    ";": TokenType.SEMICOLON,
-    "=": TokenType.ASSIGNMENT,
-    ":": TokenType.COLON,
-    "{": TokenType.LCURLY,
-    "}": TokenType.RCURLY,
-    "*": TokenType.STAR,
-}
+        if line.startswith(SINGLE_LINE_COMMENT, state.col):
+            # Line comment - skip the rest of the line
+            state.col = length
+            break
+
+        token = _tokenize_next_token(state)
+        yield _with_adjacency(
+            token,
+            state,
+            has_leading_whitespace=has_leading_whitespace,
+        )
+        has_leading_whitespace = False
 
 
-def _tokenize_word_or_keyword_into_tokens(
-    state: LexerState,
-    word: str,
-    location: TokenLocation,
-) -> Token | None:
-    """Tokenize base word symbol into an word or keyword."""
+def _tokenize_next_token(state: LexerState) -> Token:  # noqa: PLR0911
+    """Tokenize a single token at the current cursor position."""
+    line = state.line
+    col = state.col
+    current = line[col]
+
+    if current == '"':
+        return tokenize_string_literal(state)
+    if current == "'":
+        return tokenize_character_literal(state)
+    if current == "#":
+        return _tokenize_preprocessor_directive(state)
+    if current in DECIMAL_DIGITS:
+        return scan_number(state)
+    if current in "+-" and _is_digit_at(line, col + 1):
+        # A sign that is directly followed by a digit is a part of the number literal
+        return scan_number(state)
+    if _is_identifier_start(current):
+        return _tokenize_identifier(state)
+
+    symbol = match_symbol_at(line, col)
+    if symbol is None:
+        raise UnknownSymbolError(at=state.current_location(), symbol=current)
+
+    return _tokenize_symbol(state, symbol)
+
+
+def _tokenize_identifier(state: LexerState) -> Token:
+    """Tokenize an identifier (or a keyword) at the current cursor position."""
+    location = state.current_location()
+    line = state.line
+    start = state.col
+
+    while state.col < len(line) and _is_identifier_part(line[state.col]):
+        state.col += 1
+
+    word = line[start:state.col]
+
     if keyword := WORD_TO_KEYWORD.get(word):
         return Token(
             type=TokenType.KEYWORD,
             text=word,
             location=location,
             value=keyword,
-        )
-
-    # From that moment we have straightforward identifier (e.g an word) or an composite identifier
-    # for example parenthesised identifier(s): identifier(identifier) where () can be [] as parenthesis
-
-    symbols = "".join(SINGLE_SYMBOLS_MAPPING.keys())
-    if any(c in symbols for c in word):
-        symbol_idx = min(word.index(c) for c in symbols if c in word)
-
-        if word[symbol_idx] == "=" and word != "=":
-            # Weirdest workaround for assignment composite token construction
-            # should be refactored ASAP
-            # assignment operator
-            return Token(
-                type=TokenType.IDENTIFIER,
-                text=word,
-                location=location,
-                value=word,
-            )
-
-        if symbol_idx == 0:
-            # Skip beginning with symbol to next symbol - single symbol
-            state.col = find_word_start(state.line, location.col_number + 1)
-            char = word[0]
-
-            return Token(
-                type=SINGLE_SYMBOLS_MAPPING[char],
-                location=location,
-                text=char,
-                value=char,
-                has_trailing_whitespace=False,
-            )
-
-        word = word[:symbol_idx]
-        state.col = find_word_start(state.line, location.col_number + symbol_idx)
-
-        if token := try_tokenize_numerable_into_token(word, location):
-            return token
-
-        return Token(
-            type=TokenType.IDENTIFIER,
-            location=location,
-            text=word,
-            value=word,
         )
 
     return Token(
@@ -154,23 +152,83 @@ def _tokenize_word_or_keyword_into_tokens(
     )
 
 
-def _tokenize_word_into_token(state: LexerState) -> Token | None:
-    """Consumes `word` (e.g can be also an number) into token (non-string and non-character as must be handled above).
+def _tokenize_symbol(state: LexerState, symbol: str) -> Token:
+    """Tokenize a known symbol at the current cursor position.
 
-    :returns token: Token or None if should skip this line due to EOL as comment mark found.
+    Symbols that have a dedicated token type are emitted as such, operator spellings
+    are emitted as identifiers (and are resolved into operators by the parser).
     """
-    word_ends_at = find_word_end(state.line, state.col)
-    word = state.line[state.col : word_ends_at]
-
-    if word.startswith(SINGLE_LINE_COMMENT):
-        # Next words were prefixed with comment mark - skip whole line.
-        return None
-
-    # Remember current location and jump to next word for next() call.
     location = state.current_location()
-    state.col = find_word_start(state.line, word_ends_at)
+    state.col += len(symbol)
 
-    if token := try_tokenize_numerable_into_token(word, location):
-        return token
+    if token_type := STRUCTURAL_SYMBOL_TO_TOKEN_TYPE.get(symbol):
+        return Token(
+            type=token_type,
+            text=symbol,
+            location=location,
+            value=symbol,
+        )
 
-    return _tokenize_word_or_keyword_into_tokens(state, word, location)
+    return Token(
+        type=TokenType.IDENTIFIER,
+        text=symbol,
+        location=location,
+        value=symbol,
+    )
+
+
+def _tokenize_preprocessor_directive(state: LexerState) -> Token:
+    """Tokenize a preprocessor directive (e.g `#define`) at the current cursor position."""
+    location = state.current_location()
+    line = state.line
+
+    state.col += 1  # Skip the `#` symbol
+    name_start = state.col
+    while state.col < len(line) and _is_identifier_part(line[state.col]):
+        state.col += 1
+
+    name = line[name_start:state.col]
+    directive = f"#{name}"
+
+    if keyword := WORD_TO_PREPROCESSOR_KEYWORD.get(directive):
+        return Token(
+            type=TokenType.KEYWORD,
+            text=directive,
+            location=location,
+            value=keyword,
+        )
+
+    raise UnknownPreprocessorDirectiveError(at=location, directive=directive)
+
+
+def _with_adjacency(
+    token: Token,
+    state: LexerState,
+    *,
+    has_leading_whitespace: bool,
+) -> Token:
+    """Attach exact whitespace adjacency information to a token."""
+    line = state.line
+    has_trailing_whitespace = (
+        state.col >= len(line)
+        or line[state.col].isspace()
+        or line.startswith(SINGLE_LINE_COMMENT, state.col)
+    )
+
+    return replace(
+        token,
+        has_leading_whitespace=has_leading_whitespace,
+        has_trailing_whitespace=has_trailing_whitespace,
+    )
+
+
+def _is_identifier_start(char: str) -> bool:
+    return char.isalpha() or char == "_"
+
+
+def _is_identifier_part(char: str) -> bool:
+    return char.isalnum() or char == "_"
+
+
+def _is_digit_at(line: str, index: int) -> bool:
+    return index < len(line) and line[index] in DECIMAL_DIGITS

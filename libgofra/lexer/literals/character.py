@@ -11,7 +11,6 @@ from libgofra.lexer.errors import (
 )
 from libgofra.lexer.helpers import (
     find_quoted_literal_end,
-    find_word_start,
     unescape_text_literal,
 )
 from libgofra.lexer.tokens import Token, TokenType
@@ -30,31 +29,27 @@ def tokenize_character_literal(state: LexerState) -> Token:
     )
 
     location = state.current_location()
+    start = state.col
     state.col += len(CHARACTER_QUOTE)
 
-    close_quote_col = _find_character_literal_end(state) - 1
-    if close_quote_col < 0:
+    ends_at = find_quoted_literal_end(state.line, state.col, quote=CHARACTER_QUOTE)
+    if ends_at == -1:
         raise UnclosedCharacterQuoteError(open_quote_at=location)
 
     # Preserve literal as 'X' and unescaped version
-    # TODO(@kirillzhosul): Character literal escape messed when trying to escape last quote
-    char_literal = state.line[state.col - 1 : close_quote_col + 1]
-    char = unescape_text_literal(char_literal.strip(CHARACTER_QUOTE))
+    char_literal = state.line[start:ends_at]
+    char = unescape_text_literal(char_literal[1:-1], at=location)
 
     if len(char) == 0:
         raise EmptyCharacterLiteralError(open_quote_at=location)
     if len(char) >= 2:
         raise ExcessiveCharacterLengthError(location, len(char))
 
-    # Advance to next word
-    state.col = find_word_start(state.line, close_quote_col + 1)
+    # Advance to next symbol
+    state.col = ends_at
     return Token(
         type=TokenType.CHARACTER,
         text=char_literal,
         value=ord(char),  # Char-code
         location=location,
     )
-
-
-def _find_character_literal_end(state: LexerState) -> int:
-    return find_quoted_literal_end(state.line, state.col, quote=CHARACTER_QUOTE)

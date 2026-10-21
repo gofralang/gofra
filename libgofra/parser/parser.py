@@ -48,10 +48,12 @@ from .definitions.function import (
 from .definitions.union import parse_union_definition
 from .definitions.variable import parse_variable_definition
 from .exceptions import (
+    ParserAddressOfTargetError,
     ParserDirtyNonPreprocessedTokenError,
     ParserExhaustiveContextStackError,
     ParserUnfinishedIfBlockError,
     ParserUnfinishedWhileDoBlockError,
+    ParserUnknownAddressOfTargetError,
     ParserUnknownIdentifierError,
 )
 from .intrinsics.align_of import parse_align_of_intrinsic
@@ -168,9 +170,10 @@ def _consume_token_for_parsing(token: Token, context: ParserContext) -> None:  #
         case TokenType.EOL | TokenType.EOF:
             return None
         case TokenType.STAR:
-            assert not context.scope.is_global
             context.push_new_operator(OperatorType.ARITHMETIC_MULTIPLY, token=token)
             return None
+        case TokenType.AMPERSAND:
+            return _consume_ampersand_token(token, context)
         case TokenType.SEMICOLON:
             # Treat semicolon as simple line break should be fine except this may be caught in some complex constructions checks
             return None
@@ -180,6 +183,7 @@ def _consume_token_for_parsing(token: Token, context: ParserContext) -> None:  #
             | TokenType.LPAREN
             | TokenType.RPAREN
             | TokenType.DOT
+            | TokenType.DOT_DOT
             | TokenType.COMMA
             | TokenType.COLON
             | TokenType.RCURLY
@@ -190,6 +194,29 @@ def _consume_token_for_parsing(token: Token, context: ParserContext) -> None:  #
             raise ValueError(msg)
         case _:
             assert_never(token.type)
+
+
+def _consume_ampersand_token(token: Token, context: ParserContext) -> None:
+    """Consume an ampersand token.
+
+    An ampersand that is glued to an identifier is an address-of accessor (`&x`),
+    while a separated one is a bitwise-and operator (`x & y`).
+    """
+    if token.has_trailing_whitespace:
+        # Separated ampersand - a regular bitwise-and operator
+        context.push_new_operator(OperatorType.BITWISE_AND, token=token)
+        return
+
+    # Glued ampersand - an address-of accessor of a variable (or of its field)
+    target_token = context.next_token()
+    if target_token.type != TokenType.IDENTIFIER:
+        raise ParserAddressOfTargetError(
+            token=token,
+            got=target_token.type.name,
+        )
+
+    if not try_parse_variable_accessor_expr(context, target_token, is_reference=True):
+        raise ParserUnknownAddressOfTargetError(token=target_token)
 
 
 def _consume_word_token(token: Token, context: ParserContext) -> None:

@@ -195,3 +195,28 @@ class ParserTopLevelError(GofraError):
 
 Entry point function cannot be external or inlined!
 """
+
+
+class ParserAddressOfTargetError(GofraError):
+    def __init__(self, *args: object, token: Token, got: str) -> None:
+        super().__init__(*args)
+        self.token = token
+        self.got = got
+
+    def __repr__(self) -> str:
+        return f"""Expected an identifier after '&' (address-of) at {self.token.location}!
+
+But got {self.got} instead
+
+Address-of is written as `&variable` (with no space between the symbol and the variable)"""
+
+
+class ParserUnknownAddressOfTargetError(GofraError):
+    def __init__(self, *args: object, token: Token) -> None:
+        super().__init__(*args)
+        self.token = token
+
+    def __repr__(self) -> str:
+        return f"""Encountered an unknown variable '{self.token.text}' at {self.token.location}!
+
+It is used as an address-of (`&{self.token.text}`) target, but no such variable is known"""

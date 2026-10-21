@@ -41,20 +41,24 @@ class TokenLocation:
         )
 
     @classmethod
-    def cli(cls) -> TokenLocation:
+    def cli(cls, line_number: int = 0, col_number: int = 0) -> TokenLocation:
         """Create a location for command-line originated tokens."""
         return cls(
-            line_number=0,
-            col_number=0,
+            line_number=line_number,
+            col_number=col_number,
             source="cli",
         )
 
     @classmethod
-    def toolchain(cls) -> TokenLocation:
+    def toolchain(
+        cls,
+        line_number: int = 0,
+        col_number: int = 0,
+    ) -> TokenLocation:
         """Create a location fo toolchain originated tokens."""
         return cls(
-            line_number=0,
-            col_number=0,
+            line_number=line_number,
+            col_number=col_number,
             source="toolchain",
         )
 
@@ -89,11 +93,13 @@ class TokenType(IntEnum):
 
     # Additional stuff
     ASSIGNMENT = auto()  # =
+    AMPERSAND = auto()  # & (address-of, when glued to an identifier)
+    STAR = auto()  # * (also a pointer type sigil)
 
     # Punctuation
     DOT = auto()  # .
+    DOT_DOT = auto()  # .. (range qualifier, e.g `for i in 0..n do`)
     COMMA = auto()  # ,
-    STAR = auto()  # *
     SEMICOLON = auto()  # ;  (you might need this too)
     COLON = auto()  # :  (you might need this too)
     # Content
@@ -117,4 +123,10 @@ class Token:
     # Location within file
     location: TokenLocation
 
+    # Was there any whitespace right before this token in source code
+    # (e.g `a.b` vs `a . b` are distinguished by this)
+    has_leading_whitespace: bool = False
+
+    # Was there any whitespace right after this token in source code
+    # (e.g `&x` vs `& x` are distinguished by this)
     has_trailing_whitespace: bool = True

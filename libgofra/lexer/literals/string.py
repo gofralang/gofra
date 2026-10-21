@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from libgofra.lexer.errors import UnclosedStringQuoteError
+from libgofra.lexer.errors.unclosed_string_quote import UnclosedStringQuoteError
 from libgofra.lexer.helpers import (
     find_quoted_literal_end,
-    find_word_start,
     unescape_text_literal,
 )
 from libgofra.lexer.tokens import Token, TokenType
@@ -26,26 +25,22 @@ def tokenize_string_literal(state: LexerState) -> Token:
     )
 
     location = state.current_location()
+    start = state.col
     state.col += len(STRING_QUOTE)
 
-    ends_at = _find_string_literal_end(state)
+    ends_at = find_quoted_literal_end(state.line, state.col, quote=STRING_QUOTE)
     if ends_at == -1:
         raise UnclosedStringQuoteError(location)
 
     # Preserve literal as "abc" and unescaped version
-    # TODO(@kirillzhosul): String literal escape messed when trying to escape last quote
-    string_literal = state.line[state.col - 1 : ends_at]
-    string_text = unescape_text_literal(string_literal.strip(STRING_QUOTE))
+    string_literal = state.line[start:ends_at]
+    string_text = unescape_text_literal(string_literal[1:-1], at=location)
 
-    # Advance to next word
-    state.col = find_word_start(state.line, ends_at)
+    # Advance to next symbol
+    state.col = ends_at
     return Token(
         type=TokenType.STRING,
         text=string_literal,
         value=string_text,
         location=location,
     )
-
-
-def _find_string_literal_end(state: LexerState) -> int:
-    return find_quoted_literal_end(state.line, state.col, quote=STRING_QUOTE)

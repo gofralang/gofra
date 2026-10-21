@@ -320,8 +320,18 @@ def _lower_expr_into_offset_reference(
     return PointerType(bound_type)
 
 
-def try_parse_variable_accessor_expr(context: ParserContext, token: Token) -> bool:
-    if not (expr := _try_parse_variable_accesor_expr_spec(context, token)):
+def try_parse_variable_accessor_expr(
+    context: ParserContext,
+    token: Token,
+    *,
+    is_reference: bool = False,
+) -> bool:
+    expr = _try_parse_variable_accesor_expr_spec(
+        context,
+        token,
+        is_reference=is_reference,
+    )
+    if not expr:
         return False
 
     if _try_unwind_constant(context, token, expr):
@@ -375,14 +385,11 @@ def _try_unwind_constant(
 def _try_parse_variable_accesor_expr_spec(
     context: ParserContext,
     token: Token,
+    *,
+    is_reference: bool = False,
 ) -> _VariableAccessorExpr | None:
     assert token.type == TokenType.IDENTIFIER
     varname = token.text
-
-    is_reference = False
-    if varname.startswith("&"):
-        is_reference = True
-        varname = varname.removeprefix("&")
 
     variable = context.scope.lookup(varname)
     if variable is None or not isinstance(variable, Variable):
@@ -430,10 +437,7 @@ def _try_parse_variable_accesor_expr_spec(
             expr.chain.append(IndexAccessor(index_var))
             continue
 
-        if (
-            accessor_token.type == TokenType.DOT
-            and not accessor_token.has_trailing_whitespace  # No space after dot
-        ):
+        if accessor_token.type == TokenType.DOT:
             context.advance_token()  # Consume DOT
             field_token = context.next_token()
             if field_token.type != TokenType.IDENTIFIER:

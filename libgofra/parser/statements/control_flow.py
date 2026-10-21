@@ -278,7 +278,7 @@ def parse_for_range_qualifier(
 
     if context.peek_token().type == TokenType.IDENTIFIER:
         iterable_identifier_tok = context.next_token()
-        if _peek_for_dot_dot_syntax(context):
+        if context.peek_token().type == TokenType.DOT_DOT:
             context.push_token_back_upfront_peeked(iterable_identifier_tok)
             range_from_qualifier_name = context.next_token().text
 
@@ -346,7 +346,8 @@ def parse_for_range_qualifier(
     # Probably - an range qualifier (`x..n`)
     # at least currently only this is allowed
     range_from_qualifier = cast("int", (context.next_token().value))
-    _consume_dot_dot_syntax(context)
+    context.expect_token(TokenType.DOT_DOT)
+    context.next_token()
     if context.peek_token().type == TokenType.INTEGER:
         range_to_qualifier = cast("int", (context.next_token().value))
         step = 1 if range_to_qualifier >= range_from_qualifier else -1
@@ -375,31 +376,6 @@ def parse_for_range_qualifier(
         b=range_to_qualifier,
         step=step,
     )
-
-
-def _consume_dot_dot_syntax(context: ParserContext) -> None:
-    context.expect_token(TokenType.DOT)
-    context.next_token()
-    context.expect_token(TokenType.DOT)
-    context.next_token()
-
-
-def _peek_for_dot_dot_syntax(context: ParserContext) -> bool:
-    """Check if next tokens are containing `..` (dot-dot) syntax."""
-    dot_t1 = context.next_token()
-    if dot_t1.type != TokenType.DOT:
-        context.push_token_back_upfront_peeked(dot_t1)
-        return False
-
-    dot_t2 = context.next_token()
-    if dot_t2.type != TokenType.DOT:
-        context.push_token_back_upfront_peeked(dot_t1)
-        context.push_token_back_upfront_peeked(dot_t2)
-        return False
-
-    context.push_token_back_upfront_peeked(dot_t1)
-    context.push_token_back_upfront_peeked(dot_t2)
-    return True
 
 
 def unwrap_for_operators_syntactical_sugar(

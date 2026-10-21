@@ -46,7 +46,6 @@ def test_string_literal_tokenize_escaped() -> None:
     _assert_is_string_token(tokenize_string_literal(state))
 
 
-@pytest.mark.xfail(reason="Does not work", strict=True)
 def test_string_literal_tokenize_escaped_quote() -> None:
     state = LexerState(source="toolchain")
     state.set_line(0, r'"\""')
