@@ -65,7 +65,7 @@ pub func void http_server_start[
 
     var request HTTPRequest;
     while true do
-        &request.socket server.socket call net_accept_socket !< // TODO: segmentation fault here
+        &request.socket server.socket call net_accept_socket !<
 
         request.socket.fd 0 < if
             "Failed to accept client socket!" eprint_fatal

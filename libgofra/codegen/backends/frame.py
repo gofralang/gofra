@@ -31,10 +31,19 @@ def build_local_variables_frame_offsets(
     We allocate some space under stack/frame pointer for local variables (beside FP and LR itself).
     And we need convenient mapping for accessing local variables allocated at that space.
 
+    Offsets are counted downwards from the frame pointer, as the variable is located at
+    `frame pointer - offset` (e.g `X29 - offset` on AARCH64, `RBP - offset` on AMD64).
+
+    A variable occupies memory upwards from its base address, therefore the space for a variable
+    must be reserved *below* that base address. That is why the offset is incremented by the
+    (aligned) size of the variable *before* the offset is assigned - otherwise a variable which
+    is bigger than its aligned slot would grow out of the frame and overwrite the saved
+    frame pointer and return address.
+
     That function constructs something like:
     {
-        'var1': 8, # +8 bytes from frame
-        'var2': 16 # +16 bytes from frame
+        'var1': 16, # +16 bytes from frame
+        'var2': 32 # +32 bytes from frame
         ...
     }
 
@@ -49,8 +58,9 @@ def build_local_variables_frame_offsets(
     current_offset = initial_offset
 
     for var_name, var in variables.items():
-        offsets[var_name] = current_offset
+        # Reserve the slot for the variable below its base address (as the data grows upwards)
         current_offset += align_to_highest_size(var.size_in_bytes)
+        offsets[var_name] = current_offset
 
     # Alignment is required on AARCH64
     local_space_size = align_to_highest_size(current_offset)

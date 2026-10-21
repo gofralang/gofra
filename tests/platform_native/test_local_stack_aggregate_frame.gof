@@ -1,0 +1,29 @@
+/// Test that a big local aggregate does not overflow the stack frame
+///
+/// The slot of a local variable is reserved below its base address (as the data of
+/// a variable grows upwards). A broken layout makes the aggregate grow out of the frame
+/// and overwrite the saved frame pointer and the return address, which crashes the
+/// process right after the function returns.
+
+#include "std"
+
+#define TESTKIT_EXPECTED_STDOUT "42"
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+struct aggregate
+    head *int
+    payload char[128]
+end
+
+func int compute[]
+    var agg aggregate;
+
+    &agg.payload[0] 'A' !<
+    &agg.payload[127] 'Z' !<
+
+    42 return
+end
+
+func void main[]
+    compute print_int
+end

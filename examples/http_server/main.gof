@@ -9,8 +9,7 @@
 #include "http"
 
 const PORT = 8080;
-const BACKLOG = 5;
-const HOST = "127.0.0.1"
+const HOST = "127.0.0.1";
 
 var server *HTTPServer;
 
