@@ -149,7 +149,10 @@ def function_define_with_instruction_set(  # noqa: PLR0913, PLR0917
         string_pool,
         name=label,
         local_variables=function.variables,
-        global_name=function.name if function.is_public else None,
+        # Must be the very same symbol as the emitted label, otherwise
+        # the assembler declares a global symbol which is never defined
+        # and the real one stays local (e.g not exported from a dylib)
+        global_name=label if function.is_public else None,
         preserve_frame=has_frame,
         parameters=function.parameter_types,
         dwarf=dwarf,

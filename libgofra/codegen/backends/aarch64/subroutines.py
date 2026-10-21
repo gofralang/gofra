@@ -52,7 +52,9 @@ def function_begin_with_prologue(  # noqa: PLR0913
 
     Injects prologue with preparing required state (e.g registers, frame/stack pointers)
 
-    :is_global_symbol: Mark that function symbol as global for linker
+    :name: Symbol name of the function (as it is emitted as a label)
+    :global_name: Mark that function symbol as global for linker
+        (must be the very same symbol as `name`, otherwise it stays local)
     :preserve_frame: If true will preserve function state for proper stack management and return address
     """
     # TODO: Checkout `BTI` when i have an proper hardware
