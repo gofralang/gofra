@@ -71,7 +71,9 @@ pub func void http_server_start[
             "Failed to accept client socket!" eprint_fatal
         end
 
-        "[http_server][request]" println
+        "[http_server][request] " print
+        request.socket call net_peer_address_string call print
+        "\n" print
 
         &request call _http_server_read_request drop
         &request call handler
@@ -82,18 +84,67 @@ pub func void http_server_start[
     end
 end
 
-func int _http_server_read_request[*HTTPRequest request]
-    var bytes_read int = 0
+// Check whether the request header block is complete (e.g terminated by an empty line)
+func int _http_server_is_request_complete[*HTTPRequest request, int total_read]
+    var idx0 int = 0
+    var idx1 int = 1
+    var idx2 int = 2
 
-    &bytes_read
-        request.socket
-        &request.io_rx_buffer 
-        HTTP_IO_BUFFER_CAP
-    call net_read_socket !<
+    while idx2 total_read < do
+        request.io_rx_buffer[idx0] typecast int '\n' == if
+            // Empty line (e.g "\n\n")
+            request.io_rx_buffer[idx1] typecast int '\n' == if
+                1 return
+            end
 
-    bytes_read 0 < if
-        "WARNING: Unable to read HTTP request!" eprint
+            // Empty line (e.g "\r\n\r\n")
+            request.io_rx_buffer[idx1] typecast int '\r' == if
+                request.io_rx_buffer[idx2] typecast int '\n' == if
+                    1 return
+                end
+            end
+        end
+
+        &idx0 idx0 1 + !<
+        &idx1 idx1 1 + !<
+        &idx2 idx2 1 + !<
     end
 
-    bytes_read return
+    0 return
+end
+
+// Read the request from the client socket.
+// The request header block is terminated by an empty line ("\r\n\r\n"), so the socket is
+// read until that terminator is found. Reading the request in one shot is not enough:
+// a request may be delivered in several TCP segments, and leaving the not-yet-read data
+// in the socket makes the kernel reset the connection instead of closing it gracefully.
+func int _http_server_read_request[*HTTPRequest request]
+    var bytes_read int = 0
+    var total_read int = 0
+
+    while total_read HTTP_IO_BUFFER_CAP < do
+        &bytes_read
+            request.socket
+            &request.io_rx_buffer[total_read]
+            HTTP_IO_BUFFER_CAP total_read -
+        call net_read_socket !<
+
+        bytes_read 0 < if
+            "WARNING: Unable to read HTTP request!" eprint
+            total_read return
+        end
+
+        bytes_read 0 == if
+            // Peer has closed the connection
+            total_read return
+        end
+
+        &total_read total_read bytes_read + !<
+
+        request total_read call _http_server_is_request_complete 0 != if
+            total_read return
+        end
+    end
+
+    total_read return
 end

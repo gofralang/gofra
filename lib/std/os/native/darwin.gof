@@ -84,6 +84,14 @@ type fd_t int
 #define DARWIN_SYSCALL_LSEEK        199
 #define DARWIN_SYSCALL_POLL         209
 
+// Syscall numbers are architecture specific on Darwin
+#ifdef ARCH_ARM64
+    #define DARWIN_SYSCALL_SHUTDOWN 134
+#endif
+#ifdef ARCH_AMD64
+    #define DARWIN_SYSCALL_SHUTDOWN 48
+#endif
+
 #define EPERM          1
 #define ENOENT         2
 #define ESRCH          3
@@ -134,6 +142,11 @@ pub func int sc_open[CStr path, int flags, int mode] path flags mode DARWIN_SYSC
 pub func int sc_close[fd_t fd] fd DARWIN_SYSCALL_CLOSE syscall1 end
 
 // Creates a new process. Returns 0 to child, PID to parent, or -1 on error.
+//
+// WARNING: on Darwin (arm64) this raw system call returns the PID of the child
+// in the child process itself (instead of 0 as POSIX requires), so a child is
+// not able to detect that it is a child. Use the libc `fork` instead
+// (see `std/os/process.gof`).
 pub func int sc_fork[] DARWIN_SYSCALL_FORK syscall0 end
 
 // Get PID of current process
@@ -155,6 +168,9 @@ pub func fd_t sc_socket[int domain,int type_,int protocol] domain type_ protocol
 
 // Bind given socket to given address
 pub func int sc_bind[fd_t socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_BIND syscall3 end
+
+// Connects a socket to the given address
+pub func int sc_connect[fd_t socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_CONNECT syscall3 end
 
 // Listen to an socket with specified backlog
 pub func int sc_listen[fd_t socket, int backlog] socket backlog DARWIN_SYSCALL_LISTEN syscall2 end
@@ -187,4 +203,11 @@ end
 
 pub func int sc_setsockopt[fd_t fd, int level, int optname, *void optval, int optlen]
     fd level optname optval optlen DARWIN_SYSCALL_SETSOCKOPT syscall5
+end
+
+// Gracefully shutdown a socket connection.
+// Discards the not-yet-read data and sends a FIN to the peer, so the connection
+// is closed cleanly (a plain close of a socket with pending data sends a RST).
+pub func int sc_shutdown[fd_t fd, int how]
+    fd how DARWIN_SYSCALL_SHUTDOWN syscall2
 end

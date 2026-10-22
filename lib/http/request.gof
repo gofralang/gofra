@@ -1,5 +1,7 @@
 // IO RX/TX buffer capacity expected
-#define HTTP_IO_BUFFER_CAP 128
+// Must be large enough to hold the request header block of a real world client
+// (browsers send a few hundred bytes of headers, sometimes even more)
+#define HTTP_IO_BUFFER_CAP 2048
 
 struct HTTPRequest
     // Request for HTTP server from client
@@ -7,5 +9,4 @@ struct HTTPRequest
     socket *NetSocket // System socket bound for that client
 
     io_rx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for reading request
-    io_tx_buffer char[HTTP_IO_BUFFER_CAP] // Buffer for writing request
 end

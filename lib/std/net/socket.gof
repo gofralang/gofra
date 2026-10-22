@@ -93,6 +93,90 @@ pub func *NetSocket net_accept_socket[*NetSocket socket]
     net_sock return
 end
 
+// Get IPv4 address of the peer side of a connected socket (host-network-order)
+// Returns 0 if the socket has no peer address bound (e.g a listening socket)
+pub func int net_peer_ipv4[*NetSocket socket]
+    socket.addr typecast int 0 == if
+        0 return
+    end
+
+    socket.addr call ipv4_from_sockaddr return
+end
+
+// Get TCP port of the peer side of a connected socket (host-network-order)
+// Returns 0 if the socket has no peer address bound (e.g a listening socket)
+pub func int net_peer_port[*NetSocket socket]
+    socket.addr typecast int 0 == if
+        0 return
+    end
+
+    socket.addr call port_from_sockaddr return
+end
+
+// Buffer of the formatted peer address (e.g "127.0.0.1:54321")
+var net_peer_address_buf char[32]
+var net_peer_address_sv string
+
+// Get address of the peer side of a connected socket as a string (e.g "127.0.0.1:54321")
+// The returned string is backed by an internal buffer, so it is valid until the next call
+pub func *string net_peer_address_string[*NetSocket socket]
+    var ipv4 int = 0
+    var port int = 0
+    var offset int = 0
+
+    &ipv4 socket call net_peer_ipv4 !<
+    &port socket call net_peer_port !<
+
+    &offset offset ipv4 0 call ipv4_octet call _net_write_uint !<
+    &net_peer_address_buf[offset] '.' !<
+    &offset offset 1 + !<
+    &offset offset ipv4 1 call ipv4_octet call _net_write_uint !<
+    &net_peer_address_buf[offset] '.' !<
+    &offset offset 1 + !<
+    &offset offset ipv4 2 call ipv4_octet call _net_write_uint !<
+    &net_peer_address_buf[offset] '.' !<
+    &offset offset 1 + !<
+    &offset offset ipv4 3 call ipv4_octet call _net_write_uint !<
+    &net_peer_address_buf[offset] ':' !<
+    &offset offset 1 + !<
+    &offset offset port call _net_write_uint !<
+
+    &net_peer_address_sv.data &net_peer_address_buf !<
+    &net_peer_address_sv.len offset !<
+
+    &net_peer_address_sv return
+end
+
+// Write a decimal representation of a number into the peer address buffer at given offset
+// Returns the offset right after the written digits
+func int _net_write_uint[int offset, int num]
+    var digits char[8]
+    var count int = 0
+    var idx int = 0
+    var src int = 0
+
+    while num 0 > do
+        &digits[count] num 10 % '0' + !<
+        &count count 1 + !<
+        &num num 10 / !<
+    end
+
+    count 0 == if
+        &digits[0] '0' !<
+        &count 1 !<
+    end
+
+    // Digits are collected in reverse order, so they are written back from the last one
+    while idx count < do
+        &src count idx - 1 - !<
+        &net_peer_address_buf[offset] digits[src] !<
+        &offset offset 1 + !<
+        &idx idx 1 + !<
+    end
+
+    offset return
+end
+
 // Bind socket to given address and port
 pub func int net_bind_socket[*NetSocket socket, *string ipv4, int port]
     var sock_addr sockaddr_in;
@@ -110,8 +194,8 @@ end
 
 // Start listening on given socket
 pub func int net_listen_socket[*NetSocket socket, int backlog]
-    socket.fd 
-    backlog 
+    socket.fd
+    backlog
     call os_listen
 end
 
@@ -138,8 +222,18 @@ pub func int net_read_socket[*NetSocket socket, CStr buffer, int buffer_len]
     bytes_read return
 end
 
+// Gracefully shutdown the socket connection.
+// Discards the not-yet-read data and sends a FIN to the peer.
+pub func int net_shutdown_socket[*NetSocket socket]
+    socket.fd SHUT_RDWR call os_shutdown
+end
+
 // Close and deallocate socket
+// The connection is shut down gracefully first: a plain close of a socket which still
+// holds not-yet-read data makes the kernel send a RST to the peer instead of a FIN,
+// which the peer reports as a dropped connection.
 pub func int net_close_socket[*NetSocket socket]
+    socket call net_shutdown_socket drop
     socket.fd call os_close_socket
     socket sizeof NetSocket STD_NET_SOCKET_DEALLOCATOR
     socket.addr typecast int 0 != if

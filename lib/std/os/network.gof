@@ -32,6 +32,11 @@
 #define SO_KEEPALIVE    0x0008
 #define SO_REUSEPORT    0x0200
 
+// Shutdown modes (used to gracefully close a connection)
+#define SHUT_RD   0 // No more reads are allowed
+#define SHUT_WR   1 // No more writes are allowed
+#define SHUT_RDWR 2 // Both read and write are disallowed
+
 // Other
 #ifdef OS_LINUX   #define SOMAXCONN 128        #endif
 #ifdef OS_DARWIN  #define SOMAXCONN 128        #endif
@@ -70,5 +75,9 @@
 
     pub func int os_setsockopt[fd_t fd, int level, int optname, *void optval, int optlen]
         fd level optname optval optlen sc_setsockopt return
+    end
+
+    pub func int os_shutdown[fd_t fd, int how]
+        fd how call sc_shutdown
     end
 #endif

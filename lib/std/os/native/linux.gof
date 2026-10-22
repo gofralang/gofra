@@ -38,8 +38,10 @@ end // 16 bytes
     #define LINUX_SYSCALL_WRITE         1
     #define LINUX_SYSCALL_OPEN          2
     #define LINUX_SYSCALL_CLOSE         3
+    #define LINUX_SYSCALL_CONNECT       42
     #define LINUX_SYSCALL_EXIT          60
     #define LINUX_SYSCALL_GETTIMEOFDAY  96
+    #define LINUX_SYSCALL_SHUTDOWN      48
 #endif // ARCH_AMD64
 
 
@@ -70,5 +72,15 @@ end // 16 bytes
     // Closes a file descriptor.
     inline func int sc_close[int] LINUX_SYSCALL_CLOSE syscall1 end
 
+    // Connects a socket to the given address.
+    pub func int sc_connect[int socket, *sockaddr_in address, int address_len]
+        socket address address_len LINUX_SYSCALL_CONNECT syscall3
+    end
+
     inline func void sc_gettimeofday[*char[16], *char[16]] LINUX_SYSCALL_GETTIMEOFDAY syscall2 drop end
+
+    // Gracefully shutdown a socket connection.
+    // Discards the not-yet-read data and sends a FIN to the peer, so the connection
+    // is closed cleanly (a plain close of a socket with pending data sends a RST).
+    pub func int sc_shutdown[int fd, int how] fd how LINUX_SYSCALL_SHUTDOWN syscall2 end
 #endif // ARCH_AMD64

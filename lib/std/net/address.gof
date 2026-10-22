@@ -2,6 +2,7 @@
 // Works for IPv4
 
 #include "std/char.gof"
+#include "std/net/byte_order.gof"
 #include "std/os/network.gof"
 
 // Parse IPv4 string (no port spec) into host-network-order integer
@@ -57,6 +58,38 @@ pub func void ipv4_to_sockaddr[*sockaddr_in addr, int ipv4, int port]
     &addr.sin_port   network_port   !<
     &addr.sin_addr   network_host   !<
     &addr.sin_zero   0              !<
+end
+
+// Get the IPv4 address from a socket address (in host-network-order)
+pub func int ipv4_from_sockaddr[*sockaddr_in addr]
+    var raw int = 0;
+
+    // sin_addr holds the address in network byte order
+    &raw
+        addr.sin_addr[0] typecast int
+        addr.sin_addr[1] typecast int 8 <<
+        |
+        addr.sin_addr[2] typecast int 16 <<
+        |
+        addr.sin_addr[3] typecast int 24 <<
+        |
+    !<
+
+    raw call ntohl return
+end
+
+// Get the TCP port from a socket address (in host-network-order)
+pub func int port_from_sockaddr[*sockaddr_in addr]
+    var raw int = 0;
+
+    // sin_port holds the port in network byte order
+    &raw
+        addr.sin_port[0] typecast int
+        addr.sin_port[1] typecast int 8 <<
+        |
+    !<
+
+    raw call ntohs return
 end
 
 // Check is parsed host-network-order IPv4 is loopback
