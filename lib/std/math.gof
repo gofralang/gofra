@@ -91,3 +91,13 @@ end
 pub func int align_down[int size, int alignment]
     size alignment / alignment * return
 end
+
+pub func int wrap[int v, int m]
+    v 0 < if
+        v m + return
+    end
+    v m >= if
+        v m - return
+    end
+    v return
+end
