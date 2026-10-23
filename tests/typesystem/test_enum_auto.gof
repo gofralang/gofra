@@ -1,0 +1,12 @@
+#include "std"
+#define TESTKIT_EXPECTED_EXIT_CODE 2
+
+enum E
+    A
+    B
+    C
+end
+
+func int main[]
+    E.C
+end

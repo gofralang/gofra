@@ -1,0 +1,11 @@
+#include "std"
+#define TESTKIT_EXPECTED_EXIT_CODE 10
+
+enum Status
+    OK = 0
+    FAIL = 10
+end
+
+func int main[]
+    Status.FAIL
+end

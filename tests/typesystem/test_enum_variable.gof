@@ -1,0 +1,13 @@
+#include "std"
+#define TESTKIT_EXPECTED_EXIT_CODE 1
+
+enum E
+    A
+    B
+end
+
+func int main[]
+    var e E
+    &e E.B !<
+    e
+end

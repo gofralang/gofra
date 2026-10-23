@@ -41,6 +41,10 @@ from libgofra.types import BoolType
 from libgofra.types.composite.function import FunctionType
 
 from ._context import ParserContext, TokenStream
+from .definitions.enum import (
+    parse_enum_definition,
+    try_parse_enum_variant_accessor_expr,
+)
 from .definitions.function import (
     parse_function_definition,
     parse_lambda_function_definition,
@@ -88,6 +92,7 @@ TOP_LEVEL_KEYWORD = (
     Keyword.FUNCTION,
     Keyword.STRUCT,
     Keyword.UNION,
+    Keyword.ENUM,
     Keyword.TYPE_DEFINE,
     Keyword.MODULE_IMPORT,
 )
@@ -226,6 +231,9 @@ def _consume_word_token(token: Token, context: ParserContext) -> None:
     if _try_unpack_function_call_from_identifier_token(context, token):
         return
 
+    if try_parse_enum_variant_accessor_expr(context, token):
+        return
+
     if try_parse_variable_accessor_expr(context, token):
         return
 
@@ -263,6 +271,8 @@ def _consume_keyword_token(context: ParserContext, token: Token) -> None:  # noq
             return parse_structure_definition(context)
         case Keyword.UNION:
             return parse_union_definition(context)
+        case Keyword.ENUM:
+            return parse_enum_definition(context)
         case Keyword.COMPILE_TIME_ERROR:
             return parse_compile_time_error_rintrinsic(context, token)
         case Keyword.SYSCALL:

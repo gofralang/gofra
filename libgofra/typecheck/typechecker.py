@@ -45,6 +45,7 @@ from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.boolean import BoolType
 from libgofra.types.primitive.character import CharType
+from libgofra.types.primitive.enums import EnumType
 from libgofra.types.primitive.floats import F64Type
 from libgofra.types.primitive.integers import I64Type, IntegerType
 from libgofra.types.primitive.void import VoidType
@@ -507,8 +508,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             scope.push_types(b, a)
             scope.raise_for_operator_arguments(
                 operator,
-                (I64Type,),
-                (I64Type,),
+                (IntegerType,),
+                (IntegerType,),
             )
             scope.push_types(I64Type())
 
@@ -517,7 +518,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             scope.raise_for_operator_arguments(
                 operator,
                 (PointerType,),
-                (I64Type, PointerType, BoolType, CharType, FunctionType),
+                (I64Type, PointerType, BoolType, CharType, FunctionType, EnumType),
             )
             value_holder_type = mut_scope[-2]
             store_type = mut_scope[-1]
@@ -587,8 +588,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             # TODO: Generic on same type (i16 <-> i32 error)
             scope.raise_for_operator_arguments(
                 operator,
-                (I64Type, BoolType),
-                (I64Type, BoolType),
+                (IntegerType, BoolType),
+                (IntegerType, BoolType),
             )
             scope.push_types(BoolType())
         case (
@@ -600,8 +601,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             # TODO(@kirillzhosul): Generic comparison
             scope.raise_for_operator_arguments(
                 operator,
-                (I64Type,),
-                (I64Type,),
+                (IntegerType,),
+                (IntegerType,),
             )
             scope.push_types(BoolType())
         case OperatorType.STACK_DROP:
@@ -613,7 +614,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
 
             argument_types = (
                 (
-                    I64Type,
+                    IntegerType,
                     PointerType,
                 )
                 for _ in range(args_count + 1)
@@ -650,8 +651,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
         ):
             scope.raise_for_operator_arguments(
                 operator,
-                (I64Type,),
-                (I64Type,),
+                (IntegerType,),
+                (IntegerType,),
             )
             scope.push_types(I64Type())
 

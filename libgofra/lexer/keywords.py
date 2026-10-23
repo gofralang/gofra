@@ -40,6 +40,8 @@ class Keyword(Enum):
 
     UNION = auto()
 
+    ENUM = auto()
+
     CONST_DEFINE = auto()
     VARIABLE_DEFINE = auto()
 
@@ -100,6 +102,7 @@ WORD_TO_KEYWORD: dict[str, Keyword | PreprocessorKeyword] = {
     "const": Keyword.CONST_DEFINE,
     "union": Keyword.UNION,
     "struct": Keyword.STRUCT,
+    "enum": Keyword.ENUM,
     "var": Keyword.VARIABLE_DEFINE,
     "type": Keyword.TYPE_DEFINE,
     # Constructions

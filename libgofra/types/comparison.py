@@ -5,6 +5,7 @@ from libgofra.types.composite.array import ArrayType
 from libgofra.types.composite.function import FunctionType
 from libgofra.types.composite.pointer import PointerType
 from libgofra.types.composite.structure import StructureType
+from libgofra.types.primitive.enums import EnumType
 
 from ._base import PrimitiveType, Type
 
@@ -30,6 +31,12 @@ def is_types_same(
 
 
 def _compare_types_strict_same_type(a: Type, b: Type) -> bool:  # noqa: PLR0911
+    if isinstance(a, EnumType) or isinstance(b, EnumType):
+        if isinstance(a, EnumType) and isinstance(b, EnumType):
+            return a.name == b.name
+        # Enum is currently compatible with any primitive of the same width.
+        return a.size_in_bytes == b.size_in_bytes
+
     if is_primitive_type(a) and is_primitive_type(b):
         # primitives types without narrowing is just check of equality
         return type(a) is type(b)
@@ -46,8 +53,6 @@ def _compare_types_strict_same_type(a: Type, b: Type) -> bool:  # noqa: PLR0911
         # a -> complex
         # b -> primitive
         return False
-
-    # Both are complex types
 
     if isinstance(a, StructureType) and isinstance(b, StructureType):
         return (

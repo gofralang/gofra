@@ -1,0 +1,12 @@
+#include "std"
+#define TESTKIT_EXPECTED_STDOUT "10\n"
+
+enum Status
+    OK = 0
+    FAIL = 10
+end
+
+func void main[]
+    Status.FAIL print_int
+    "\n" print
+end
