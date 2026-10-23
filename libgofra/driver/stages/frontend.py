@@ -45,17 +45,21 @@ def driver_run_frontend_stage(
     return FrontendArtifact(root=module)
 
 
-def load_module_graph(
+def load_module_graph(  # noqa: PLR0913
     filepath: Path,
     include_paths: Iterable[Path],
     *,
     macros: MacrosRegistry,
     rt_array_oob_check: bool = False,
     entry_point_name: str = "main",
+    source_lines: Iterable[str] | None = None,
 ) -> Module:
     """Compiles given filepath down to `IR` into `Module` (e.g translation unit).
 
     Requires compiling dependency modules (e.g returned_module.dependencies).
+
+    :param source_lines: Content of the source file to compile. When not given,
+        the file is read from the disk.
     """
     module = Module(path=filepath)
 
@@ -92,7 +96,12 @@ def load_module_graph(
 
     return parse_module_from_tokenizer(
         module,
-        tokenizer=_get_tokenizer(filepath, include_paths, macros),
+        tokenizer=_get_tokenizer(
+            filepath,
+            include_paths,
+            macros,
+            source_lines=source_lines,
+        ),
         rt_array_oob_check=rt_array_oob_check,
         entry_point_name=entry_point_name,
         on_import_request=on_import_request,
@@ -103,8 +112,14 @@ def _get_tokenizer(
     filepath: Path,
     include_paths: Iterable[Path],
     macros: MacrosRegistry,
+    *,
+    source_lines: Iterable[str] | None = None,
 ) -> Generator[Token]:
-    io = open_source_file_line_stream(filepath)
+    io = (
+        open_source_file_line_stream(filepath)
+        if source_lines is None
+        else source_lines
+    )
     lexer = tokenize_from_raw(filepath, lines=io)
     return preprocess_file(
         filepath,

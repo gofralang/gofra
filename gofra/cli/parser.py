@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from gofra.cli.commands import clean, run, targets, version
+from gofra.cli.commands import clean, lsp, run, targets, version
 from gofra.cli.commands.build import command as build
 
 
@@ -27,5 +27,6 @@ def build_root_cli_parser(prog: str) -> ArgumentParser:
 
     clean.build_parser(subparsers)
     build.build_parser(subparsers)
+    lsp.build_parser(subparsers)
 
     return core_parser
