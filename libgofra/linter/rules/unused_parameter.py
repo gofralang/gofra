@@ -31,6 +31,11 @@ class UnusedParameterRule:
         function: Function,
         context: LintContext,
     ) -> Iterable[LintDiagnostic]:
+        if function.attrs.naked:
+            # Naked function body is a raw assembly, so its parameters are read
+            # directly from the registers (per C ABI) and cannot be tracked here
+            return
+
         for param in function.parameters:
             if context.references.is_local_used(function.name, param.name):
                 continue

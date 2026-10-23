@@ -1,0 +1,21 @@
+/// Test that a local variable of every supported width is initialized in full
+///
+/// A local variable is stored with an instruction which writes exactly its size,
+/// so a narrower store would leave the upper bytes of the variable uninitialized
+
+#include "std"
+
+#define TESTKIT_EXPECTED_STDOUT "i8=100 i16=30000 i32=65536 i64=8589934592"
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func void main[]
+    var a i8 = 100;
+    var b i16 = 30000;
+    var c i32 = 65536;
+    var d i64 = 8589934592;
+
+    "i8=" print a typecast int print_int " " print
+    "i16=" print b typecast int print_int " " print
+    "i32=" print c typecast int print_int " " print
+    "i64=" print d print_int
+end

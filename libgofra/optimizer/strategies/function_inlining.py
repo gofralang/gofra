@@ -144,6 +144,11 @@ def should_inline_function(  # noqa: PLR0911
     if function.attrs.external or function.is_public:
         return False
 
+    if function.attrs.naked:
+        # Naked function is a raw assembly (e.g a system call wrapper), it cannot be
+        # expanded into the caller as it operates with registers and returns by itself
+        return False
+
     if function.outer_function:
         # If this is lambda we cannot inline it
         return False

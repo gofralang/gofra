@@ -1,0 +1,18 @@
+/// Test that a local variable which lays far away from the frame pointer is initialized
+///
+/// The offset of a frame slot is encoded as an immediate of the store instruction,
+/// so a slot which lays too far away must be addressed via a scratch register
+
+#include "std"
+
+#define TESTKIT_EXPECTED_STDOUT "value=42"
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func void main[]
+    var pad char[3000];
+    var value int = 42;
+
+    &pad[0] 'A' !<
+
+    "value=" print value print_int
+end

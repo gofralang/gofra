@@ -323,6 +323,7 @@ def amd64_executable_functions(
             arguments_count=len(function.parameters),
             function_name=function.name,
             preserve_frame=has_frame,
+            is_naked=function.attrs.naked,
             as_global_linker_symbol=function.is_public,
         )
 

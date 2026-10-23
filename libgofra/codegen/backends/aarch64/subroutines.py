@@ -43,6 +43,7 @@ def function_begin_with_prologue(  # noqa: PLR0913
     name: str,
     global_name: str | None = None,
     preserve_frame: bool = True,
+    is_naked: bool = False,
     local_variables: Mapping[str, Variable[Type]],
     parameters: Sequence[Type],
     dwarf: DWARF | None,
@@ -56,6 +57,8 @@ def function_begin_with_prologue(  # noqa: PLR0913
     :global_name: Mark that function symbol as global for linker
         (must be the very same symbol as `name`, otherwise it stays local)
     :preserve_frame: If true will preserve function state for proper stack management and return address
+    :is_naked: If true the function has no prologue at all, so arguments are not
+        pushed onto the operand stack (they are passed in registers per C ABI)
     """
     # TODO: Checkout `BTI` when i have an proper hardware
     # TODO: Checkout PAC because it is suddenly does not work rn
@@ -86,7 +89,9 @@ def function_begin_with_prologue(  # noqa: PLR0913
         local_offsets = build_local_variables_frame_offsets(local_variables)
         preserve_callee_frame(writer, local_space_size=local_offsets.local_space_size)
 
-    if parameters:
+    if parameters and not is_naked:
+        # Naked function has no prologue, so arguments stay in registers (per C ABI)
+        # and the naked body reads them directly from there
         registers = abi.arguments_64bit_registers[: len(parameters)]
         for register in registers:
             push_register_onto_stack(writer, register)

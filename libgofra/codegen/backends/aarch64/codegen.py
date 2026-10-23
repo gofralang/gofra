@@ -154,6 +154,7 @@ def function_define_with_instruction_set(  # noqa: PLR0913, PLR0917
         # and the real one stays local (e.g not exported from a dylib)
         global_name=label if function.is_public else None,
         preserve_frame=has_frame,
+        is_naked=function.attrs.naked,
         parameters=function.parameter_types,
         dwarf=dwarf,
         dwarf_function=function,

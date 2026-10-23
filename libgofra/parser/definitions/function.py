@@ -61,6 +61,9 @@ def _validate_function_defintion_attributes(function: Function) -> None:
             msg = f"Inline functions cannot have local variables: {function.defined_at}"
             raise ValueError(msg)
     if function.attrs.naked:
+        if function.attrs.inline:
+            msg = f"Naked functions cannot be inlined: {function.defined_at}"
+            raise ValueError(msg)
         if function.variables:
             msg = f"Naked functions cannot have local variables: {function.defined_at}"
             raise ValueError(msg)
@@ -82,7 +85,6 @@ def parse_function_definition(
     # TODO: Generally bad function
     # references too many internal implementations
 
-
     if name_holder := context.scope.lookup(f_header_def.name):
         raise GeneralNameHolderConflictError(
             conflicting_holder=f"Function '{f_header_def.name}' at {token.location}",
@@ -96,7 +98,12 @@ def parse_function_definition(
             defined_at=token.location,
         )
 
-    new_context = _new_function_scope(context, token, f_header_def.parameters)
+    new_context = _new_function_scope(
+        context,
+        token,
+        f_header_def.parameters,
+        is_naked=f_header_def.qualifiers.is_naked,
+    )
 
     if f_header_def.name == context.entry_point_name:  # TODO: Refactor
         f_header_def.qualifiers.is_public = True
@@ -198,11 +205,52 @@ def parse_lambda_function_definition(
     )
 
 
+def _inject_function_parameter_load(
+    context: ParserContext,
+    token: Token,
+    parameters: list[FunctionParameter],
+    *,
+    is_naked: bool,
+) -> None:
+    scope = context.scope
+    for param in reversed(parameters):
+        assert param.name
+        if is_naked:
+            # Naked function has no prologue, so parameters are not loaded onto the
+            # operand stack - they are passed in registers (per C ABI) and the naked
+            # body reads them directly from there
+            continue
+        if param.name == "_":
+            context.push_new_operator(OperatorType.STACK_DROP, token=token)
+            continue
+        scope.variables[param.name] = Variable(
+            module=context.module,
+            name=param.name,
+            defined_at=token.location,
+            is_constant=False,
+            storage_class=VariableStorageClass.STACK,
+            scope_class=VariableScopeClass.FUNCTION,
+            type=param.type,
+            initial_value=None,  # Default values propagated by caller
+        )
+
+        context.push_new_operator(
+            OperatorType.LOAD_PARAM_ARGUMENT,
+            token,
+            operand=param.name,
+        )
+
+
 def _new_function_scope(
     parent: ParserContext,
     token: Token,
     parameters: list[FunctionParameter],
+    *,
+    is_naked: bool = False,
 ) -> ParserContext:
+    from libgofra.parser.parser import (  # noqa: PLC0415
+        _parse_from_context_into_operators,
+    )
 
     tokenizer = _consume_function_body_tokens(parent)
 
@@ -215,30 +263,11 @@ def _new_function_scope(
         on_import_request=parent.on_import_request,
     )
 
-    for param in reversed(parameters):
-        assert param.name
-        if param.name == "_":
-            new_context.push_new_operator(OperatorType.STACK_DROP, token=token)
-            continue
-        assert parent.module
-        new_scope.variables[param.name] = Variable(
-            module=parent.module,
-            name=param.name,
-            defined_at=token.location,
-            is_constant=False,
-            storage_class=VariableStorageClass.STACK,
-            scope_class=VariableScopeClass.FUNCTION,
-            type=param.type,
-            initial_value=None,  # Default values propagated by caller
-        )
-
-        new_context.push_new_operator(
-            OperatorType.LOAD_PARAM_ARGUMENT,
-            token,
-            operand=param.name,
-        )
-    from libgofra.parser.parser import (  # noqa: PLC0415
-        _parse_from_context_into_operators,
+    _inject_function_parameter_load(
+        new_context,
+        token,
+        parameters,
+        is_naked=is_naked,
     )
 
     _parse_from_context_into_operators(context=new_context)

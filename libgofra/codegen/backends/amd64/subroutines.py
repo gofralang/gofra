@@ -30,6 +30,7 @@ def function_begin_with_prologue(  # noqa: PLR0913
     function_name: str,
     as_global_linker_symbol: bool,
     preserve_frame: bool,
+    is_naked: bool = False,
     arguments_count: int,
     local_variables: Mapping[str, Variable[Type]],
 ) -> None:
@@ -46,7 +47,9 @@ def function_begin_with_prologue(  # noqa: PLR0913
     if preserve_frame:
         preserve_callee_frame(context, offsets.local_space_size)
 
-    if arguments_count:
+    if arguments_count and not is_naked:
+        # Naked function has no prologue, so arguments stay in registers (per C ABI)
+        # and the naked body reads them directly from there
         registers = context.abi.arguments_64bit_registers[:arguments_count]
         for register in registers:
             push_register_onto_stack(context, register)

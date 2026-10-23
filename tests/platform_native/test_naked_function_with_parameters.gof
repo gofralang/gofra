@@ -1,0 +1,30 @@
+/// Test that a naked function takes its arguments from the registers (per C ABI)
+/// and returns the result in the return register
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+#ifdef ARCH_ARM64
+naked func int add[int a, int b]
+    inline_raw_asm "add x0, x0, x1\nret"
+end
+#endif
+#ifndef ARCH_ARM64
+func int add[int a, int b]
+    a b + return
+end
+#endif
+
+func int main[]
+    // Arguments are passed in registers, so the first one is in the first register
+    2 3 call add
+    5 != if
+        1 return
+    end
+
+    40 2 call add
+    42 != if
+        2 return
+    end
+
+    0 return
+end
