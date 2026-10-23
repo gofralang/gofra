@@ -170,10 +170,10 @@ end
 
 func void handle_player_movement[]
     // Movement of an player paddle
-    'W' IsKeyDown if
+    Key.W IsKeyDown if
         &player.y player.y player.speed - !<
     end
-    'S' IsKeyDown if
+    Key.S IsKeyDown if
         &player.y player.y player.speed + !<
     end
 

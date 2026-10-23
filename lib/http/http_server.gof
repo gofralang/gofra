@@ -3,14 +3,15 @@
 // TODO: Add async/thread support
 // ==============================================
 
-#include "std/types.gof"
-#include "std/os/error.gof"
+#include "std/types"
+#include "std/os/error"
 #include "std/net"
-#include "std/memory/static_heap.gof"
+#include "std/memory/static_heap"
+#include "std/io"
 
-#include "http/request.gof"
-#include "http/response.gof"
-#include "http/status.gof"
+#include "http/request"
+#include "http/response"
+#include "http/status"
 
 #ifndef STD_HTTP_SERVER_ALLOCATOR
     // Primitive allocator setup
@@ -60,7 +61,7 @@ pub func void http_server_start[
     server.socket typecast int 0 == if
         "TCP listener failed!" eprint_fatal
     end
-    
+
     "[http_server] Listening on " print ipv4 print ":" print port print_int "...\n" print
 
     var request HTTPRequest;

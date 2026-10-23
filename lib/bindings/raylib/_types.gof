@@ -13,15 +13,20 @@ const RED      Color = Color { r = -26, g = 41,  b = 55,  a = -2  }
 const GREEN    Color = Color { r = 0,   g = -8,  b = 48,  a = -2  }
 const BLUE     Color = Color { r = 0,   g = 121, b = -15, a = -2  }
 const YELLOW   Color = Color { r = -3,  g = -7,  b = 0,   a = -1  }
-const KEY_W      = 87
-const KEY_A      = 65
-const KEY_S      = 83
-const KEY_D      = 68
 
-const KEY_UP     = 265
-const KEY_DOWN   = 264
-const KEY_LEFT   = 263
-const KEY_RIGHT  = 262
 
-const KEY_SPACE  = 32
-const KEY_ESCAPE = 256
+
+enum Key
+  W      = 87
+  A      = 65
+  S      = 83
+  D      = 68
+
+  UP     = 265
+  DOWN   = 264
+  LEFT   = 263
+  RIGHT  = 262
+  
+  SPACE  = 32
+  ESCAPE = 256
+end

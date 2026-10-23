@@ -1,13 +1,12 @@
 // TODO: Add proper OR to preprocessor
 // TODO: Inline functions has bad debug options and produce improper error messages
 // TODO: Test and implement missing features for Windows
-// TODO: Allow forward referencing functions
 
 #include "std/os/io.gof"
 
 #ifndef __WASM 
     // Open file in read-only mode
-    pub func int open_file_fd_ro[*string sv] sv 0 0 call open_file_fd_raw end #endif
+    pub func int open_file_fd_ro[*string sv] sv 0 0 call open_file_fd_raw end
 
     // Read file into SV (string), and return same pointer
     // reads same amount as string view len, returns null ptr (0) on error

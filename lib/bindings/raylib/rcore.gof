@@ -1,4 +1,5 @@
 #include "std/types"
+#include "_types.gof"
 
 extern pub func void InitWindow[int width,int height,CStr name]
 extern pub func void CloseWindow[]

@@ -21,7 +21,7 @@ end
 
 func void main[]
     &server call http_server_new !<
-    
+
     server
     pointer_of_proc handle_request
     HOST PORT
