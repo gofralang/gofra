@@ -1,0 +1,37 @@
+/// Test that a child process is detected by `proc_is_child` on any platform
+///
+/// On Linux the `fork` returns 0 in a child process, on Darwin (arm64) the raw
+/// `fork` system call returns the PID of the child in the child process itself,
+/// so the detection must be based on the PID of the current process.
+#include "std"
+#include "std/os/process"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    var pid int;
+    &pid call proc_fork !<
+
+    pid call proc_is_child if
+        // Child process - it must detect itself as a child and exit with a code
+        pid call proc_is_child 0 == if
+            // A child which does not detect itself is a broken child
+            1 call exit
+        end
+        42 call exit
+    end
+
+    // Parent process - it must not detect itself as a child
+    pid call proc_is_child if
+        2 return
+    end
+
+    // The child must exit with the code 42
+    var code int;
+    &code pid call proc_wait_exit_code !<
+    code 42 != if
+        3 return
+    end
+
+    0 return
+end

@@ -1,0 +1,184 @@
+// ==============================================
+// Process control primitives
+// Crossplatform layer over raw system calls
+//
+// Provides: process creation (fork), waiting for a child (waitpid),
+// wait status decoding, pipes and file descriptor duplication.
+//
+// NOTE: C `int` is 4 bytes long, while Gofra `int` is 8 bytes long, so
+// all the C `int` values are handled as `i32` here (and results of the system
+// calls are sign-extended back to the 64-bit `int`).
+//
+// NOTE: the raw system calls are used here instead of the POSIX libc, because
+// the Gofra standard library does not use libc at all (all the IO, memory and
+// process exit are done through raw system calls), so there is no reason to
+// depend on libc and to inherit its state into a forked child process.
+// ==============================================
+
+#include "std/types.gof"
+#include "std/os/general.gof"
+
+// --- Signals (same numbers on Darwin and Linux) ---
+#define PROC_SIGHUP  1  // Hangup
+#define PROC_SIGINT  2  // Interrupt
+#define PROC_SIGQUIT 3  // Quit
+#define PROC_SIGILL  4  // Illegal instruction
+#define PROC_SIGABRT 6  // Abort (e.g raised by `abort`)
+#define PROC_SIGFPE  8  // Floating point exception
+#define PROC_SIGKILL 9  // Kill (cannot be caught or ignored)
+#define PROC_SIGSEGV 11 // Invalid memory reference
+#define PROC_SIGPIPE 13 // Write on a closed pipe
+#define PROC_SIGTERM 15 // Terminate
+
+// --- Wait status decoding (POSIX) ---
+// Low 7 bits of a wait status hold a terminating signal (0 when a process
+// exited normally, 0x7F when a process is stopped), bits 8..15 hold an exit code.
+#define PROC_STATUS_SIGNAL_MASK    0x7F
+#define PROC_STATUS_EXITCODE_MASK  0xFF
+#define PROC_STATUS_EXITCODE_SHIFT 8
+#define PROC_STATUS_STOPPED        0x7F
+
+// A function that may be executed inside a forked child process.
+// It is called without arguments and its result is used as an exit code.
+type ProcessFunc func int _[]
+
+
+
+// Create a child process (fork).
+// Returns the PID of the child process in the parent process, or -1 on error.
+//
+// WARNING: on Darwin (arm64) the raw `fork` system call returns the PID of the
+// child in the child process itself (instead of 0 as POSIX requires), so the
+// return value must not be compared with zero to detect a child process -
+// use `proc_is_child` instead.
+//
+// NOTE: the raw system call does not perform the bookkeeping which the libc
+// `fork` does (TLS/stdio state of the child), so a child process must not use
+// any libc function (e.g `printf` or `malloc`) after the fork. The Gofra
+// standard library does not use libc at all, so it is safe to use it there.
+pub func int proc_fork[]
+    call sc_fork
+end
+
+// Check if the current process is a child process of the given `fork` result.
+//
+// This works on all the supported platforms: on Linux the `fork` returns 0 in
+// a child process, and on Darwin (arm64) it returns the PID of the child in the
+// child process itself (which is the PID of the current process).
+pub func bool proc_is_child[int fork_result]
+    fork_result 0 == if
+        true return
+    end
+
+    fork_result call sc_getpid == if
+        true return
+    end
+
+    false return
+end
+
+// Get PID of the current process.
+pub func int proc_getpid[]
+    call sc_getpid
+end
+
+// Get PID of the parent process.
+pub func int proc_getppid[]
+    call sc_getppid
+end
+
+// Wait for a child process to change its state (e.g terminated or stopped).
+// pid: process to wait for (-1 means "any child process")
+// status: where to place the wait status (may be NULL)
+// Returns PID of the changed child process, or a negative errno on error.
+pub func int proc_waitpid[int pid, *i32 status]
+    pid status 0 call sc_waitpid
+end
+
+// Check if the given wait status means "process exited normally with an exit code".
+pub func bool proc_status_exited[int status]
+    status PROC_STATUS_SIGNAL_MASK & 0 == return
+end
+
+// Check if the given wait status means "process was terminated by a signal".
+pub func bool proc_status_signaled[int status]
+    var signal int;
+    &signal status PROC_STATUS_SIGNAL_MASK & !<
+
+    signal 0 == if
+        false return
+    end
+    signal PROC_STATUS_STOPPED == if
+        false return
+    end
+    true return
+end
+
+// Extract an exit code from the given wait status.
+pub func int proc_status_exit_code[int status]
+    status PROC_STATUS_EXITCODE_SHIFT >> PROC_STATUS_EXITCODE_MASK & return
+end
+
+// Extract a terminating signal number from the given wait status.
+pub func int proc_status_signal[int status]
+    status PROC_STATUS_SIGNAL_MASK & return
+end
+
+// Wait for the given child process and return its exit code.
+// Returns a negative errno on error, or 128+signal when the child was terminated
+// by a signal (as a shell does report it).
+pub func int proc_wait_exit_code[int pid]
+    var status i32;
+    var result int;
+    &result pid &status call proc_waitpid !<
+
+    result 0 < if
+        result return
+    end
+
+    var code int;
+    &code status typecast int !<
+
+    code call proc_status_signaled if
+        128 code call proc_status_signal + return
+    end
+
+    code call proc_status_exit_code return
+end
+
+// Send a signal to a process.
+// Returns 0 on success, or a negative errno on error.
+pub func int proc_kill[int pid, int signal]
+    pid signal call sc_kill
+end
+
+// Create a pipe (a unidirectional data channel).
+// fds: an array of two `i32` elements, where read and write ends are placed
+// Returns 0 on success, or a negative errno on error.
+pub func int proc_pipe[*i32 fds]
+    fds call sc_pipe
+end
+
+// Duplicate a file descriptor, makes `new_fd` refer to the same object as `old_fd`.
+// Returns `new_fd` on success, or a negative errno on error.
+pub func int proc_dup2[int old_fd, int new_fd]
+    old_fd new_fd call sc_dup2
+end
+
+// Execute the given function inside a forked child process and wait for it.
+// The child process exits with a code returned by the given function,
+// so a crash (e.g a segmentation fault) of the child does not affect the parent.
+// Returns an exit code of the child (128+signal when it was killed by a signal),
+// or a negative errno on error.
+pub func int proc_run_isolated[ProcessFunc fn]
+    var pid int;
+    &pid call proc_fork !<
+
+    pid call proc_is_child if
+        // Child process - run the given function and exit with its result
+        call fn
+        call exit
+    end
+
+    pid call proc_wait_exit_code
+end

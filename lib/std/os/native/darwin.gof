@@ -259,7 +259,21 @@ end
 // Signature: [fds_ptr]
 // fds_ptr: where to place two file descriptors (read end, then write end)
 // Returns 0 on success, or a negative errno on error.
+#ifdef ARCH_ARM64
+// Creates a pipe (a unidirectional data channel).
+// Unlike other platforms, on Darwin (arm64) the `pipe` system call returns
+// its two file descriptors in X0/X1 registers instead of writing them into the
+// passed-in array. The `syscall1` intrinsic only returns one value, so the call
+// is implemented as a naked function using inline assembly (the value of the
+// syscall number #42 must be kept in sync with DARWIN_SYSCALL_CODE.PIPE).
+// TODO (@kirillzhosul): refactor that leaked abstraction
+naked pub func int sc_pipe[*i32 fds]
+    inline_raw_asm "mov x9, x0\nmov x16, #42\nmov x17, #2\nsvc #0x80\nb.cs 1f\nstp w0, w1, [x9]\nmov x0, #0\nb 2f\n1:\ncneg x0, x0, cs\n2:\nret"
+end
+#endif
+#ifndef ARCH_ARM64
 pub func int sc_pipe[*i32 fds]
     fds DARWIN_SYSCALL_CODE.PIPE syscall1
 end
+#endif
 

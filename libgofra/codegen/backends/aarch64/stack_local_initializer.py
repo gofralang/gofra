@@ -114,14 +114,21 @@ def _set_local_numeric_var_immediate(
     """Set immediate numeric value for local variable at given offset. Respects memory store instructions."""
     assert 0 < t.size_in_bytes <= 8, "Too big type to store into"
 
-    # Use half-word instruction set (W register, half store)
+    # Type-to-register width rule (same as in `perform_operation_onto_stack`):
+    # - widths up to 4 bytes use the W registers / half-word access
+    # - 8-byte values use the X0 registers
     is_hword = t.size_in_bytes <= 4
     bit_count = 8 * t.size_in_bytes
     sr = ("XZR", "WZR")[is_hword] if value == 0 else ("X0", "W0")[is_hword]
 
-    if sr in ("X0", "W0"):
+    if sr in ("X0", "W0") and value != 0:
         assert value.bit_count() <= bit_count
         writer.instruction(f"mov {sr}, #{value}")
 
-    instr = "strb" if t.size_in_bytes == 1 else ("strh" if is_hword else "str")
-    writer.instruction(f"{instr} {sr}, [X29, -{offset}]")
+    # Frame slots which lay far from the frame pointer may not be addressable
+    # by an immediate offset of the store instruction, so always compute the
+    # target address into X16 (the frame scratch register) and store indirectly.
+    writer.instruction("mov X16, X29")
+    writer.instruction(f"sub X16, X16, #{offset}")
+    writer.instruction(f"str {sr}, [X16]")
+

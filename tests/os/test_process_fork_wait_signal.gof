@@ -1,0 +1,17 @@
+/// Test that a child process terminated by a signal is detected by the parent
+#include "std"
+#include "std/os/process"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 134
+
+func int child_kills_itself[]
+    proc_getpid PROC_SIGABRT call proc_kill drop
+    0 return
+end
+
+func int main[]
+    var fn ProcessFunc;
+    &fn pointer_of_proc child_kills_itself !<
+
+    fn call proc_run_isolated return
+end

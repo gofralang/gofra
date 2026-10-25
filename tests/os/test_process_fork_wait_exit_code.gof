@@ -1,0 +1,16 @@
+/// Test that an exit code of a forked child process is observable by the parent
+#include "std"
+#include "std/os/process"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 42
+
+func int child_returns_code_42[]
+    42 return
+end
+
+func int main[]
+    var fn ProcessFunc;
+    &fn pointer_of_proc child_returns_code_42 !<
+
+    fn call proc_run_isolated return
+end

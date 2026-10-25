@@ -1,0 +1,54 @@
+/// Test that an output of a child process may be captured through a pipe
+#include "std"
+#include "std/os/process"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    // NOTE: C `int` is 4 bytes long, so pipe file descriptors are `i32`
+    var fds i32[2];
+    &fds[0] call proc_pipe 0 != if
+        // Pipe creation failed
+        1 return
+    end
+
+    var pid int;
+    &pid call proc_fork !<
+
+    pid call proc_is_child if
+        // Child process - redirect its output into the pipe and write there
+        fds[1] typecast int 1 call proc_dup2 drop
+        88 call write_byte
+        0 call exit
+    end
+
+    // Parent process - read the output of the child
+    fds[1] typecast int call sc_close drop
+
+    var buffer char[16];
+    var read_bytes int;
+    &read_bytes fds[0] typecast int &buffer[0] 16 call sc_read !<
+
+    fds[0] typecast int call sc_close drop
+
+    // Exactly one byte must be read
+    read_bytes 1 != if
+        2 return
+    end
+
+    // And it must be the byte written by the child
+    var byte int;
+    &byte buffer[0] typecast int !<
+    byte 88 != if
+        3 return
+    end
+
+    0 return
+end
+
+// Write a single byte into the standard output
+func void write_byte[int value]
+    var byte char;
+    &byte value typecast char !<
+    1 &byte 1 call sc_write drop
+end
