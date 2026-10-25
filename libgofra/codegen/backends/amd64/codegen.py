@@ -12,19 +12,27 @@ from libgofra.codegen.backends.frame import is_native_function_has_frame
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.hir.function import Visibility
-from libgofra.hir.operator import FunctionCallOperand, Operator, OperatorType
+from libgofra.hir.operator import (
+    FunctionCallOperand,
+    Operator,
+    OperatorType,
+    TypecastMeta,
+)
 from libgofra.hir.variable import VariableStorageClass
-from libgofra.types import Type
+from libgofra.types import CharType, Type
+from libgofra.types.composite.function import FunctionType
 
 from ._context import AMD64CodegenContext
 from .assembly import (
     drop_cells_from_stack,
     evaluate_conditional_block_on_stack_with_jump,
     function_call,
+    function_call_from_pointer,
     ipc_syscall_linux,
     load_memory_from_stack_arguments,
     perform_operation_onto_stack,
     pop_cells_from_stack_into_registers,
+    push_float_onto_stack,
     push_integer_onto_stack,
     push_local_variable_address_from_frame_offset,
     push_register_onto_stack,
@@ -201,8 +209,44 @@ def amd64_operator_instructions(
                 return_type=owner_function.return_type,
             )
         case OperatorType.STATIC_TYPE_CAST:
-            # Skip that as it is typechecker only.
-            pass
+            assert operator.tc_meta
+            assert isinstance(operator.tc_meta, TypecastMeta)
+
+            meta = operator.tc_meta
+            pop_cells_from_stack_into_registers(context, "rax")
+            if meta.kind == TypecastMeta.Kind.REINTERPRET:
+                pass
+            elif meta.kind == TypecastMeta.Kind.INT_TO_FLOAT:
+                context.write("cvtsi2sd %rax, %xmm0", "movq %xmm0, %rax")
+            elif meta.kind == TypecastMeta.Kind.FLOAT_TO_INT:
+                context.write("movq %rax, %xmm0", "cvttsd2si %xmm0, %rax")
+            elif meta.kind == TypecastMeta.Kind.NORMALIZE_BOOL:
+                context.write("cmpq $0, %rax", "setne %al", "movzbq %al, %rax")
+            elif meta.kind == TypecastMeta.Kind.EXTEND:
+                src_size = meta.a.size_in_bytes
+                signed = not isinstance(meta.a, CharType)
+                if src_size == 1:
+                    context.write("movsbq %al, %rax" if signed else "movzbq %al, %rax")
+                elif src_size == 2:
+                    context.write("movswq %ax, %rax" if signed else "movzwq %ax, %rax")
+                elif src_size == 4:
+                    context.write("movslq %eax, %rax" if signed else "movl %eax, %eax")
+            elif meta.kind == TypecastMeta.Kind.TRUNCATE:
+                dst_size = meta.b.size_in_bytes
+                signed = not isinstance(meta.b, CharType)
+                if dst_size == 1:
+                    context.write("andq $255, %rax")
+                    if signed:
+                        context.write("movsbq %al, %rax")
+                elif dst_size == 2:
+                    context.write("andq $65535, %rax")
+                    if signed:
+                        context.write("movswq %ax, %rax")
+                elif dst_size == 4:
+                    context.write("andl $-1, %eax")
+                    if signed:
+                        context.write("cltq")
+            push_register_onto_stack(context, "rax")
         case OperatorType.STACK_DROP:
             drop_cells_from_stack(context, cells_count=1)
         case OperatorType.STACK_COPY:
@@ -237,6 +281,11 @@ def amd64_operator_instructions(
             perform_operation_onto_stack(
                 context,
                 operation=operator.type,
+                is_fp=bool(
+                    operator.tc_meta is not None
+                    and isinstance(operator.tc_meta, Type)
+                    and getattr(operator.tc_meta, "is_fp", False),
+                ),
             )
         case OperatorType.SYSCALL:
             if context.target.operating_system == "Windows":
@@ -256,8 +305,13 @@ def amd64_operator_instructions(
             load_memory_from_stack_arguments(context, size_in_bytes=read_size)
         case OperatorType.PUSH_VARIABLE_VALUE:
             assert isinstance(operator.operand, str)
+            assert operator.tc_meta
+            assert isinstance(operator.tc_meta, Type)
             _push_variable_address(context, owner_function, variable=operator.operand)
-            load_memory_from_stack_arguments(context)
+            load_memory_from_stack_arguments(
+                context,
+                size_in_bytes=operator.tc_meta.size_in_bytes,
+            )
         case OperatorType.LOAD_PARAM_ARGUMENT:
             assert isinstance(operator.operand, str)
             _push_variable_address(context, owner_function, variable=operator.operand)
@@ -287,17 +341,33 @@ def amd64_operator_instructions(
                 context.write(f"addq ${field_offset}, %rax")
                 push_register_onto_stack(context, "rax")
         case OperatorType.PUSH_FLOAT:
-            msg = "FPU is not implemented on amd64"
-            raise ValueError(msg)
+            assert isinstance(operator.operand, float)
+            push_float_onto_stack(context, operator.operand)
         case OperatorType.INLINE_RAW_ASM:
             assert isinstance(operator.operand, str)
             context.write(*operator.operand.splitlines())
         case OperatorType.COMPILE_TIME_ERROR:
             ...  # Linter / typechecker
         case OperatorType.PUSH_FUNCTION_POINTER:
-            raise NotImplementedError(operator)
+            assert isinstance(operator.operand, FunctionCallOperand)
+            function = program.resolve_function_dependency(
+                operator.operand.module,
+                operator.operand.get_name(),
+            )
+            assert function is not None
+            context.write(f"leaq {function.name}(%rip), %rax")
+            push_register_onto_stack(context, "rax")
         case OperatorType.FUNCTION_CALL_FROM_STACK_POINTER:
-            raise NotImplementedError(operator)
+            assert isinstance(operator.operand, FunctionType)
+            call_like = operator.operand
+            ptr_reg = "r10"
+            pop_cells_from_stack_into_registers(context, ptr_reg)
+            function_call_from_pointer(
+                context,
+                register=ptr_reg,
+                type_contract_in=call_like.parameters,
+                type_contract_out=call_like.return_type,
+            )
 
         case _:
             assert_never(operator.type)
@@ -321,6 +391,7 @@ def amd64_executable_functions(
             context,
             local_variables=function.variables,
             arguments_count=len(function.parameters),
+            parameter_types=function.parameter_types,
             function_name=function.name,
             preserve_frame=has_frame,
             is_naked=function.attrs.naked,

@@ -21,6 +21,7 @@ class IntegerLiteral(BaseLiteral):
 class FloatLiteral(BaseLiteral):
     value: float
 
+
 @dataclass
 class CharacterLiteral(BaseLiteral):
     value: int

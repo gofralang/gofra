@@ -90,7 +90,15 @@ def _write_static_segment_variable_initializer(
         target_type=variable.type,
     )
     match variable.type:
-        case CharType() | I64Type() | I32Type() | I16Type() | I8Type() | BoolType() | F64Type():
+        case (
+            CharType()
+            | I64Type()
+            | I32Type()
+            | I16Type()
+            | I8Type()
+            | BoolType()
+            | F64Type()
+        ):
             assert isinstance(initializer, int)
             ddd = _get_ddd_for_type(variable.type)
             writer.label(symbol_name)

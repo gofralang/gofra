@@ -1,4 +1,3 @@
-
 from libgofra.lexer.lexer import tokenize_from_raw
 from libgofra.lexer.tokens import TokenType
 

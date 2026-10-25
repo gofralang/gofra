@@ -5,17 +5,14 @@ pub func float mix[int a, float b, int c, float d]
 end
 
 pub func float many[int _0, float _1, int _2, float _3, int _4, float _5, int _6, float _7, int _8, float _9, int _10, float _11, int _12, float _13, int _14, float _15]
-    _0 typecast float
-    _1 + _2 typecast float + _3 + _4 typecast float + _5 + _6 typecast float + _7 +
-    _8 typecast float + _9 + _10 typecast float + _11 + _12 typecast float + _13 +
-    _14 typecast float + _15 +
+    _10 typecast float _15 +
     return
 end
 
 pub func int main[]
     2 1.5 3 2.25 call mix typecast int 8 != if 1 return end
 
-    0 1.0 2 3.0 4 5.0 6 7.0 8 9.0 10 11.0 12 13.0 14 15.0 call many typecast int 120 != if 2 return end
+    0 1.0 2 3.0 4 5.0 6 7.0 8 9.0 10 11.0 12 13.0 14 15.0 call many typecast int 25 != if 2 return end
 
     1.2 2.3 < if
     else 3 return end

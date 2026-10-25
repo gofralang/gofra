@@ -47,10 +47,12 @@ def scan_number(state: LexerState) -> Token:
     if not int_digits:
         raise InvalidNumberLiteralError(
             at=location,
-            number_raw=line[start:state.col],
+            number_raw=line[start : state.col],
             reason="expected at least one digit in the number literal",
         )
-    _ensure_valid_digit_separators(int_digits, location=location, number_raw=line[start:state.col])
+    _ensure_valid_digit_separators(
+        int_digits, location=location, number_raw=line[start : state.col],
+    )
 
     fraction_digits = ""
     exponent_digits = ""
@@ -64,7 +66,7 @@ def scan_number(state: LexerState) -> Token:
             _ensure_valid_digit_separators(
                 fraction_digits,
                 location=location,
-                number_raw=line[start:state.col],
+                number_raw=line[start : state.col],
             )
             is_float = True
 
@@ -82,11 +84,11 @@ def scan_number(state: LexerState) -> Token:
                 _ensure_valid_digit_separators(
                     exponent_digits,
                     location=location,
-                    number_raw=line[start:state.col],
+                    number_raw=line[start : state.col],
                 )
                 is_float = True
 
-    number_raw = line[start:state.col]
+    number_raw = line[start : state.col]
     _ensure_number_ends(state, location=location, number_raw=number_raw)
 
     cleaned_int = int_digits.replace(DIGIT_SEPARATOR, "")
@@ -163,7 +165,7 @@ def _scan_digits(state: LexerState, allowed_digits: str) -> str:
             state.col += 1
             continue
         break
-    return line[start:state.col]
+    return line[start : state.col]
 
 
 def _is_digit_at(state: LexerState, offset: int) -> bool:

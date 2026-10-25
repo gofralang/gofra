@@ -70,7 +70,7 @@ def _write_initializer_for_stack_variable(
                 context,
                 value,
                 var_type.element_type,
-                offset=offset + relative_offset,
+                offset=offset - relative_offset,
             )
         return None
 
@@ -106,15 +106,26 @@ def _set_local_numeric_var_immediate(
     assert 0 < t.size_in_bytes <= 8, "Too big type to store into"
 
     # Use half-word instruction set (W register, half store)
-    is_hword = t.size_in_bytes <= 4
-    bit_count = 8 * t.size_in_bytes
-    sr = ("%rax", "%eax")[is_hword]
-    instr_suffix = ("q", "l")[is_hword]
+    size = t.size_in_bytes
+    bit_count = 8 * size
+    assert value.bit_count() <= bit_count or value == 0
 
-    assert value.bit_count() <= bit_count
-    if value == 0:
-        context.write(f"xor{instr_suffix} {sr}, {sr}")
+    if size == 1:
+        reg = "%al"
+        suf = "b"
+    elif size == 2:
+        reg = "%ax"
+        suf = "w"
+    elif size == 4:
+        reg = "%eax"
+        suf = "l"
     else:
-        context.write(f"mov{instr_suffix} ${value}, {sr}")
+        reg = "%rax"
+        suf = "q"
 
-    context.write(f"mov{instr_suffix} {sr}, {-offset}(%rbp)")
+    if value == 0:
+        context.write(f"xor{suf} {reg}, {reg}")
+    else:
+        context.write(f"mov{suf} ${value}, {reg}")
+
+    context.write(f"mov{suf} {reg}, {-offset}(%rbp)")

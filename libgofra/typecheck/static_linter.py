@@ -56,4 +56,3 @@ def emit_unreachable_code_after_no_return_call_warning(
     on_lint_warning(
         f"Function '{call_from.name}' has operators after calling no-return function '{callee.name}' at {call_at}! This is unreachable code starting at {unreachable_at}!",
     )
-

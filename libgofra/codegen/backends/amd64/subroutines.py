@@ -9,15 +9,21 @@ from libgofra.codegen.backends.amd64.frame import (
     restore_callee_frame,
 )
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.types._base import Type
+from libgofra.types.primitive.integers import I64Type
 from libgofra.types.primitive.void import VoidType
 
-from .assembly import pop_cells_from_stack_into_registers, push_register_onto_stack
+from .assembly import (
+    amd64_abi_argument_target_registers,
+    pop_cells_from_stack_into_registers,
+    push_register_onto_stack,
+)
 from .stack_local_initializer import (
     write_function_local_stack_variables_initializer,
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Mapping, Sequence
 
     from libgofra.codegen.backends.amd64._context import AMD64CodegenContext
     from libgofra.hir.variable import Variable
@@ -32,6 +38,7 @@ def function_begin_with_prologue(  # noqa: PLR0913
     preserve_frame: bool,
     is_naked: bool = False,
     arguments_count: int,
+    parameter_types: Sequence[Type] | None = None,
     local_variables: Mapping[str, Variable[Type]],
 ) -> None:
     """Begin an function symbol with prologue with preparing required (like stack-pointer).
@@ -50,9 +57,20 @@ def function_begin_with_prologue(  # noqa: PLR0913
     if arguments_count and not is_naked:
         # Naked function has no prologue, so arguments stay in registers (per C ABI)
         # and the naked body reads them directly from there
-        registers = context.abi.arguments_64bit_registers[:arguments_count]
-        for register in registers:
-            push_register_onto_stack(context, register)
+        parameters = parameter_types or [I64Type() for _ in range(arguments_count)]
+        sources = amd64_abi_argument_target_registers(
+            context,
+            parameters[:arguments_count],
+        )
+
+        for source in sources:
+            if source is None:
+                continue
+            if source.startswith("xmm"):
+                context.write(f"movq %{source}, %rax")
+                push_register_onto_stack(context, "rax")
+            else:
+                push_register_onto_stack(context, source)
 
     write_function_local_stack_variables_initializer(
         context,
@@ -73,11 +91,13 @@ def function_end_with_epilogue(
         if return_type.size_in_bytes > 16:
             msg = "Tried to return value which size in bytes requires indirect return register, NIP!"
             raise ValueError(msg)
-        assert return_type.size_in_bytes == 8, return_type
+        assert return_type.size_in_bytes <= 8, return_type
         pop_cells_from_stack_into_registers(
             context,
             abi.retval_primitive_64bit_register,
         )
+        if getattr(return_type, "is_fp", False):
+            context.write("movq %rax, %xmm0")
 
     if has_preserved_frame:
         restore_callee_frame(context)

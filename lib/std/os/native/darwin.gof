@@ -271,9 +271,23 @@ naked pub func int sc_pipe[*i32 fds]
     inline_raw_asm "mov x9, x0\nmov x16, #42\nmov x17, #2\nsvc #0x80\nb.cs 1f\nstp w0, w1, [x9]\nmov x0, #0\nb 2f\n1:\ncneg x0, x0, cs\n2:\nret"
 end
 #endif
+#ifdef ARCH_AMD64
+naked pub func int sc_pipe[*i32 fds]
+    inline_raw_asm "movq $42, %rax"
+    inline_raw_asm "orq $0x2000000, %rax"
+    inline_raw_asm "syscall"
+    inline_raw_asm "movl %edx, 4(%rdi)"
+    inline_raw_asm "movl %eax, (%rdi)"
+    inline_raw_asm "xorl %eax, %eax"
+    inline_raw_asm "retq"
+end
+#endif
+
 #ifndef ARCH_ARM64
+#ifndef ARCH_AMD64
 pub func int sc_pipe[*i32 fds]
     fds DARWIN_SYSCALL_CODE.PIPE syscall1
 end
+#endif
 #endif
 

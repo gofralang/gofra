@@ -89,7 +89,7 @@ def literal_to_codegen_initializer(  # noqa: PLR0911
         case (BooleanLiteral(value=v), BoolType()):
             return int(v)
         case (FloatLiteral(value=v), F64Type()):
-                        return float_to_bits(v)
+            return float_to_bits(v)
         case (StringLiteral(value=s), PointerType(points_to=StringType())):
             return VariableStringPtrInitializerValue(string=s)
 
@@ -97,7 +97,9 @@ def literal_to_codegen_initializer(  # noqa: PLR0911
             flat_el_t = target_type.flatten().element_type
             match flat_el_t:
                 case I64Type() | F64Type():
-                    element_t = I64Type() if isinstance(flat_el_t, I64Type) else F64Type()
+                    element_t = (
+                        I64Type() if isinstance(flat_el_t, I64Type) else F64Type()
+                    )
                     int_values = [
                         literal_to_codegen_initializer(e, element_t) for e in elems
                     ]

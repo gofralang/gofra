@@ -144,7 +144,9 @@ class TypecastMeta:
         EXTEND = auto()  # Extend bits of smaller type into bigger size
         NORMALIZE_BOOL = auto()  # Compare and truncate to 0/1 variant (bool)
         INT_TO_FLOAT = auto()  # Convert integer value into floating point value
-        FLOAT_TO_INT = auto()  # Convert floating point value into integer value (truncate)
+        FLOAT_TO_INT = (
+            auto()
+        )  # Convert floating point value into integer value (truncate)
 
     a: Type
     b: Type

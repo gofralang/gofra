@@ -30,7 +30,9 @@ def aarch64_abi_argument_target_registers(
     for param_type in parameters:
         if getattr(param_type, "is_fp", False):
             if fp_i < len(getattr(abi, "fp_arguments_registers", ())):
-                targets.append(cast("AARCH64_GP_REGISTERS", abi.fp_arguments_registers[fp_i]))
+                targets.append(
+                    cast("AARCH64_GP_REGISTERS", abi.fp_arguments_registers[fp_i]),
+                )
             else:
                 targets.append(None)
             fp_i += 1

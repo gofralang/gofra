@@ -25,6 +25,19 @@ type AMD64_GP_REGISTERS = Literal[
     "r9",
 ]
 
+type AMD64_FP_REGISTERS = Literal[
+    "xmm0",
+    "xmm1",
+    "xmm2",
+    "xmm3",
+    "xmm4",
+    "xmm5",
+    "xmm6",
+    "xmm7",
+]
+
+type AMD64_REGISTERS = AMD64_GP_REGISTERS | AMD64_FP_REGISTERS
+
 
 ####
 # Linux related

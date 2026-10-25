@@ -3,7 +3,11 @@ from dataclasses import dataclass, field
 from typing import Protocol
 
 from libgofra.codegen.backends.aarch64.registers import AARCH64_GP_REGISTERS
-from libgofra.codegen.backends.amd64.registers import AMD64_GP_REGISTERS
+from libgofra.codegen.backends.amd64.registers import (
+    AMD64_FP_REGISTERS,
+    AMD64_GP_REGISTERS,
+    AMD64_REGISTERS,
+)
 
 
 class ABI[T](Protocol):
@@ -54,7 +58,7 @@ class ABI[T](Protocol):
         )
 
 
-class AMD64ABI(ABI[AMD64_GP_REGISTERS]): ...
+class AMD64ABI(ABI[AMD64_REGISTERS]): ...
 
 
 class AARCH64ABI(ABI[AARCH64_GP_REGISTERS]): ...
@@ -128,6 +132,21 @@ class LinuxAMD64ABI(AMD64ABI):
         ],
     )
 
+    fp_arguments_registers: Sequence[AMD64_FP_REGISTERS] = field(
+        default_factory=lambda: [
+            "xmm0",
+            "xmm1",
+            "xmm2",
+            "xmm3",
+            "xmm4",
+            "xmm5",
+            "xmm6",
+            "xmm7",
+        ],
+    )
+
+    retval_fp_register: AMD64_FP_REGISTERS = field(default="xmm0")
+
     syscall_arguments_registers: Sequence[AMD64_GP_REGISTERS] = field(
         default_factory=lambda: [
             "rdi",
@@ -163,6 +182,21 @@ class DarwinAMD64ABI(AMD64ABI):
             "r9",
         ],
     )
+
+    fp_arguments_registers: Sequence[AMD64_FP_REGISTERS] = field(
+        default_factory=lambda: [
+            "xmm0",
+            "xmm1",
+            "xmm2",
+            "xmm3",
+            "xmm4",
+            "xmm5",
+            "xmm6",
+            "xmm7",
+        ],
+    )
+
+    retval_fp_register: AMD64_FP_REGISTERS = field(default="xmm0")
 
     syscall_arguments_registers: Sequence[AMD64_GP_REGISTERS] = field(
         default_factory=lambda: [

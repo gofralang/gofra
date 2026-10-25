@@ -93,6 +93,9 @@ def _write_static_segment_const_variable_initializer(
 ) -> None:
     _ = context
     type_size = variable.size_in_bytes
+    alignment = max(1, getattr(variable.type, "alignment", 1))
+    align_exponent = alignment.bit_length() - 1
+    context.fd.write(f".align {align_exponent}\n")
 
     # TODO: This machinery is almost same for same assembler unless we migrate to machine code
     # May be refactored into single abstraction layer?
@@ -123,23 +126,24 @@ def _write_static_segment_const_variable_initializer(
             context.fd.write(f"{symbol_name}: \n\t{ptr_t_ddd} {f_values}\n")
 
             # Zero initialized symbol
-            element_size = variable.type.element_type.size_in_bytes
-            empty_cells = variable.type.elements_count - len(values)
+            element_size = variable.type.flatten().element_type.size_in_bytes
+            empty_cells = variable.type.flatten().elements_count - len(values)
             if not empty_cells:
                 return
-            assert isinstance(initializer.default, IntegerLiteral | None)
-            if initializer.default is None or initializer.default.value == 0:
+            assert isinstance(initializer.default, (int, IntegerLiteral, type(None)))
+            default_value = getattr(initializer.default, "value", initializer.default)
+            if initializer.default is None or default_value == 0:
                 bytes_total = variable.type.size_in_bytes
                 bytes_taken = len(values) * element_size
                 bytes_free = bytes_total - bytes_taken
                 context.fd.write(f"\t.zero {bytes_free}\n")
             else:
-                fill_with = initializer.default.value
+                fill_with = default_value
                 cell_size = I64Type().size_in_bytes
                 context.fd.write(f"\t.fill {empty_cells}, {cell_size}, {fill_with}")
                 context.comment_eol(f"Filler ({fill_with})")
 
-        case VariableStringPtrArrayInitializerValue(value=values):
+        case VariableStringPtrArrayInitializerValue(values=values):
             f_values = ", ".join(map(context.string_pool.add, values))
 
             context.fd.write(f"{symbol_name}: \n\t.quad {f_values}\n")

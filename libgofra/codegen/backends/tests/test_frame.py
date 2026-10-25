@@ -66,10 +66,7 @@ def test_large_aggregate_does_not_overflow_frame() -> None:
     frame = build_local_variables_frame_offsets(variables)
 
     sizes = {"small": 8, "big": 240, "tail": 8}
-    slots = {
-        name: _slot(frame.offsets[name], sizes[name])
-        for name in variables
-    }
+    slots = {name: _slot(frame.offsets[name], sizes[name]) for name in variables}
 
     for name, (bottom, top) in slots.items():
         assert bottom >= 0, f"variable `{name}` must not grow below the frame"

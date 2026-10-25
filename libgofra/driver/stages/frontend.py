@@ -116,9 +116,7 @@ def _get_tokenizer(
     source_lines: Iterable[str] | None = None,
 ) -> Generator[Token]:
     io = (
-        open_source_file_line_stream(filepath)
-        if source_lines is None
-        else source_lines
+        open_source_file_line_stream(filepath) if source_lines is None else source_lines
     )
     lexer = tokenize_from_raw(filepath, lines=io)
     return preprocess_file(

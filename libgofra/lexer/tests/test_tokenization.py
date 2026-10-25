@@ -16,19 +16,39 @@ from libgofra.lexer.tokens import TokenType
 
 
 def test_operators_do_not_require_whitespaces() -> None:
-    assert_tokens("a+b", [("IDENTIFIER", "a"), ("IDENTIFIER", "+"), ("IDENTIFIER", "b")])
-    assert_tokens("a + b", [("IDENTIFIER", "a"), ("IDENTIFIER", "+"), ("IDENTIFIER", "b")])
+    assert_tokens(
+        "a+b", [("IDENTIFIER", "a"), ("IDENTIFIER", "+"), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a + b", [("IDENTIFIER", "a"), ("IDENTIFIER", "+"), ("IDENTIFIER", "b")],
+    )
 
 
 def test_multi_character_operators_are_munched() -> None:
-    assert_tokens("a==b", [("IDENTIFIER", "a"), ("IDENTIFIER", "=="), ("IDENTIFIER", "b")])
-    assert_tokens("a!=b", [("IDENTIFIER", "a"), ("IDENTIFIER", "!="), ("IDENTIFIER", "b")])
-    assert_tokens("a<=b", [("IDENTIFIER", "a"), ("IDENTIFIER", "<="), ("IDENTIFIER", "b")])
-    assert_tokens("a>=b", [("IDENTIFIER", "a"), ("IDENTIFIER", ">="), ("IDENTIFIER", "b")])
-    assert_tokens("a&&b", [("IDENTIFIER", "a"), ("IDENTIFIER", "&&"), ("IDENTIFIER", "b")])
-    assert_tokens("a||b", [("IDENTIFIER", "a"), ("IDENTIFIER", "||"), ("IDENTIFIER", "b")])
-    assert_tokens("a<<b", [("IDENTIFIER", "a"), ("IDENTIFIER", "<<"), ("IDENTIFIER", "b")])
-    assert_tokens("a>>b", [("IDENTIFIER", "a"), ("IDENTIFIER", ">>"), ("IDENTIFIER", "b")])
+    assert_tokens(
+        "a==b", [("IDENTIFIER", "a"), ("IDENTIFIER", "=="), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a!=b", [("IDENTIFIER", "a"), ("IDENTIFIER", "!="), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a<=b", [("IDENTIFIER", "a"), ("IDENTIFIER", "<="), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a>=b", [("IDENTIFIER", "a"), ("IDENTIFIER", ">="), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a&&b", [("IDENTIFIER", "a"), ("IDENTIFIER", "&&"), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a||b", [("IDENTIFIER", "a"), ("IDENTIFIER", "||"), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a<<b", [("IDENTIFIER", "a"), ("IDENTIFIER", "<<"), ("IDENTIFIER", "b")],
+    )
+    assert_tokens(
+        "a>>b", [("IDENTIFIER", "a"), ("IDENTIFIER", ">>"), ("IDENTIFIER", "b")],
+    )
     assert_tokens("x !<", [("IDENTIFIER", "x"), ("IDENTIFIER", "!<")])
     assert_tokens("x ?>", [("IDENTIFIER", "x"), ("IDENTIFIER", "?>")])
 
@@ -137,7 +157,9 @@ def test_unknown_preprocessor_directive_raises_diagnostic() -> None:
 
 
 def test_preprocessor_directive_is_a_keyword() -> None:
-    assert_tokens("#define X 1", [("KEYWORD", "#define"), ("IDENTIFIER", "X"), ("INTEGER", "1")])
+    assert_tokens(
+        "#define X 1", [("KEYWORD", "#define"), ("IDENTIFIER", "X"), ("INTEGER", "1")],
+    )
 
 
 def test_comment_is_skipped() -> None:

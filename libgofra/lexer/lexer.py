@@ -134,7 +134,7 @@ def _tokenize_identifier(state: LexerState) -> Token:
     while state.col < len(line) and _is_identifier_part(line[state.col]):
         state.col += 1
 
-    word = line[start:state.col]
+    word = line[start : state.col]
 
     if keyword := WORD_TO_KEYWORD.get(word):
         return Token(
@@ -187,7 +187,7 @@ def _tokenize_preprocessor_directive(state: LexerState) -> Token:
     while state.col < len(line) and _is_identifier_part(line[state.col]):
         state.col += 1
 
-    name = line[name_start:state.col]
+    name = line[name_start : state.col]
     directive = f"#{name}"
 
     if keyword := WORD_TO_PREPROCESSOR_KEYWORD.get(directive):

@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.codegen.float_bits import float_to_bits
 from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 from libgofra.types.primitive.void import VoidType
@@ -80,6 +81,14 @@ def push_integer_onto_stack(
     push_register_onto_stack(context, register="rax")
 
 
+def push_float_onto_stack(
+    context: AMD64CodegenContext,
+    value: float,
+) -> None:
+    """Push given floating point value onto stack as its raw 64-bit bits."""
+    push_integer_onto_stack(context, float_to_bits(value))
+
+
 def push_static_address_onto_stack(
     context: AMD64CodegenContext,
     segment: str,
@@ -137,6 +146,35 @@ def ipc_syscall_linux(
         push_register_onto_stack(context, abi.retval_primitive_64bit_register)
 
 
+
+def amd64_abi_argument_target_registers(
+    context: AMD64CodegenContext,
+    parameters: Sequence[Type],
+) -> list[str | None]:
+    """Allocate (up to 6) integer and (up to 8) FP register names for parameters."""
+    targets: list[str | None] = []
+    int_i = 0
+    fp_i = 0
+    int_registers = context.abi.arguments_64bit_registers
+    fp_registers = getattr(context.abi, "fp_arguments_registers", ())
+
+    for param in parameters:
+        if getattr(param, "is_fp", False):
+            if fp_i < len(fp_registers):
+                targets.append(fp_registers[fp_i])
+            else:
+                targets.append(None)
+            fp_i += 1
+        else:
+            if int_i < len(int_registers):
+                targets.append(int_registers[int_i])
+            else:
+                targets.append(None)
+            int_i += 1
+
+    return targets
+
+
 def function_call(
     context: AMD64CodegenContext,
     *,
@@ -151,28 +189,67 @@ def function_call(
     i64_arguments_count = len(type_contract_in)
     store_return_value = not isinstance(type_contract_out, VoidType)
 
-    argument_registers = context.abi.arguments_64bit_registers[:i64_arguments_count][
-        ::-1
-    ]
-    if i64_arguments_count > len(argument_registers):
-        msg = (
-            f"C-FFI function call with {i64_arguments_count} arguments not supported. "
-            f"Maximum {len(argument_registers)} register arguments supported. "
-            "Stack argument passing not implemented."
-        )
-        raise GofraError(msg)
-
     if i64_arguments_count < 0:
         msg = f"Tried to call function `{name}` with negative arguments count"
         raise ValueError(msg)
 
-    if i64_arguments_count:
-        pop_cells_from_stack_into_registers(context, *argument_registers)
+    targets = amd64_abi_argument_target_registers(context, type_contract_in)
 
-    context.write(f"callq {name}")
+    for abi_register in reversed(targets):
+        if abi_register is None:
+            continue
+        if abi_register.startswith("xmm"):
+            context.write("popq %rax", f"movq %rax, %{abi_register}")
+        else:
+            context.write(f"popq %{abi_register}")
+
+    if name.startswith("*"):
+        # Function pointer call is not supported by this helper.
+        raise NotImplementedError(name)
+    context.write(
+        f"callq {name}",
+    )
 
     if store_return_value:
-        push_register_onto_stack(context, context.abi.retval_primitive_64bit_register)
+        if getattr(type_contract_out, "is_fp", False):
+            context.write("movq %xmm0, %rax")
+            push_register_onto_stack(context, "rax")
+        else:
+            push_register_onto_stack(
+                context, context.abi.retval_primitive_64bit_register,
+            )
+
+
+def function_call_from_pointer(
+    context: AMD64CodegenContext,
+    *,
+    register: AMD64_GP_REGISTERS,
+    type_contract_in: Sequence[Type],
+    type_contract_out: Type,
+) -> None:
+    """Call an indirect function pointer using AMD64 C ABI."""
+    store_return_value = not isinstance(type_contract_out, VoidType)
+
+    targets = amd64_abi_argument_target_registers(context, type_contract_in)
+
+    for abi_register in reversed(targets):
+        if abi_register is None:
+            continue
+        if abi_register.startswith("xmm"):
+            context.write("popq %rax", f"movq %rax, %{abi_register}")
+        else:
+            context.write(f"popq %{abi_register}")
+
+    context.write(
+        f"callq *%{register}",
+    )
+
+    if store_return_value:
+        if getattr(type_contract_out, "is_fp", False):
+            context.write("movq %xmm0, %rax")
+            push_register_onto_stack(context, "rax")
+        else:
+            push_register_onto_stack(context, context.abi.retval_primitive_64bit_register)
 
 
 def push_local_variable_address_from_frame_offset(
@@ -227,7 +304,7 @@ def load_memory_from_stack_arguments(
         case 2:
             context.write("movzwq (%rax), %rax")
         case 4:
-            context.write("movslq (%rax), %eax")
+            context.write("movslq (%rax), %rax")
         case 8:
             context.write("movq (%rax), %rax")
         case _:
@@ -240,55 +317,74 @@ def load_memory_from_stack_arguments(
 def perform_operation_onto_stack(
     context: AMD64CodegenContext,
     operation: OperatorType,
+    *,
+    is_fp: bool = False,
 ) -> None:
     """Perform *math* operation onto stack (pop arguments and push back result)."""
-    registers = ("rax", "rbx")
+    fp_arithmetic = {
+        OperatorType.ARITHMETIC_PLUS: "addsd",
+        OperatorType.ARITHMETIC_MINUS: "subsd",
+        OperatorType.ARITHMETIC_MULTIPLY: "mulsd",
+        OperatorType.ARITHMETIC_DIVIDE: "divsd",
+    }
+    fp_comparison = {
+        OperatorType.COMPARE_EQUALS: "e",
+        OperatorType.COMPARE_NOT_EQUALS: "ne",
+        OperatorType.COMPARE_LESS: "b",
+        OperatorType.COMPARE_GREATER: "a",
+        OperatorType.COMPARE_LESS_EQUALS: "be",
+        OperatorType.COMPARE_GREATER_EQUALS: "ae",
+    }
+
+    if is_fp and operation in fp_arithmetic:
+        pop_cells_from_stack_into_registers(context, "rax", "rbx")
+        context.write(
+            "movq %rax, %xmm0",
+            "movq %rbx, %xmm1",
+            f"{fp_arithmetic[operation]} %xmm0, %xmm1",
+            "movq %xmm1, %rax",
+        )
+        push_register_onto_stack(context, "rax")
+        return
+
+    if is_fp and operation in fp_comparison:
+        pop_cells_from_stack_into_registers(context, "rax", "rbx")
+        context.write(
+            "movq %rax, %xmm0",
+            "movq %rbx, %xmm1",
+            "comisd %xmm0, %xmm1",
+            f"set{fp_comparison[operation]} %al",
+            "movzbq %al, %rax",
+        )
+        push_register_onto_stack(context, "rax")
+        return
+
+    registers = ("rbx", "rax")
     if operation == OperatorType.LOGICAL_NOT:
         registers = ("rax",)
-
     pop_cells_from_stack_into_registers(context, *registers)
-    # TODO(@kirillzhosul): Optimize inc / dec (++, --) when incrementing / decrementing by known values
 
     match operation:
         case OperatorType.ARITHMETIC_PLUS:
             context.write("addq %rbx, %rax")
-
         case OperatorType.ARITHMETIC_MINUS:
-            context.write("subq %rax, %rbx")
-
+            context.write("subq %rbx, %rax")
         case OperatorType.ARITHMETIC_MULTIPLY:
             context.write("mulq %rbx")
-
         case OperatorType.ARITHMETIC_DIVIDE:
-            context.write(
-                "movq $0, %rdx",
-                "idivq %rbx",
-            )
+            context.write("cqo", "idivq %rbx")
         case OperatorType.ARITHMETIC_MODULUS:
-            context.write(
-                "movq $0, %rdx",
-                "idivq %rbx",
-                "movq %rdx, %rax",
-            )
+            context.write("cqo", "idivq %rbx", "movq %rdx, %rax")
         case OperatorType.LOGICAL_NOT:
             context.write("notq %rax")
-
         case OperatorType.BITWISE_XOR:
             context.write("xorq %rbx, %rax")
         case OperatorType.LOGICAL_OR | OperatorType.BITWISE_OR:
             context.write("orq %rbx, %rax")
         case OperatorType.SHIFT_RIGHT:
-            context.write(
-                "movq %rax, %rcx",
-                "shrq %cl, %rbx",
-                "movq %rbx, %rax",
-            )
+            context.write("movq %rbx, %rcx", "shrq %cl, %rax")
         case OperatorType.SHIFT_LEFT:
-            context.write(
-                "movq %rax, %rcx",
-                "shlq %cl, %rbx",
-                "movq %rbx, %rax",
-            )
+            context.write("movq %rbx, %rcx", "shlq %cl, %rax")
         case OperatorType.BITWISE_AND | OperatorType.LOGICAL_AND:
             context.write("andq %rbx, %rax")
         case (
@@ -308,7 +404,7 @@ def perform_operation_onto_stack(
                 OperatorType.COMPARE_EQUALS: "e",
             }
             context.write(
-                "cmpq %rax, %rbx",
+                "cmpq %rbx, %rax",
                 f"set{logic_op[operation]}b %al",
                 "movzx %al, %rax",
             )

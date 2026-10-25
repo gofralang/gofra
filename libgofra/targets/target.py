@@ -71,7 +71,7 @@ class Target:
         match triplet:
             case "amd64-apple-darwin":
                 return Target(
-                    status="experimental",
+                    status="stable",
                     triplet=triplet,
                     architecture="AMD64",
                     vendor="apple",

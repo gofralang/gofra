@@ -135,4 +135,3 @@ def _set_local_numeric_var_immediate(
     writer.instruction("mov X16, X29")
     writer.instruction(f"sub X16, X16, #{offset}")
     writer.instruction(f"str {sr}, [X16]")
-
