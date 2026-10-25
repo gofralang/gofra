@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, assert_never
 
-from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
-from libgofra.codegen.backends.initializer import (
+from libgofra.codegen.common.frame import build_local_variables_frame_offsets
+from libgofra.codegen.common.initializer import (
     T_AnyVariableInitializer,
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,

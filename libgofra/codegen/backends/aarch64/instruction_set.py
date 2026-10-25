@@ -30,8 +30,8 @@ from libgofra.codegen.backends.aarch64.subroutines import function_return
 from libgofra.codegen.backends.aarch64.svc_syscall import ipc_aarch64_syscall
 from libgofra.codegen.backends.aarch64.writer import WriterProtocol
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
-from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
-from libgofra.codegen.backends.string_pool import StringPool
+from libgofra.codegen.common.mangling import mangle_hir_symbol_name
+from libgofra.codegen.common.string_pool import StringPool
 from libgofra.codegen.dwarf.dwarf import DWARF
 from libgofra.exceptions import GofraError
 from libgofra.hir.function import Function

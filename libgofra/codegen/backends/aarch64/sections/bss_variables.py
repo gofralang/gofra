@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
+from libgofra.codegen.common.mangling import mangle_hir_symbol_name
 from libgofra.codegen.sections._factory import SectionType
 
 if TYPE_CHECKING:

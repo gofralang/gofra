@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
-from libgofra.codegen.float_bits import float32_to_bits, float_to_bits
+from libgofra.codegen.common.float_bits import float32_to_bits, float_to_bits
 from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,

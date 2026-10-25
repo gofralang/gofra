@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Literal, cast
 
-from libgofra.codegen.float_bits import float_to_bits
+from libgofra.codegen.common.float_bits import float_to_bits
 from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 

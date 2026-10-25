@@ -6,7 +6,7 @@ from libgofra.codegen.sections._factory import SectionType
 
 if TYPE_CHECKING:
     from libgofra.codegen.backends.aarch64.writer import WriterProtocol
-    from libgofra.codegen.backends.string_pool import StringPool
+    from libgofra.codegen.common.string_pool import StringPool
 
 
 def write_text_string_section(
@@ -22,6 +22,6 @@ def write_text_string_section(
     if strings.is_empty():
         return
     writer.section(SectionType.STRINGS)
-    for data, name in strings.get_view():
+    for data, name in strings.items():
         writer.label(f"{name}{reference_suffix}")
         writer.sym_sect_directive("asciz", f'"{data}"')

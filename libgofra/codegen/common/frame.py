@@ -1,8 +1,8 @@
 from collections.abc import Mapping
 from typing import NamedTuple
 
-from libgofra.codegen.backends.alignment import align_to_highest_size
 from libgofra.codegen.backends.errors import FrameTableLocatableError
+from libgofra.codegen.common.alignment import align_to_highest_size
 from libgofra.codegen.config import CodegenConfig
 from libgofra.hir.function import Function
 from libgofra.hir.variable import Variable

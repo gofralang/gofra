@@ -8,11 +8,6 @@ def float_to_bits(value: float) -> int:
     return struct.unpack("<Q", struct.pack("<d", value))[0]
 
 
-def bits_to_float(bits: int) -> float:
-    """Convert a raw 64-bit integer bit pattern into an IEEE-754 double."""
-    return struct.unpack("<d", struct.pack("<Q", bits))[0]
-
-
 def float32_to_bits(value: float) -> int:
     """Convert a 32-bit float into its raw integer bit pattern."""
     return struct.unpack("<I", struct.pack("<f", value))[0]

@@ -1,5 +1,5 @@
-from libgofra.codegen.backends.alignment import align_to_highest_size
 from libgofra.codegen.backends.amd64._context import AMD64CodegenContext
+from libgofra.codegen.common.alignment import align_to_highest_size
 
 # Size of frame head (RBP register)
 FRAME_HEAD_SIZE = 8

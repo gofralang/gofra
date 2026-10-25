@@ -1,14 +1,14 @@
 from collections.abc import Mapping
 
 from libgofra.codegen.backends.amd64._context import AMD64CodegenContext
-from libgofra.codegen.backends.initializer import (
+from libgofra.codegen.common.initializer import (
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
     VariableStringPtrArrayInitializerValue,
     VariableStringPtrInitializerValue,
     literal_to_codegen_initializer,
 )
-from libgofra.codegen.backends.string_pool import StringPool
+from libgofra.codegen.common.string_pool import StringPool
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.hir.literals import IntegerLiteral
 from libgofra.hir.variable import Variable
@@ -64,7 +64,7 @@ def write_initialized_data_section(
         # 8 byte alignment for string descriptors
         context.fd.write(".align 8\n")
 
-    for data, name in strings.get_view():
+    for data, name in strings.items():
         # TODO: Proper alignment
         decoded_string = data.encode().decode("unicode_escape")
         length = len(decoded_string)
@@ -221,5 +221,5 @@ def write_text_string_section(
     if strings.is_empty():
         return
     context.section(SectionType.STRINGS)
-    for data, name in strings.get_view():
+    for data, name in strings.items():
         context.fd.write(f'{name}{reference_suffix}: .asciz "{data}"\n')

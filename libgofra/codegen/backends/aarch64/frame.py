@@ -4,7 +4,7 @@ from libgofra.codegen.backends.aarch64.primitive_instructions import (
     push_register_onto_stack,
 )
 from libgofra.codegen.backends.aarch64.writer import WriterProtocol
-from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.codegen.common.frame import build_local_variables_frame_offsets
 from libgofra.hir.variable import Variable
 from libgofra.types._base import Type
 

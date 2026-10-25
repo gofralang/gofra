@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from libgofra.codegen.backends.aarch64.writer import WriterProtocol
-    from libgofra.codegen.backends.string_pool import StringPool
+    from libgofra.codegen.common.string_pool import StringPool
     from libgofra.hir.variable import Variable
     from libgofra.types._base import Type
 

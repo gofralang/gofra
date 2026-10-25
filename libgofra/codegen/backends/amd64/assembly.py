@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
-from libgofra.codegen.float_bits import float_to_bits
+from libgofra.codegen.common.float_bits import float_to_bits
+from libgofra.codegen.common.frame import build_local_variables_frame_offsets
 from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 from libgofra.types.primitive.floats import F32Type

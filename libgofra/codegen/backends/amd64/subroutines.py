@@ -8,7 +8,7 @@ from libgofra.codegen.backends.amd64.frame import (
     preserve_callee_frame,
     restore_callee_frame,
 )
-from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.codegen.common.frame import build_local_variables_frame_offsets
 from libgofra.types._base import Type
 from libgofra.types.primitive.floats import F32Type
 from libgofra.types.primitive.integers import I64Type

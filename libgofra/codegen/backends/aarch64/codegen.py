@@ -24,9 +24,9 @@ from libgofra.codegen.backends.aarch64.writer import (
     AARCH64ImmediateWriterImplementation,
     WriterProtocol,
 )
-from libgofra.codegen.backends.frame import is_native_function_has_frame
-from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
-from libgofra.codegen.backends.string_pool import StringPool
+from libgofra.codegen.common.frame import is_native_function_has_frame
+from libgofra.codegen.common.mangling import mangle_hir_symbol_name
+from libgofra.codegen.common.string_pool import StringPool
 from libgofra.codegen.dwarf.dwarf import DWARF
 from libgofra.codegen.sections import SectionType
 from libgofra.hir.function import Visibility
@@ -84,7 +84,7 @@ class AARCH64CodegenBackend:
             self.dwarf = DWARF(self.writer, unit_path=self.module.path)
 
         self.abi = DarwinAARCH64ABI()
-        self.string_pool = StringPool()
+        self.string_pool = StringPool(scope=getattr(module, "as_name", None))
 
     def emit(self) -> None:
         """AARCH64 code generation backend."""

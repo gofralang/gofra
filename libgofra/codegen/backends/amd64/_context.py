@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import IO
 
 from libgofra.codegen.abi import AMD64ABI
-from libgofra.codegen.backends.string_pool import StringPool
+from libgofra.codegen.common.string_pool import StringPool
 from libgofra.codegen.config import CodegenConfig
 from libgofra.codegen.sections._factory import SectionType, get_os_assembler_section
 from libgofra.targets.target import Target

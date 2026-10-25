@@ -9,12 +9,6 @@ from collections.abc import (
 from typing import IO, Literal, assert_never
 
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
-from libgofra.codegen.backends.initializer import (
-    VariableIntArrayInitializerValue,
-    VariableIntFieldedStructureInitializerValue,
-    VariableStringPtrInitializerValue,
-    literal_to_codegen_initializer,
-)
 from libgofra.codegen.backends.wasm32.memory import (
     wasm_pack_integer_to_memory,
     wasm_pack_string_view_to_memory,
@@ -42,6 +36,12 @@ from libgofra.codegen.backends.wasm32.sexpr import (
     ThenBlockNode,
 )
 from libgofra.codegen.backends.wasm32.types import wasm_type_from_primitive
+from libgofra.codegen.common.initializer import (
+    VariableIntArrayInitializerValue,
+    VariableIntFieldedStructureInitializerValue,
+    VariableStringPtrInitializerValue,
+    literal_to_codegen_initializer,
+)
 from libgofra.codegen.config import CodegenConfig
 from libgofra.hir.function import Function
 from libgofra.hir.module import Module

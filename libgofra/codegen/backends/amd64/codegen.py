@@ -8,8 +8,9 @@ from libgofra.codegen.abi import DarwinAMD64ABI, LinuxAMD64ABI
 from libgofra.codegen.backends.amd64.executable_entry_point import (
     amd64_program_entry_point,
 )
-from libgofra.codegen.backends.frame import is_native_function_has_frame
 from libgofra.codegen.backends.general import CODEGEN_GOFRA_CONTEXT_LABEL
+from libgofra.codegen.common.frame import is_native_function_has_frame
+from libgofra.codegen.common.string_pool import StringPool
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.hir.function import Visibility
 from libgofra.hir.operator import (
@@ -81,6 +82,7 @@ class AMD64CodegenBackend:
             target=self.target,
             abi=abi,
             config=config,  # TODO: DWARF CFI / Alignment
+            string_pool=StringPool(scope=getattr(module, "as_name", None)),
         )
 
     def emit(self) -> None:

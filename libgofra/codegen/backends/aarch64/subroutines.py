@@ -13,7 +13,7 @@ from libgofra.codegen.backends.aarch64.frame import (
     restore_callee_frame,
 )
 from libgofra.codegen.backends.aarch64.registers import AARCH64_STACK_ALIGNMENT_BIN
-from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.codegen.common.frame import build_local_variables_frame_offsets
 from libgofra.types.primitive.floats import F32Type
 
 from .primitive_instructions import (
@@ -28,7 +28,7 @@ if TYPE_CHECKING:
 
     from libgofra.codegen.abi import AARCH64ABI
     from libgofra.codegen.backends.aarch64.writer import WriterProtocol
-    from libgofra.codegen.backends.string_pool import StringPool
+    from libgofra.codegen.common.string_pool import StringPool
     from libgofra.codegen.dwarf.dwarf import DWARF
     from libgofra.hir.function import Function
     from libgofra.hir.variable import Variable
@@ -113,7 +113,6 @@ def function_begin_with_prologue(  # noqa: PLR0913
 
     if not local_variables:
         return
-    assert string_pool
     write_function_local_stack_variables_initializer(
         writer,
         string_pool,

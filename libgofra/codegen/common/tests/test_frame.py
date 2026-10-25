@@ -1,7 +1,7 @@
 from itertools import pairwise
 from pathlib import Path
 
-from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.codegen.common.frame import build_local_variables_frame_offsets
 from libgofra.hir.module import Module
 from libgofra.hir.variable import Variable, VariableScopeClass, VariableStorageClass
 from libgofra.lexer.tokens import TokenLocation

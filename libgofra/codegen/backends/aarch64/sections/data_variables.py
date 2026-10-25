@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal, cast
 
-from libgofra.codegen.backends.initializer import (
+from libgofra.codegen.common.initializer import (
     VariableIntArrayInitializerValue,
     VariableIntFieldedStructureInitializerValue,
     VariableIntSliceInitializerValue,
@@ -10,7 +10,7 @@ from libgofra.codegen.backends.initializer import (
     VariableStringPtrInitializerValue,
     literal_to_codegen_initializer,
 )
-from libgofra.codegen.backends.mangling import mangle_hir_symbol_name
+from libgofra.codegen.common.mangling import mangle_hir_symbol_name
 from libgofra.codegen.sections._factory import SectionType
 from libgofra.types import BoolType
 from libgofra.types._base import PrimitiveType
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from libgofra.codegen.backends.aarch64.writer import WriterProtocol
-    from libgofra.codegen.backends.string_pool import StringPool
+    from libgofra.codegen.common.string_pool import StringPool
     from libgofra.hir.variable import Variable
     from libgofra.types._base import Type
 
@@ -63,7 +63,7 @@ def write_initialized_data_section(
         # 8 byte alignment for string descriptors
         writer.directive("align", 8)
 
-    for data, name in strings.get_view():
+    for data, name in strings.items():
         # TODO: Proper constant name mangling for string
         decoded_string = data.encode().decode("unicode_escape")
         length = len(decoded_string)
