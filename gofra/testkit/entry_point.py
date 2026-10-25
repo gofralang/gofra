@@ -19,6 +19,7 @@ from libgofra.preprocessor.macros.defaults import (
 )
 from libgofra.preprocessor.macros.registry import registry_from_raw_definitions
 from libgofra.targets.infer_host import infer_host_target
+from libgofra.targets.target import Target, resolve_target_triplet
 
 from .cli.arguments import CLIArguments, parse_cli_arguments
 from .evaluate import evaluate_test_case
@@ -26,8 +27,6 @@ from .evaluate import evaluate_test_case
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
-
-    from libgofra.targets.target import Target
 
     from .test import Test
 
@@ -64,11 +63,19 @@ def cli_process_testkit_runner(args: CLIArguments) -> None:
     cache_directory = args.build_cache_dir / TESTKIT_CACHE_DIR
     prepare_build_cache_directory(cache_directory)
 
-    target = infer_host_target()
-    if target is None:
-        return cli_fatal_abort(
-            text="Unable to infer compilation target due to no fallback for current operating system",
-        )
+    if args.target_triplet:
+        triplet = resolve_target_triplet(args.target_triplet)
+        if triplet is None:
+            return cli_fatal_abort(
+                text=f"Unknown target triplet '{args.target_triplet}'",
+            )
+        target = Target.from_triplet(triplet)
+    else:
+        target = infer_host_target()
+        if target is None:
+            return cli_fatal_abort(
+                text="Unable to infer compilation target due to no fallback for current operating system",
+            )
     start_time = time.perf_counter_ns()
     test_matrix = evaluate_test_matrix_threaded(
         test_paths,

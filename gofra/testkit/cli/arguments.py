@@ -25,6 +25,8 @@ class CLIArguments:
 
     aggressive_optimizations: bool
 
+    target_triplet: str | None
+
     fail_with_abnormal_exit_code: bool
     build_only_no_execute: bool
     max_thread_workers: int
@@ -49,6 +51,7 @@ def parse_cli_arguments() -> CLIArguments:
         test_files_pattern=args.test_files_pattern,
         fail_with_abnormal_exit_code=bool(args.fail_with_abnormal_exit_code),
         aggressive_optimizations=bool(args.aggressive_optimizations),
+        target_triplet=args.target,
     )
 
 
@@ -125,6 +128,18 @@ def _construct_argument_parser() -> ArgumentParser:
         dest="build_only_no_execute",
         action="store_true",
         help="If specified, will not execute binaries, only tries to build it (e.g suitable for applications build testing)",
+    )
+
+    parser.add_argument(
+        "--target",
+        dest="target",
+        default=None,
+        help="Target triplet to compile/run tests for (default: host). Choices: "
+        + ", ".join(
+            __import__(
+                "libgofra.targets.target", fromlist=["get_target_choices"],
+            ).get_target_choices(),
+        ),
     )
 
     parser.add_argument(
