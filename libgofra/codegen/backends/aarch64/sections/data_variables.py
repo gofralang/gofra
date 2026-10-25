@@ -1,27 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, assert_never
 
 from libgofra.codegen.common.initializer import (
-    VariableIntArrayInitializerValue,
-    VariableIntFieldedStructureInitializerValue,
-    VariableIntSliceInitializerValue,
-    VariableStringPtrArrayInitializerValue,
-    VariableStringPtrInitializerValue,
-    literal_to_codegen_initializer,
+    parse_initializer,
 )
 from libgofra.codegen.common.mangling import mangle_hir_symbol_name
 from libgofra.codegen.sections._factory import SectionType
-from libgofra.types import BoolType
-from libgofra.types._base import PrimitiveType
-from libgofra.types.composite.array import ArrayType
-from libgofra.types.composite.pointer import PointerType
-from libgofra.types.composite.slice import SliceType
-from libgofra.types.composite.string import StringType
-from libgofra.types.composite.structure import StructureType
-from libgofra.types.primitive.character import CharType
-from libgofra.types.primitive.floats import F64Type
-from libgofra.types.primitive.integers import I8Type, I16Type, I32Type, I64Type
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -85,154 +70,52 @@ def _write_static_segment_variable_initializer(
     symbol_name = mangle_hir_symbol_name(variable)
 
     assert variable.initial_value is not None
-    initializer = literal_to_codegen_initializer(
+    plan = parse_initializer(
         variable.initial_value,
-        target_type=variable.type,
+        variable.type,
     )
-    match variable.type:
-        case (
-            CharType()
-            | I64Type()
-            | I32Type()
-            | I16Type()
-            | I8Type()
-            | BoolType()
-            | F64Type()
-        ):
-            assert isinstance(initializer, int)
-            ddd = _get_ddd_for_type(variable.type)
-            writer.label(symbol_name)
-            writer.sym_sect_directive(ddd, initializer)
-        case ArrayType() if isinstance(variable.type.flatten().element_type, I64Type):
-            assert isinstance(initializer, VariableIntArrayInitializerValue)
-            ddd = _get_ddd_for_type(I64Type())
-
-            flat = variable.type.flatten()
-            assert isinstance(flat.element_type, PrimitiveType)
-            _write_static_array_initializer(
-                writer,
-                symbol_name,
-                init=initializer,
-                total_count=flat.elements_count,
-                element_type=flat.element_type,
-            )
-        case ArrayType(element_type=PointerType(points_to=StringType())):
-            assert isinstance(
-                initializer,
-                VariableStringPtrArrayInitializerValue,
-            )
-
-            values = initializer.values
-            f_values = ", ".join(map(string_pool.add, values))
-
-            writer.label(symbol_name)
-            writer.sym_sect_directive("quad", f_values)
-        case PointerType(points_to=StringType()):
-            assert isinstance(initializer, VariableStringPtrInitializerValue)
-            string_raw = initializer.string
-            writer.label(symbol_name)
-            writer.sym_sect_directive("quad", string_pool.add(string_raw))
-        case SliceType():
-            assert isinstance(initializer, VariableIntSliceInitializerValue)
-
-            init = initializer.data_initializer
-            data_label = f"{symbol_name}$data"
-            _write_static_array_initializer(
-                writer,
-                data_label,
-                init=init,
-                total_count=len(init.values),
-                element_type=cast("PrimitiveType", variable.type.element_type),
-            )
-
-            writer.label(symbol_name)
-            writer.sym_sect_directive("quad", data_label)
-            writer.sym_sect_directive("quad", len(init.values))
-        case StructureType():
-            assert isinstance(
-                initializer,
-                VariableIntFieldedStructureInitializerValue,
-            )
-            _write_static_segment_structure_initializer(
-                writer,
-                struct=variable.type,
-                initial_value=initializer,
-                symbol_name=symbol_name,
-            )
-        case _:
-            msg = f"Has no known static initializer codegen logic for type {variable.type}"
-            raise ValueError(msg)
-
-
-def _write_static_array_initializer(
-    writer: WriterProtocol,
-    symbol_name: str,
-    init: VariableIntArrayInitializerValue,
-    total_count: int,
-    element_type: PrimitiveType,
-) -> None:
-    ddd = _get_ddd_for_type(I64Type())
-
-    f_values = ", ".join(map(str, init.values))
 
     writer.label(symbol_name)
-    writer.sym_sect_directive(ddd, f_values)
-    # Zero initialized symbol
-    empty_cells = total_count - len(init.values)
-    if not empty_cells:
-        return
-    if init.default == 0:
-        bytes_total = total_count * element_type.size_in_bytes
-        bytes_taken = len(init.values) * element_type.size_in_bytes
-        bytes_free = bytes_total - bytes_taken
-        writer.sym_sect_directive("zero", bytes_free)
+    current_offset = 0
+    for store in plan:
+        if store.offset > current_offset:
+            writer.sym_sect_directive("zero", store.offset - current_offset)
+            current_offset = store.offset
 
-    else:
-        fill_with = init.default
-        cell_size = element_type.size_in_bytes
-        writer.sym_sect_directive("fill", empty_cells, cell_size, fill_with)
+        match store.kind:
+            case "int":
+                ddd = _ddd_for_size(store.size)
+                assert store.int_value is not None
+                writer.sym_sect_directive(ddd, store.int_value)
+                current_offset += store.size
+            case "string_ptr":
+                assert store.string_value is not None
+                writer.sym_sect_directive("quad", string_pool.add(store.string_value))
+                current_offset += store.size
+            case "padding":
+                writer.sym_sect_directive("zero", store.size)
+                current_offset += store.size
+            case "fill":
+                writer.sym_sect_directive(
+                    "fill",
+                    store.fill_count,
+                    store.size,
+                    store.fill_value,
+                )
+                writer.comment_eol(f"Filler ({store.fill_value})")
+                current_offset += store.size * store.fill_count
+            case _:
+                assert_never(store.kind)
 
-        writer.comment_eol(f"Filler ({fill_with})")
-
-
-def _write_static_segment_structure_initializer(
-    writer: WriterProtocol,
-    symbol_name: str,
-    struct: StructureType,
-    initial_value: VariableIntFieldedStructureInitializerValue,
-) -> None:
-    writer.label(symbol_name)
-    writer.comment_eol(repr(struct))
-    prev_taken_bytes = 0
-    for field in struct.order:
-        value = initial_value.values[field]
-
-        field_t = struct.get_field_type(field)
-        assert isinstance(field_t, PrimitiveType), field_t
-
-        padding = struct.get_field_offset(field) - prev_taken_bytes
-
-        ddd = _get_ddd_for_type(field_t)
-        if padding:
-            writer.sym_sect_directive("zero", padding)
-            writer.comment_eol("[[padding]]")
-
-        writer.sym_sect_directive(ddd, value)
-        writer.comment_eol(f"{struct.name}.{field}")
-
-        prev_taken_bytes += field_t.size_in_bytes + padding
+    if current_offset < type_size:
+        writer.sym_sect_directive("zero", type_size - current_offset)
 
 
-def _get_ddd_for_type(t: PrimitiveType) -> Literal["byte", "short", "word", "quad"]:
-    """Get Data Definition Directive for type based on byte size."""
-    type_size = t.size_in_bytes
-    if type_size <= 1:
+def _ddd_for_size(size_in_bytes: int) -> Literal["byte", "short", "word", "quad"]:
+    if size_in_bytes <= 1:
         return "byte"
-    if type_size <= 2:
+    if size_in_bytes <= 2:
         return "short"
-    if type_size <= 4:
+    if size_in_bytes <= 4:
         return "word"
-    if type_size <= 8:
-        return "quad"
-    msg = f"Cannot get DDD for symbol of type {t}, max byte size is capped"
-    raise ValueError(msg)
+    return "quad"

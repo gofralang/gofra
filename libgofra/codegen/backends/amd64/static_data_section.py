@@ -2,20 +2,12 @@ from collections.abc import Mapping
 
 from libgofra.codegen.backends.amd64._context import AMD64CodegenContext
 from libgofra.codegen.common.initializer import (
-    VariableIntArrayInitializerValue,
-    VariableIntFieldedStructureInitializerValue,
-    VariableStringPtrArrayInitializerValue,
-    VariableStringPtrInitializerValue,
-    literal_to_codegen_initializer,
+    parse_initializer,
 )
 from libgofra.codegen.common.string_pool import StringPool
 from libgofra.codegen.sections._factory import SectionType
-from libgofra.hir.literals import IntegerLiteral
 from libgofra.hir.variable import Variable
-from libgofra.types._base import PrimitiveType, Type
-from libgofra.types.composite.array import ArrayType
-from libgofra.types.composite.structure import StructureType
-from libgofra.types.primitive.integers import I64Type
+from libgofra.types._base import Type
 
 
 def initialize_static_data_section(
@@ -91,102 +83,59 @@ def _write_static_segment_const_variable_initializer(
     variable: Variable[Type],
     symbol_name: str,
 ) -> None:
-    _ = context
     type_size = variable.size_in_bytes
     alignment = max(1, getattr(variable.type, "alignment", 1))
     align_exponent = alignment.bit_length() - 1
     context.fd.write(f".align {align_exponent}\n")
 
-    # TODO: This machinery is almost same for same assembler unless we migrate to machine code
-    # May be refactored into single abstraction layer?
-
-    ptr_t_ddd = _get_ddd_for_type(I64Type())
-
     assert variable.initial_value is not None
-    initializer = literal_to_codegen_initializer(variable.initial_value, variable.type)
-    match initializer:
-        case int():
-            if type_size == 0:
-                context.on_warning(
-                    f"Variable {variable.name} has zero byte size (type {variable.type}) this variable will be not defined as symbol!",
+    plan = parse_initializer(variable.initial_value, variable.type)
+
+    context.fd.write(f"{symbol_name}:\n")
+    current_offset = 0
+    for store in plan:
+        if store.offset > current_offset:
+            remaining = store.offset - current_offset
+            context.fd.write(f"\t.zero {remaining}\n")
+            current_offset = store.offset
+        match store.kind:
+            case "int":
+                ddd = _get_ddd_for_type_size(store.size)
+                assert store.int_value is not None
+                context.fd.write(f"\t{ddd} {store.int_value}\n")
+                current_offset += store.size
+            case "string_ptr":
+                assert store.string_value is not None
+                context.fd.write(f"\t.quad {context.string_pool.add(store.string_value)}\n")
+                current_offset += store.size
+            case "padding":
+                context.fd.write(f"\t.zero {store.size}\n")
+                current_offset += store.size
+            case "fill":
+                context.fd.write(
+                    f"\t.fill {store.fill_count}, {store.size}, {store.fill_value}\n",
                 )
-                return
-            # TODO(@kirillzhosul): review realignment of static variables
-            ddd = _get_ddd_for_type(variable.type)
-            context.fd.write(f"{symbol_name}: {ddd} {initializer}\n")
-        case VariableStringPtrInitializerValue():
-            context.fd.write(
-                f"{symbol_name}: \n\t{ptr_t_ddd} {context.string_pool.add(initializer.string)}\n",
-            )
-        case VariableIntArrayInitializerValue(values=values):
-            assert isinstance(variable.type, ArrayType)
+                context.comment_eol(f"Filler ({store.fill_value})")
+                current_offset += store.size * store.fill_count
+            case _:
+                msg = f"Unsupported initializer store: {store}"
+                raise ValueError(msg)
 
-            f_values = ", ".join(map(str, values))
-
-            context.fd.write(f"{symbol_name}: \n\t{ptr_t_ddd} {f_values}\n")
-
-            # Zero initialized symbol
-            element_size = variable.type.flatten().element_type.size_in_bytes
-            empty_cells = variable.type.flatten().elements_count - len(values)
-            if not empty_cells:
-                return
-            assert isinstance(initializer.default, (int, IntegerLiteral, type(None)))
-            default_value = getattr(initializer.default, "value", initializer.default)
-            if initializer.default is None or default_value == 0:
-                bytes_total = variable.type.size_in_bytes
-                bytes_taken = len(values) * element_size
-                bytes_free = bytes_total - bytes_taken
-                context.fd.write(f"\t.zero {bytes_free}\n")
-            else:
-                fill_with = default_value
-                cell_size = I64Type().size_in_bytes
-                context.fd.write(f"\t.fill {empty_cells}, {cell_size}, {fill_with}")
-                context.comment_eol(f"Filler ({fill_with})")
-
-        case VariableStringPtrArrayInitializerValue(values=values):
-            f_values = ", ".join(map(context.string_pool.add, values))
-
-            context.fd.write(f"{symbol_name}: \n\t.quad {f_values}\n")
-
-        case VariableIntFieldedStructureInitializerValue():
-            assert isinstance(variable.type, StructureType)
-            _write_static_segment_structure_initializer(
-                context,
-                struct=variable.type,
-                initial_value=initializer,
-                symbol_name=symbol_name,
-            )
-        case _:
-            msg = f"Has no known initializer codegen logic for type {variable.type}"
-            raise ValueError(msg)
+    if current_offset < type_size:
+        remaining = type_size - current_offset
+        context.fd.write(f"\t.zero {remaining}")
+    context.fd.write("\n")
 
 
-def _write_static_segment_structure_initializer(
-    context: AMD64CodegenContext,
-    symbol_name: str,
-    struct: StructureType,
-    initial_value: VariableIntFieldedStructureInitializerValue,
-) -> None:
-    context.fd.write(f"{symbol_name}:")
-    context.comment_eol(repr(struct))
-    prev_taken_bytes = 0
-    for field in struct.order:
-        value = initial_value.values[field]
 
-        field_t = struct.get_field_type(field)
-        assert isinstance(field_t, PrimitiveType), field_t
-
-        padding = struct.get_field_offset(field) - prev_taken_bytes
-
-        ddd = _get_ddd_for_type(field_t)
-        if padding:
-            context.fd.write(f"\t.zero {padding}")
-            context.comment_eol("[[padding]]")
-
-        context.fd.write(f"\t{ddd} {value}")
-        context.comment_eol(f"{struct.name}.{field}")
-
-        prev_taken_bytes += field_t.size_in_bytes + padding
+def _get_ddd_for_type_size(size_in_bytes: int) -> str:
+    if size_in_bytes <= 1:
+        return ".byte"
+    if size_in_bytes <= 2:
+        return ".value"
+    if size_in_bytes <= 4:
+        return ".long"
+    return ".quad"
 
 
 def write_uninitialized_data_section(

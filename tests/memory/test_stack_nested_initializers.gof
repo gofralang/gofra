@@ -1,0 +1,27 @@
+/// Test local/stack initializer of nested structure and array of structures
+
+#define TESTKIT_EXPECTED_EXIT_CODE 28
+
+struct Inner
+    x int
+    y int
+end
+
+struct Outer
+    a int
+    b Inner
+    arr Inner[2]
+end
+
+func int main[]
+    var g Outer = Outer {a = 1, b = {x = 2, y = 3}, arr = [Inner {x = 4, y = 5}, Inner {x = 6, y = 7}]}
+
+    g.a
+    g.b.x +
+    g.b.y +
+    g.arr[0].x +
+    g.arr[0].y +
+    g.arr[1].x +
+    g.arr[1].y +
+    return
+end

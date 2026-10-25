@@ -1,4 +1,4 @@
-"""Assembly abstraction layer that hides declarative assembly OPs into functions that generates that for you."""
+"""AMD64 local stack variable initialization."""
 
 from __future__ import annotations
 
@@ -6,16 +6,9 @@ from typing import TYPE_CHECKING, assert_never
 
 from libgofra.codegen.common.frame import build_local_variables_frame_offsets
 from libgofra.codegen.common.initializer import (
-    T_AnyVariableInitializer,
-    VariableIntArrayInitializerValue,
-    VariableIntFieldedStructureInitializerValue,
-    VariableIntSliceInitializerValue,
-    VariableStringPtrArrayInitializerValue,
-    VariableStringPtrInitializerValue,
-    literal_to_codegen_initializer,
+    InitializerStorePlan,
+    parse_initializer,
 )
-from libgofra.types.composite.array import ArrayType
-from libgofra.types.composite.pointer import PointerType
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -23,6 +16,7 @@ if TYPE_CHECKING:
     from libgofra.codegen.backends.amd64._context import AMD64CodegenContext
     from libgofra.hir.variable import Variable
     from libgofra.types._base import Type
+from libgofra.types.primitive.integers import I8Type, I16Type, I32Type, I64Type
 
 
 def write_function_local_stack_variables_initializer(
@@ -37,79 +31,71 @@ def write_function_local_stack_variables_initializer(
             continue
 
         current_offset = local_offsets.offsets[variable.name]
-        _write_initializer_for_stack_variable(
-            context,
-            literal_to_codegen_initializer(initial_value, variable.type),
-            variable.type,
-            current_offset,
-        )
+        plan = parse_initializer(initial_value, variable.type)
+        _apply_initializer_plan(context, plan, current_offset)
 
 
-def _write_initializer_for_stack_variable(
+def _apply_initializer_plan(
     context: AMD64CodegenContext,
-    initial_value: T_AnyVariableInitializer,
-    var_type: Type,
-    offset: int,
+    plan: tuple[InitializerStorePlan, ...],
+    base_offset: int,
 ) -> None:
-    assert offset > 0
+    assert base_offset > 0
 
-    if isinstance(initial_value, int):
-        return _set_local_numeric_var_immediate(
-            context,
-            initial_value,
-            var_type,
-            offset,
-        )
-
-    if isinstance(initial_value, VariableIntArrayInitializerValue):
-        assert isinstance(var_type, ArrayType)
-        values = initial_value.values
-        setters = ((var_type.get_index_offset(i), v) for i, v in enumerate(values))
-        for relative_offset, value in setters:
+    for store in plan:
+        if store.kind == "int":
             _set_local_numeric_var_immediate(
                 context,
-                value,
-                var_type.element_type,
-                offset=offset - relative_offset,
+                _type_for_size(store.size),
+                base_offset - store.offset,
+                store.int_value if store.int_value is not None else 0,
             )
-        return None
+        elif store.kind == "string_ptr":
+            assert store.string_value is not None
+        elif store.kind == "padding":
+            continue
+        elif store.kind == "fill":
+            for i in range(store.fill_count):
+                _set_local_numeric_var_immediate(
+                    context,
+                    _type_for_size(store.size),
+                    base_offset - (store.offset + store.size * i),
+                    store.fill_value,
+                )
+        else:
+            assert_never(store.kind)
 
-    if isinstance(initial_value, VariableStringPtrInitializerValue):
-        # Load string as static string and dispatch pointer on entry
-        static_blob_sym = context.string_pool.add(initial_value.string)
-        assert isinstance(var_type, PointerType)
+    # handle string ptr stores separately (need string_pool at context)
+    string_stores = [s for s in plan if s.kind == "string_ptr"]
+    for store in string_stores:
+        assert store.string_value is not None
         context.write(
-            f"leaq {static_blob_sym}(%rip), %rax",
-            f"movq %rax, -{offset}(%rbp)",
+            f"leaq {context.string_pool.add(store.string_value)}(%rip), %rax",
+            f"movq %rax, -{base_offset - store.offset}(%rbp)",
         )
-        return None
+    # no-op placeholder line retained for lint oddities only
+    _ = context
 
-    if isinstance(
-        initial_value,
-        VariableIntFieldedStructureInitializerValue
-        | VariableStringPtrArrayInitializerValue
-        | VariableIntSliceInitializerValue,
-    ):  # pyright: ignore[reportUnnecessaryIsInstance]
-        msg = f"{initial_value} is not implemented on-stack within codegen"
-        raise NotImplementedError(msg)
 
-    assert_never(initial_value)
+def _type_for_size(size: int) -> Type:
+    if size <= 1:
+        return I8Type()
+    if size <= 2:
+        return I16Type()
+    if size <= 4:
+        return I32Type()
+    return I64Type()
 
 
 def _set_local_numeric_var_immediate(
     context: AMD64CodegenContext,
-    value: int,
     t: Type,
     offset: int,
+    value: int,
 ) -> None:
-    """Set immediate numeric value for local variable at given offset. Respects memory store instructions."""
     assert 0 < t.size_in_bytes <= 8, "Too big type to store into"
 
-    # Use half-word instruction set (W register, half store)
     size = t.size_in_bytes
-    bit_count = 8 * size
-    assert value.bit_count() <= bit_count or value == 0
-
     if size == 1:
         reg = "%al"
         suf = "b"

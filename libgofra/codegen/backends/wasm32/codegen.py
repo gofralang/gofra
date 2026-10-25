@@ -37,10 +37,7 @@ from libgofra.codegen.backends.wasm32.sexpr import (
 )
 from libgofra.codegen.backends.wasm32.types import wasm_type_from_primitive
 from libgofra.codegen.common.initializer import (
-    VariableIntArrayInitializerValue,
-    VariableIntFieldedStructureInitializerValue,
-    VariableStringPtrInitializerValue,
-    literal_to_codegen_initializer,
+    parse_initializer,
 )
 from libgofra.codegen.config import CodegenConfig
 from libgofra.hir.function import Function
@@ -53,10 +50,8 @@ from libgofra.hir.operator import (
 )
 from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.targets.target import Target
-from libgofra.types._base import PrimitiveType, Type
-from libgofra.types.composite.array import ArrayType
+from libgofra.types._base import Type
 from libgofra.types.composite.string import StringType
-from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.character import CharType
 from libgofra.types.primitive.integers import I64Type
 
@@ -126,76 +121,62 @@ class WASM32CodegenBackend:
     def wasm_init_mem_from_var_initial_value(self, var: Variable[Type]) -> str:
         if var.initial_value is None:
             return wasm_pack_integer_to_memory(0, size=var.size_in_bytes)
-        initializer = literal_to_codegen_initializer(var.initial_value, var.type)
-        match initializer:
-            case int():
-                return wasm_pack_integer_to_memory(initializer, size=var.size_in_bytes)
+        initializer = parse_initializer(var.initial_value, var.type)
+        stores = initializer
 
-            case VariableIntFieldedStructureInitializerValue():
-                struct = var.type
-                assert isinstance(struct, StructureType)
-                prev_taken_bytes = 0
-                init_mem = ""
-                for field in struct.order:
-                    value = initializer.values[field]
-
-                    field_t = struct.get_field_type(field)
-                    assert isinstance(field_t, PrimitiveType), field_t
-
-                    padding = struct.get_field_offset(field) - prev_taken_bytes
-
-                    if padding:
-                        init_mem += wasm_pack_integer_to_memory(0, size=padding)
-                    init_mem += wasm_pack_integer_to_memory(
-                        value,
-                        size=field_t.size_in_bytes,
-                    )
-
-                    prev_taken_bytes += field_t.size_in_bytes + padding
-                return init_mem
-            case VariableStringPtrInitializerValue():
-                string_raw = initializer.string
-                self._strings_to_load[self._symtable_next_offset] = (
-                    string_raw,
-                    string_raw,
+        init_mem = ""
+        current_offset = 0
+        for store in stores:
+            if store.offset > current_offset:
+                init_mem += wasm_pack_integer_to_memory(
+                    0,
+                    size=store.offset - current_offset,
                 )
+                current_offset = store.offset
 
-                slice_size = StringType().size_in_bytes
-                str_size = CharType().size_in_bytes * len(string_raw)
-                offset = self._symtable_next_offset
-                self._symtable_next_offset += slice_size
-                self._symtable_next_offset += str_size
-
-                return wasm_pack_integer_to_memory(offset, size=var.size_in_bytes)
-            case VariableIntArrayInitializerValue(values=values):
-                init_mem = ""
-                assert isinstance(var.type, ArrayType)
-
-                element_size = var.type.element_type.size_in_bytes
-                for value in initializer.values:
+            match store.kind:
+                case "int":
+                    assert store.int_value is not None
                     init_mem += wasm_pack_integer_to_memory(
-                        value,
-                        size=element_size,
+                        store.int_value,
+                        size=store.size,
                     )
-                empty_cells = var.type.elements_count - len(values)
-                if not empty_cells:
-                    return init_mem
-                if initializer.default == 0:
-                    bytes_total = var.type.size_in_bytes
-                    bytes_taken = len(values) * element_size
-                    bytes_free = bytes_total - bytes_taken
-                    init_mem += wasm_pack_integer_to_memory(0, size=bytes_free)
-                else:
-                    fill_with = initializer.default
-                    cell_size = I64Type().size_in_bytes
-                    for _ in range(empty_cells):
+                    current_offset += store.size
+                case "string_ptr":
+                    assert store.string_value is not None
+                    string_raw = store.string_value
+                    self._strings_to_load[self._symtable_next_offset] = (
+                        string_raw,
+                        string_raw,
+                    )
+
+                    slice_size = StringType().size_in_bytes
+                    str_size = CharType().size_in_bytes * len(string_raw)
+                    offset = self._symtable_next_offset
+                    self._symtable_next_offset += slice_size
+                    self._symtable_next_offset += str_size
+
+                    init_mem += wasm_pack_integer_to_memory(offset, size=store.size)
+                    current_offset += store.size
+                case "padding":
+                    init_mem += wasm_pack_integer_to_memory(0, size=store.size)
+                    current_offset += store.size
+                case "fill":
+                    for _ in range(store.fill_count):
                         init_mem += wasm_pack_integer_to_memory(
-                            fill_with,
-                            size=cell_size,
+                            store.fill_value,
+                            size=store.size,
                         )
-                return init_mem
-            case _:
-                raise NotImplementedError(var.initial_value, var)
+                    current_offset += store.size * store.fill_count
+                case _:
+                    raise NotImplementedError(store)
+
+        if current_offset < var.size_in_bytes:
+            init_mem += wasm_pack_integer_to_memory(
+                0,
+                size=var.size_in_bytes - current_offset,
+            )
+        return init_mem
 
     def build_and_allocate_data_node_from_variable(
         self,
@@ -233,37 +214,36 @@ class WASM32CodegenBackend:
             f"uninitialized symbol {var.name} for WASM"
         )
 
-        initializer = literal_to_codegen_initializer(var.initial_value, var.type)
-        match initializer:
-            case int():
-                return GlobalSymbolNode(
-                    var.name,
-                    store_type=wasm_type_from_primitive(var.type),
-                    initializer=I64ConstNode(initializer),
-                    is_mutable=var.is_constant,
-                )
-            case VariableStringPtrInitializerValue():
-                string_raw = initializer.string
-                self._strings_to_load[self._symtable_next_offset] = (
-                    string_raw,
-                    string_raw,
-                )
+        stores = parse_initializer(var.initial_value, var.type)
+        if len(stores) == 1 and stores[0].kind == "int" and stores[0].int_value is not None:
+            return GlobalSymbolNode(
+                var.name,
+                store_type=wasm_type_from_primitive(var.type),
+                initializer=I64ConstNode(stores[0].int_value),
+                is_mutable=var.is_constant,
+            )
+        if len(stores) == 1 and stores[0].kind == "string_ptr" and stores[0].string_value is not None:
+            string_raw = stores[0].string_value
+            self._strings_to_load[self._symtable_next_offset] = (
+                string_raw,
+                string_raw,
+            )
 
-                slice_size = StringType().size_in_bytes
-                str_size = CharType().size_in_bytes * len(string_raw)
-                offset = self._symtable_next_offset
-                self._symtable_next_offset += slice_size
-                self._symtable_next_offset += str_size
+            slice_size = StringType().size_in_bytes
+            str_size = CharType().size_in_bytes * len(string_raw)
+            offset = self._symtable_next_offset
+            self._symtable_next_offset += slice_size
+            self._symtable_next_offset += str_size
 
-                return GlobalSymbolNode(
-                    var.name,
-                    store_type=wasm_type_from_primitive(var.type),
-                    initializer=I64ConstNode(offset),
-                    is_mutable=var.is_constant,
-                )
-            case _:
-                msg = f"Cannot define global symbol in wasm with default value {var.initial_value}, not implemented unwinding constant Initializers."
-                raise NotImplementedError(msg)
+            return GlobalSymbolNode(
+                var.name,
+                store_type=wasm_type_from_primitive(var.type),
+                initializer=I64ConstNode(offset),
+                is_mutable=var.is_constant,
+            )
+
+        msg = f"Cannot define global symbol in wasm with default value {var.initial_value}, not implemented unwinding constant Initializers."
+        raise NotImplementedError(msg)
 
     def build_module_scope_data(self) -> Generator[DataNode | GlobalSymbolNode]:
         yield from self.build_global_mutable_data()

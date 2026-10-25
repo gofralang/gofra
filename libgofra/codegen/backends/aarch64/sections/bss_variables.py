@@ -1,8 +1,12 @@
+"""AARCH64 uninitialized (BSS) data section emission."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from libgofra.codegen.common.mangling import mangle_hir_symbol_name
+from libgofra.codegen.common.uninitialized_data import (
+    plan_uninitialized_data_symbols,
+)
 from libgofra.codegen.sections._factory import SectionType
 
 if TYPE_CHECKING:
@@ -17,27 +21,17 @@ def write_uninitialized_data_section(
     writer: WriterProtocol,
     variables: Mapping[str, Variable[Type]],
 ) -> None:
-    """Emit data section with uninitialized variables."""
-    uninitialized_variables = {
-        k: v for k, v in variables.items() if v.initial_value is None
-    }
-
-    if not uninitialized_variables:
+    """Emit the BSS section for variables without initial values."""
+    symbols = plan_uninitialized_data_symbols(variables)
+    if not symbols:
         return
 
     writer.section(SectionType.BSS)
     aligned_by: int | None = None
-    for name, variable in uninitialized_variables.items():
-        type_size = variable.size_in_bytes
-        assert type_size, (
-            f"Variable has type with zero size ({name} defined at {variable.defined_at})"
-        )
+    for symbol in symbols:
+        if symbol.alignment != aligned_by:
+            writer.directive("align", symbol.alignment)
+            aligned_by = symbol.alignment
 
-        alignment = variable.type.alignment
-        if alignment != aligned_by:
-            writer.directive("align", alignment)
-            aligned_by = alignment
-
-        label = mangle_hir_symbol_name(variable)
-        writer.label(label)
-        writer.sym_sect_directive("space", type_size)
+        writer.label(symbol.label)
+        writer.sym_sect_directive("space", symbol.size)
