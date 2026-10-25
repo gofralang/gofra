@@ -8,6 +8,7 @@ from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
 from libgofra.codegen.float_bits import float_to_bits
 from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
+from libgofra.types.primitive.floats import F32Type
 from libgofra.types.primitive.void import VoidType
 
 if TYPE_CHECKING:
@@ -211,7 +212,10 @@ def function_call(
     )
 
     if store_return_value:
-        if getattr(type_contract_out, "is_fp", False):
+        if isinstance(type_contract_out, F32Type):
+            context.write("movd %xmm0, %eax")
+            push_register_onto_stack(context, "rax")
+        elif getattr(type_contract_out, "is_fp", False):
             context.write("movq %xmm0, %rax")
             push_register_onto_stack(context, "rax")
         else:
@@ -294,6 +298,7 @@ def load_memory_from_stack_arguments(
     context: AMD64CodegenContext,
     *,
     size_in_bytes: int = 8,
+    zero_extend: bool = False,
 ) -> None:
     """Load memory as value using arguments from stack."""
     pop_cells_from_stack_into_registers(context, "rax")
@@ -304,7 +309,10 @@ def load_memory_from_stack_arguments(
         case 2:
             context.write("movzwq (%rax), %rax")
         case 4:
-            context.write("movslq (%rax), %rax")
+            if zero_extend:
+                context.write("movl (%rax), %eax")
+            else:
+                context.write("movslq (%rax), %rax")
         case 8:
             context.write("movq (%rax), %rax")
         case _:
@@ -319,8 +327,67 @@ def perform_operation_onto_stack(
     operation: OperatorType,
     *,
     is_fp: bool = False,
+    is_f32: bool = False,
 ) -> None:
     """Perform *math* operation onto stack (pop arguments and push back result)."""
+    if is_f32 and operation in (
+        OperatorType.ARITHMETIC_PLUS,
+        OperatorType.ARITHMETIC_MINUS,
+        OperatorType.ARITHMETIC_MULTIPLY,
+        OperatorType.ARITHMETIC_DIVIDE,
+    ):
+        pop_cells_from_stack_into_registers(context, "rax", "rbx")
+        context.write(
+            "movq %rax, %xmm0",
+            "cvtss2sd %xmm0, %xmm0",
+            "movq %rbx, %xmm1",
+            "cvtss2sd %xmm1, %xmm1",
+        )
+        fp_arithmetic = {
+            OperatorType.ARITHMETIC_PLUS: "addsd",
+            OperatorType.ARITHMETIC_MINUS: "subsd",
+            OperatorType.ARITHMETIC_MULTIPLY: "mulsd",
+            OperatorType.ARITHMETIC_DIVIDE: "divsd",
+        }
+        context.write(
+            f"{fp_arithmetic[operation]} %xmm0, %xmm1",
+            "cvtsd2ss %xmm1, %xmm1",
+            "movd %xmm1, %eax",
+        )
+        push_register_onto_stack(context, "rax")
+        return
+
+    if is_f32 and operation in (
+        OperatorType.COMPARE_EQUALS,
+        OperatorType.COMPARE_NOT_EQUALS,
+        OperatorType.COMPARE_LESS,
+        OperatorType.COMPARE_GREATER,
+        OperatorType.COMPARE_LESS_EQUALS,
+        OperatorType.COMPARE_GREATER_EQUALS,
+    ):
+        pop_cells_from_stack_into_registers(context, "rax", "rbx")
+        context.write(
+            "movq %rax, %xmm0",
+            "cvtss2sd %xmm0, %xmm0",
+            "movq %rbx, %xmm1",
+            "cvtss2sd %xmm1, %xmm1",
+            "comisd %xmm0, %xmm1",
+        )
+        fp_comparison = {
+            OperatorType.COMPARE_EQUALS: "e",
+            OperatorType.COMPARE_NOT_EQUALS: "ne",
+            OperatorType.COMPARE_LESS: "b",
+            OperatorType.COMPARE_GREATER: "a",
+            OperatorType.COMPARE_LESS_EQUALS: "be",
+            OperatorType.COMPARE_GREATER_EQUALS: "ae",
+        }
+        context.write(
+            f"set{fp_comparison[operation]} %al",
+            "movzbq %al, %rax",
+        )
+        push_register_onto_stack(context, "rax")
+        return
+
     fp_arithmetic = {
         OperatorType.ARITHMETIC_PLUS: "addsd",
         OperatorType.ARITHMETIC_MINUS: "subsd",

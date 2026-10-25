@@ -46,7 +46,7 @@ from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.boolean import BoolType
 from libgofra.types.primitive.character import CharType
 from libgofra.types.primitive.enums import EnumType
-from libgofra.types.primitive.floats import F64Type
+from libgofra.types.primitive.floats import F32Type, F64Type
 from libgofra.types.primitive.integers import I64Type, IntegerType
 from libgofra.types.primitive.void import VoidType
 
@@ -474,6 +474,9 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             if isinstance(a, F64Type) and isinstance(b, F64Type):
                 operator.tc_meta = F64Type()
                 scope.push_types(F64Type())
+            elif isinstance(a, F32Type) and isinstance(b, F32Type):
+                operator.tc_meta = F32Type()
+                scope.push_types(F32Type())
             elif isinstance(a, IntegerType) and isinstance(b, IntegerType):
                 operator.tc_meta = I64Type()
                 scope.push_types(I64Type())
@@ -527,6 +530,10 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 operator.tc_meta = F64Type()
                 scope.push_types(F64Type())
                 return None
+            if isinstance(a, F32Type) and isinstance(b, F32Type):
+                operator.tc_meta = F32Type()
+                scope.push_types(F32Type())
+                return None
 
             # Integer math
             scope.push_types(b, a)
@@ -551,6 +558,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                     FunctionType,
                     EnumType,
                     F64Type,
+                    F32Type,
                 ),
             )
             value_holder_type = mut_scope[-2]
@@ -628,8 +636,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             )
             scope.raise_for_operator_arguments(
                 operator,
-                (IntegerType, BoolType, F64Type),
-                (IntegerType, BoolType, F64Type),
+                (IntegerType, BoolType, F64Type, F32Type),
+                (IntegerType, BoolType, F64Type, F32Type),
             )
             scope.push_types(BoolType())
         case (
@@ -648,8 +656,8 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             )
             scope.raise_for_operator_arguments(
                 operator,
-                (IntegerType, F64Type),
-                (IntegerType, F64Type),
+                (IntegerType, F64Type, F32Type),
+                (IntegerType, F64Type, F32Type),
             )
             scope.push_types(BoolType())
         case OperatorType.STACK_DROP:

@@ -45,6 +45,7 @@ from libgofra.hir.operator import (
 from libgofra.hir.variable import Variable, VariableStorageClass
 from libgofra.types import CharType, Type
 from libgofra.types.composite.function import FunctionType
+from libgofra.types.primitive.floats import F32Type
 
 if TYPE_CHECKING:
     from libgofra.codegen.backends.aarch64.registers import AARCH64_GP_REGISTERS
@@ -218,13 +219,33 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             match meta.kind:
                 case TypecastMeta.Kind.INT_TO_FLOAT:
                     pop_cells_from_stack_into_registers(writer, "X0")
-                    writer.instruction("scvtf D0, X0")
-                    writer.instruction("fmov X0, D0")
+                    if isinstance(meta.b, F32Type):
+                        writer.instruction("scvtf S0, W0")
+                        writer.instruction("fmov W0, S0")
+                    else:
+                        writer.instruction("scvtf D0, X0")
+                        writer.instruction("fmov X0, D0")
                     push_register_onto_stack(writer, "X0")
                 case TypecastMeta.Kind.FLOAT_TO_INT:
                     pop_cells_from_stack_into_registers(writer, "X0")
+                    if isinstance(meta.a, F32Type):
+                        writer.instruction("fmov S0, W0")
+                        writer.instruction("fcvtzs X0, S0")
+                    else:
+                        writer.instruction("fmov D0, X0")
+                        writer.instruction("fcvtzs X0, D0")
+                    push_register_onto_stack(writer, "X0")
+                case TypecastMeta.Kind.F32_TO_F64:
+                    pop_cells_from_stack_into_registers(writer, "X0")
+                    writer.instruction("fmov S0, W0")
+                    writer.instruction("fcvt D0, S0")
+                    writer.instruction("fmov X0, D0")
+                    push_register_onto_stack(writer, "X0")
+                case TypecastMeta.Kind.F64_TO_F32:
+                    pop_cells_from_stack_into_registers(writer, "X0")
                     writer.instruction("fmov D0, X0")
-                    writer.instruction("fcvtzs X0, D0")
+                    writer.instruction("fcvt S0, D0")
+                    writer.instruction("fmov W0, S0")
                     push_register_onto_stack(writer, "X0")
                 case TypecastMeta.Kind.EXTEND:
                     pop_cells_from_stack_into_registers(writer, "X0")
@@ -312,14 +333,12 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             | OperatorType.SHIFT_RIGHT
             | OperatorType.BITWISE_XOR
         ):
+            _tc = operator.tc_meta if isinstance(operator.tc_meta, Type) else None
             perform_operation_onto_stack(
                 writer,
                 operation=operator.type,
-                is_fp=bool(
-                    operator.tc_meta is not None
-                    and isinstance(operator.tc_meta, Type)
-                    and getattr(operator.tc_meta, "is_fp", False),
-                ),
+                is_fp=bool(_tc is not None and getattr(_tc, "is_fp", False)),
+                is_f32=bool(_tc is not None and isinstance(_tc, F32Type)),
             )
         case OperatorType.SYSCALL:
             assert isinstance(operator.operand, int)

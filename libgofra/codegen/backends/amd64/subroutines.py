@@ -10,6 +10,7 @@ from libgofra.codegen.backends.amd64.frame import (
 )
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
 from libgofra.types._base import Type
+from libgofra.types.primitive.floats import F32Type
 from libgofra.types.primitive.integers import I64Type
 from libgofra.types.primitive.void import VoidType
 
@@ -63,11 +64,14 @@ def function_begin_with_prologue(  # noqa: PLR0913
             parameters[:arguments_count],
         )
 
-        for source in sources:
+        for param, source in zip(parameters, sources, strict=False):
             if source is None:
                 continue
             if source.startswith("xmm"):
-                context.write(f"movq %{source}, %rax")
+                if isinstance(param, F32Type):
+                    context.write(f"movd %{source}, %eax")
+                else:
+                    context.write(f"movq %{source}, %rax")
                 push_register_onto_stack(context, "rax")
             else:
                 push_register_onto_stack(context, source)

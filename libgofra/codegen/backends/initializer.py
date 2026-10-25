@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
-from libgofra.codegen.float_bits import float_to_bits
+from libgofra.codegen.float_bits import float32_to_bits, float_to_bits
 from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,
@@ -15,7 +15,7 @@ from libgofra.hir.literals import (
 )
 from libgofra.types import ArrayType, BoolType, CharType, PointerType, Type
 from libgofra.types.composite import StringType, StructureType
-from libgofra.types.primitive.floats import F64Type
+from libgofra.types.primitive.floats import F32Type, F64Type
 from libgofra.types.primitive.integers import I64Type, IntegerType
 
 
@@ -90,6 +90,8 @@ def literal_to_codegen_initializer(  # noqa: PLR0911
             return int(v)
         case (FloatLiteral(value=v), F64Type()):
             return float_to_bits(v)
+        case (FloatLiteral(value=v), F32Type()):
+            return float32_to_bits(v)
         case (StringLiteral(value=s), PointerType(points_to=StringType())):
             return VariableStringPtrInitializerValue(string=s)
 

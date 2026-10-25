@@ -174,8 +174,63 @@ def perform_operation_onto_stack(
     operation: OperatorType,
     *,
     is_fp: bool = False,
+    is_f32: bool = False,
 ) -> None:
     """Perform *math* operation onto stack (pop arguments and push back result)."""
+    if is_f32 and operation in (
+        OperatorType.ARITHMETIC_PLUS,
+        OperatorType.ARITHMETIC_MINUS,
+        OperatorType.ARITHMETIC_MULTIPLY,
+        OperatorType.ARITHMETIC_DIVIDE,
+    ):
+        pop_cells_from_stack_into_registers(writer, "X0", "X1")
+        writer.instruction("fmov S0, W0")
+        writer.instruction("fcvt D0, S0")
+        writer.instruction("fmov S1, W1")
+        writer.instruction("fcvt D1, S1")
+        match operation:
+            case OperatorType.ARITHMETIC_PLUS:
+                writer.instruction("fadd D0, D1, D0")
+            case OperatorType.ARITHMETIC_MINUS:
+                writer.instruction("fsub D0, D1, D0")
+            case OperatorType.ARITHMETIC_MULTIPLY:
+                writer.instruction("fmul D0, D1, D0")
+            case OperatorType.ARITHMETIC_DIVIDE:
+                writer.instruction("fdiv D0, D1, D0")
+            case _:
+                msg = f"{operation} cannot be performed by codegen `{perform_operation_onto_stack.__name__}`"
+                raise ValueError(msg)
+        writer.instruction("fcvt S0, D0")
+        writer.instruction("fmov W0, S0")
+        push_register_onto_stack(writer, "X0")
+        return
+
+    if is_f32 and operation in {
+        OperatorType.COMPARE_EQUALS,
+        OperatorType.COMPARE_NOT_EQUALS,
+        OperatorType.COMPARE_LESS,
+        OperatorType.COMPARE_GREATER,
+        OperatorType.COMPARE_LESS_EQUALS,
+        OperatorType.COMPARE_GREATER_EQUALS,
+    }:
+        pop_cells_from_stack_into_registers(writer, "X0", "X1")
+        writer.instruction("fmov S0, W1")
+        writer.instruction("fcvt D0, S0")
+        writer.instruction("fmov S1, W0")
+        writer.instruction("fcvt D1, S1")
+        writer.instruction("fcmp D0, D1")
+        logic_op = {
+            OperatorType.COMPARE_EQUALS: "eq",
+            OperatorType.COMPARE_NOT_EQUALS: "ne",
+            OperatorType.COMPARE_LESS: "lt",
+            OperatorType.COMPARE_GREATER: "gt",
+            OperatorType.COMPARE_LESS_EQUALS: "le",
+            OperatorType.COMPARE_GREATER_EQUALS: "ge",
+        }
+        writer.instruction(f"cset X0, {logic_op[operation]}")
+        push_register_onto_stack(writer, "X0")
+        return
+
     fp_arithmetic = {
         OperatorType.ARITHMETIC_PLUS: "fadd",
         OperatorType.ARITHMETIC_MINUS: "fsub",

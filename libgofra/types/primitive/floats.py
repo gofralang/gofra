@@ -13,4 +13,16 @@ class F64Type(PrimitiveType):
         return "F64"
 
 
-type AnyFloatType = F64Type
+type AnyFloatType = F32Type | F64Type
+
+
+class F32Type(PrimitiveType):
+    """Float of size 32 bits (IEEE-754 single precision)."""
+
+    size_in_bytes = 4
+    alignment = size_in_bytes
+
+    is_fp = True
+
+    def __repr__(self) -> str:
+        return "F32"

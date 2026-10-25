@@ -17,6 +17,7 @@ from libgofra.codegen.backends.aarch64.registers import (
 )
 from libgofra.codegen.backends.aarch64.writer import WriterProtocol
 from libgofra.types._base import Type
+from libgofra.types.primitive.floats import F32Type
 
 
 def aarch64_abi_argument_target_registers(
@@ -99,7 +100,11 @@ def load_return_value_from_stack_into_abi_registers(
     """Emit code that prepares return value by acquiring it from stack and storing into ABI return value register."""
     if t.is_fp:
         pop_cells_from_stack_into_registers(writer, "X0")
-        writer.instruction(f"fmov {abi.retval_fp_register}, X0")
+        if isinstance(t, F32Type):
+            sreg = abi.retval_fp_register.replace("D", "S")
+            writer.instruction(f"fmov {sreg}, W0")
+        else:
+            writer.instruction(f"fmov {abi.retval_fp_register}, X0")
         return None
 
     if t.size_in_bytes <= 0:
@@ -186,7 +191,11 @@ def _load_return_value_from_abi_registers_into_stack(
 ) -> None:
     """Emit code that loads return value by acquiring it from subroutine ABI call registers and spilling onto stack."""
     if t.is_fp:
-        writer.instruction(f"fmov X0, {abi.retval_fp_register}")
+        if isinstance(t, F32Type):
+            sreg = abi.retval_fp_register.replace("D", "S")
+            writer.instruction(f"fmov W0, {sreg}")
+        else:
+            writer.instruction(f"fmov X0, {abi.retval_fp_register}")
         return push_register_onto_stack(writer, "X0")
 
     if t.size_in_bytes <= 0:

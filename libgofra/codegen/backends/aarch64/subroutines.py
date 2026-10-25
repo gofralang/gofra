@@ -14,6 +14,7 @@ from libgofra.codegen.backends.aarch64.frame import (
 )
 from libgofra.codegen.backends.aarch64.registers import AARCH64_STACK_ALIGNMENT_BIN
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
+from libgofra.types.primitive.floats import F32Type
 
 from .primitive_instructions import (
     push_register_onto_stack,
@@ -97,11 +98,15 @@ def function_begin_with_prologue(  # noqa: PLR0913
         param_sources = aarch64_abi_argument_target_registers(abi, parameters)
 
         fp_registers = set(getattr(abi, "fp_arguments_registers", ()))
-        for src in param_sources:
+        for param, src in zip(parameters, param_sources, strict=False):
             if src is None:
                 continue
             if src in fp_registers:
-                writer.instruction(f"fmov X9, {src}")
+                if isinstance(param, F32Type):
+                    sreg = src.replace("D", "S")
+                    writer.instruction(f"fmov W9, {sreg}")
+                else:
+                    writer.instruction(f"fmov X9, {src}")
                 push_register_onto_stack(writer, "X9")
             else:
                 push_register_onto_stack(writer, src)

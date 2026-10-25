@@ -36,6 +36,9 @@ extern pub func void EndDrawing[]
 extern pub func void BeginDrawing[]                               
 
 extern pub func void SetTargetFPS[int fps]                        
+extern pub func f32 GetFrameTime[]
+extern pub func float GetTime[]
+extern pub func int GetFPS[]
 
 extern pub func void TraceLog[int logLevel, CStr text]                        
 

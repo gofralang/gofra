@@ -21,6 +21,7 @@ from libgofra.hir.operator import (
 from libgofra.hir.variable import VariableStorageClass
 from libgofra.types import CharType, Type
 from libgofra.types.composite.function import FunctionType
+from libgofra.types.primitive.floats import F32Type
 
 from ._context import AMD64CodegenContext
 from .assembly import (
@@ -217,9 +218,19 @@ def amd64_operator_instructions(
             if meta.kind == TypecastMeta.Kind.REINTERPRET:
                 pass
             elif meta.kind == TypecastMeta.Kind.INT_TO_FLOAT:
-                context.write("cvtsi2sd %rax, %xmm0", "movq %xmm0, %rax")
+                if isinstance(meta.b, F32Type):
+                    context.write("cvtsi2ss %rax, %xmm0", "movd %xmm0, %eax")
+                else:
+                    context.write("cvtsi2sd %rax, %xmm0", "movq %xmm0, %rax")
             elif meta.kind == TypecastMeta.Kind.FLOAT_TO_INT:
-                context.write("movq %rax, %xmm0", "cvttsd2si %xmm0, %rax")
+                if isinstance(meta.a, F32Type):
+                    context.write("movd %eax, %xmm0", "cvttss2si %xmm0, %rax")
+                else:
+                    context.write("movq %rax, %xmm0", "cvttsd2si %xmm0, %rax")
+            elif meta.kind == TypecastMeta.Kind.F32_TO_F64:
+                context.write("movq %rax, %xmm0", "cvtss2sd %xmm0, %xmm0", "movq %xmm0, %rax")
+            elif meta.kind == TypecastMeta.Kind.F64_TO_F32:
+                context.write("movq %rax, %xmm0", "cvtsd2ss %xmm0, %xmm0", "movd %xmm0, %eax")
             elif meta.kind == TypecastMeta.Kind.NORMALIZE_BOOL:
                 context.write("cmpq $0, %rax", "setne %al", "movzbq %al, %rax")
             elif meta.kind == TypecastMeta.Kind.EXTEND:
@@ -278,14 +289,12 @@ def amd64_operator_instructions(
             | OperatorType.SHIFT_LEFT
             | OperatorType.SHIFT_RIGHT
         ):
+            _tc = operator.tc_meta if isinstance(operator.tc_meta, Type) else None
             perform_operation_onto_stack(
                 context,
                 operation=operator.type,
-                is_fp=bool(
-                    operator.tc_meta is not None
-                    and isinstance(operator.tc_meta, Type)
-                    and getattr(operator.tc_meta, "is_fp", False),
-                ),
+                is_fp=bool(_tc is not None and getattr(_tc, "is_fp", False)),
+                is_f32=bool(_tc is not None and isinstance(_tc, F32Type)),
             )
         case OperatorType.SYSCALL:
             if context.target.operating_system == "Windows":
@@ -302,7 +311,11 @@ def amd64_operator_instructions(
             assert operator.tc_meta
             assert isinstance(operator.tc_meta, Type)
             read_size = operator.tc_meta.size_in_bytes
-            load_memory_from_stack_arguments(context, size_in_bytes=read_size)
+            load_memory_from_stack_arguments(
+                context,
+                size_in_bytes=read_size,
+                zero_extend=isinstance(operator.tc_meta, F32Type),
+            )
         case OperatorType.PUSH_VARIABLE_VALUE:
             assert isinstance(operator.operand, str)
             assert operator.tc_meta
@@ -311,6 +324,7 @@ def amd64_operator_instructions(
             load_memory_from_stack_arguments(
                 context,
                 size_in_bytes=operator.tc_meta.size_in_bytes,
+                zero_extend=isinstance(operator.tc_meta, F32Type),
             )
         case OperatorType.LOAD_PARAM_ARGUMENT:
             assert isinstance(operator.operand, str)

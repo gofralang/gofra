@@ -1,0 +1,24 @@
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+pub func f32 mix[f32 a, f32 b]
+    a b + return
+end
+
+pub func int main[]
+    1 typecast f32 2 typecast f32 + 3 typecast f32 != if 1 return end
+    6 typecast f32 2 typecast f32 / 3 typecast f32 != if 2 return end
+    5 typecast f32 2 typecast f32 - 3 typecast f32 != if 3 return end
+    2 typecast f32 3 typecast f32 * 6 typecast f32 != if 4 return end
+
+    var x f32
+    &x 4.5 typecast f32 !<
+    x 4 typecast f32 > if
+    else 5 return end
+    x 5 typecast f32 < if
+    else 6 return end
+
+    1 typecast f32 2 typecast f32 call mix 3 typecast f32 != if 7 return end
+
+    0 typecast f32 typecast int 0 != if 8 return end
+
+    0 return
+end

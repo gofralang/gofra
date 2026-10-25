@@ -2,7 +2,7 @@ from libgofra.types.composite.string import StringType
 from libgofra.types.generics import GenericParametrizedType
 from libgofra.types.primitive.boolean import BoolType
 from libgofra.types.primitive.character import CharType
-from libgofra.types.primitive.floats import F64Type
+from libgofra.types.primitive.floats import F32Type, F64Type
 from libgofra.types.primitive.integers import I8Type, I16Type, I32Type, I64Type
 from libgofra.types.primitive.void import VoidType
 
@@ -30,6 +30,8 @@ def get_default_propagated_type_registry() -> TypeRegistry:
             # Float
             "float": F64Type(),
             "f64": F64Type(),
+            "f32": F32Type(),
+            "float32": F32Type(),
             # It is only half primitive
             "string": StringType(),
         },
