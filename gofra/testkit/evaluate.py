@@ -199,12 +199,20 @@ def evaluate_test_case(  # noqa: PLR0911
         expected_stdout = expected_stdout_macro.tokens[0].value
         assert isinstance(expected_stdout, str)
 
+    expected_args_macro = macros.get("TESTKIT_EXPECTED_ARGS")
+    expected_args: list[str] = []
+    if expected_args_macro:
+        assert len(expected_args_macro.tokens) == 1
+        expected_args_value = expected_args_macro.tokens[0].value
+        assert isinstance(expected_args_value, str)
+        expected_args = expected_args_value.split()
+
     apply_file_executable_permissions(filepath=artifact_path)
 
     try:
         native_process = execute_native_binary_executable(
             artifact_path,
-            args=[],
+            args=expected_args,
             timeout=15,
             stdout=PIPE,
             stderr=PIPE,

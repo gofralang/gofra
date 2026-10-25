@@ -12,6 +12,7 @@ from .assembly import (
     function_call,
     ipc_syscall_linux,
     push_integer_onto_stack,
+    push_register_onto_stack,
 )
 from .subroutines import (
     function_begin_with_prologue,
@@ -38,10 +39,15 @@ def amd64_program_entry_point(
 
     # Prepare and execute main function
     assert isinstance(entry_point.return_type, VoidType | I64Type)
+    if entry_point.parameters:
+        if context.target.operating_system == "Linux":
+            context.write("movq (%rsp), %rdi", "leaq 8(%rsp), %rsi")
+        push_register_onto_stack(context, "rdi")
+        push_register_onto_stack(context, "rsi")
     function_call(
         context,
         name=entry_point.name,
-        type_contract_in=[],
+        type_contract_in=list(entry_point.parameter_types) if entry_point.parameters else [],
         type_contract_out=entry_point.return_type,
     )
 

@@ -30,14 +30,14 @@ def execute_native_binary_executable(  # noqa: PLR0913
     """
     executable = filepath.absolute()
 
-    return run(  # noqa: S602
+    return run(
         (executable, *args),
         timeout=timeout,
         stdin=stdin,
         stdout=stdout,
         stderr=stderr,
         # Mostly, we want to execute with shell as less-abstracted real software
-        shell=True,
+        shell=False,
         # Do not raise, we would do that ourselves
         check=False,
         # Perform in current environment

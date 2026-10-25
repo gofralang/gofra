@@ -9,7 +9,10 @@ from libgofra.types.primitive.integers import I64Type
 from libgofra.types.primitive.void import VoidType
 
 from .abi_call_convention import function_abi_call_by_symbol
-from .primitive_instructions import push_integer_onto_stack
+from .primitive_instructions import (
+    push_integer_onto_stack,
+    push_register_onto_stack,
+)
 from .subroutines import function_begin_with_prologue, function_end_with_epilogue
 
 # TODO: Refactor and move away from here (gofra source / abstraction)?
@@ -46,11 +49,18 @@ def aarch64_program_entry_point(  # noqa: PLR0913, PLR0917
     # Prepare and execute main function
     assert isinstance(entry_point.return_type, VoidType | I64Type)
     assert not entry_point.attrs.mangle
+    if entry_point.parameters:
+        # On Darwin/aarch64 the OS passes argc/argv in the first two argument
+        # registers. Spill them to Gofra's operand stack so an ordinary ABI
+        # call can consume and pass them to the user entry point.
+        push_register_onto_stack(writer, "X0")
+        push_register_onto_stack(writer, "X1")
+
     function_abi_call_by_symbol(
         writer,
         abi,
         name=mangle_hir_symbol_name(entry_point),
-        parameters=[],
+        parameters=list(entry_point.parameter_types) if entry_point.parameters else [],
         return_type=entry_point.return_type,
         call_convention="apple_aapcs64",  # TODO: allow to specify / override call-conv?
     )

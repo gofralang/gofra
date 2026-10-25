@@ -6,6 +6,7 @@ from libgofra.typecheck.errors.entry_point_parameters_mismatch import (
 from libgofra.typecheck.errors.entry_point_return_type_mismatch import (
     EntryPointReturnTypeMismatchTypecheckError,
 )
+from libgofra.types.composite.pointer import PointerType
 from libgofra.types.primitive.integers import I64Type
 
 
@@ -22,7 +23,19 @@ def validate_entry_point_signature(entry_point: Function) -> None:
             entry_point_name=entry_point.name,
         )
 
-    if entry_point.parameters:
+    parameters = entry_point.parameters
+    if len(parameters) == 0:
+        pass
+    elif len(parameters) == 2:
+        if not isinstance(parameters[0].type, I64Type) or not isinstance(
+            parameters[1].type,
+            PointerType,
+        ):
+            raise EntryPointParametersMismatchTypecheckError(
+                parameters=entry_point.parameter_types,
+                entry_point_name=entry_point.name,
+            )
+    else:
         raise EntryPointParametersMismatchTypecheckError(
             parameters=entry_point.parameter_types,
             entry_point_name=entry_point.name,

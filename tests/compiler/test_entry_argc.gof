@@ -1,0 +1,9 @@
+/// Test that program entry can accept argc and argv
+
+#define TESTKIT_EXPECTED_EXIT_CODE 3
+#define TESTKIT_EXPECTED_ARGS "foo bar"
+
+func int main[int argc, **char argv]
+    argv drop
+    argc return
+end
