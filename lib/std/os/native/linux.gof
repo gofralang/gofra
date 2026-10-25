@@ -39,9 +39,16 @@ end // 16 bytes
     #define LINUX_SYSCALL_OPEN          2
     #define LINUX_SYSCALL_CLOSE         3
     #define LINUX_SYSCALL_CONNECT       42
+    #define LINUX_SYSCALL_PIPE          22
+    #define LINUX_SYSCALL_DUP2          33
+    #define LINUX_SYSCALL_GETPID        39
+    #define LINUX_SYSCALL_FORK          57
     #define LINUX_SYSCALL_EXIT          60
+    #define LINUX_SYSCALL_WAIT4         61
+    #define LINUX_SYSCALL_KILL          62
     #define LINUX_SYSCALL_GETTIMEOFDAY  96
     #define LINUX_SYSCALL_SHUTDOWN      48
+    #define LINUX_SYSCALL_GETPPID       110
 #endif // ARCH_AMD64
 
 
@@ -78,6 +85,39 @@ end // 16 bytes
     end
 
     inline func void sc_gettimeofday[*char[16], *char[16]] LINUX_SYSCALL_GETTIMEOFDAY syscall2 drop end
+
+    // Creates a new process. Returns 0 to child, PID to parent, or negative errno on error.
+    inline func int sc_fork[] LINUX_SYSCALL_FORK syscall0 end
+
+    // Get PID of current process
+    inline func int sc_getpid[] LINUX_SYSCALL_GETPID syscall0 end
+
+    // Get PID of parent process
+    inline func int sc_getppid[] LINUX_SYSCALL_GETPPID syscall0 end
+
+    // Waits for a child process to change its state (e.g terminated or stopped).
+    // Signature: [pid, status_ptr, options, rusage_ptr]
+    // Returns PID of the changed child process, or a negative errno on error.
+    inline func int sc_waitpid[int pid, *i32 status, int options]
+        pid status options 0 LINUX_SYSCALL_WAIT4 syscall4
+    end
+
+    // Creates a pipe (a unidirectional data channel).
+    // Signature: [fds_ptr]
+    // Returns 0 on success, or a negative errno on error.
+    inline func int sc_pipe[*i32 fds] fds LINUX_SYSCALL_PIPE syscall1 end
+
+    // Duplicates a file descriptor.
+    // Signature: [old_fd, new_fd]
+    // Returns `new_fd` on success, or a negative errno on error.
+    inline func int sc_dup2[int old_fd, int new_fd]
+        old_fd new_fd LINUX_SYSCALL_DUP2 syscall2
+    end
+
+    // Sends a signal to a process.
+    // Signature: [pid, signal]
+    // Returns 0 on success, or a negative errno on error.
+    inline func int sc_kill[int pid, int signal] pid signal LINUX_SYSCALL_KILL syscall2 end
 
     // Gracefully shutdown a socket connection.
     // Discards the not-yet-read data and sends a FIN to the peer, so the connection

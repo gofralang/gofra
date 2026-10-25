@@ -55,159 +55,211 @@ type sc_envp *CStr
 type fd_t int
 
 // --- Syscall Numbers (Partial Table) ---
-#define DARWIN_SYSCALL_SYSCALL      0
-#define DARWIN_SYSCALL_EXIT         1
-#define DARWIN_SYSCALL_FORK         2
-#define DARWIN_SYSCALL_READ         3
-#define DARWIN_SYSCALL_WRITE        4
-#define DARWIN_SYSCALL_OPEN         5
-#define DARWIN_SYSCALL_CLOSE        6
-#define DARWIN_SYSCALL_WAIT4        7
-#define DARWIN_SYSCALL_CREAT        8 // Deprecated BSD
-#define DARWIN_SYSCALL_LINK         9
-#define DARWIN_SYSCALL_UNLINK       10
-#define DARWIN_SYSCALL_GETPID       20
-#define DARWIN_SYSCALL_ACCEPT       30
-#define DARWIN_SYSCALL_GETPPID      39
-#define DARWIN_SYSCALL_EXECVE       59
-#define DARWIN_SYSCALL_MUNMAP       73
-#define DARWIN_SYSCALL_SELECT       93
-#define DARWIN_SYSCALL_SOCKET       97
-#define DARWIN_SYSCALL_CONNECT      98
-#define DARWIN_SYSCALL_BIND         104
-#define DARWIN_SYSCALL_SETSOCKOPT   105
-#define DARWIN_SYSCALL_LISTEN       106
-#define DARWIN_SYSCALL_GETTIMEOFDAY 116
-#define DARWIN_SYSCALL_GETSOCKOPT   118
-#define DARWIN_SYSCALL_MKDIR        136
-#define DARWIN_SYSCALL_MMAP         197
-#define DARWIN_SYSCALL_LSEEK        199
-#define DARWIN_SYSCALL_POLL         209
+enum DARWIN_SYSCALL_CODE
+  ACCEPT = 30
+  BIND = 104
+  CLOSE = 6
+  CONNECT = 98
+  CREAT = 8
+  DUP2 = 90
+  EXECVE = 59
+  EXIT = 1
+  FORK = 2
+  GETPID = 20
+  GETPPID = 39
+  GETSOCKOPT = 118
+  GETTIMEOFDAY = 116
+  KILL = 37
+  LINK = 9
+  LISTEN = 106
+  LSEEK = 199
+  MKDIR = 136
+  MMAP = 197
+  MUNMAP = 73
+  OPEN = 5
+  PIPE = 42
+  POLL = 209
+  READ = 3
+  SELECT = 93
+  SETSOCKOPT = 105
+  SOCKET = 97
+  SYSCALL = 0
+  UNLINK = 10
+  WAIT4 = 7
+  WRITE = 4
+#ifdef ARCH_ARM64
+  SHUTDOWN = 134
+#endif
+#ifdef ARCH_AMD64
+  SHUTDOWN = 48
+#endif
+end
+
 
 // Syscall numbers are architecture specific on Darwin
 #ifdef ARCH_ARM64
-    #define DARWIN_SYSCALL_SHUTDOWN 134
 #endif
 #ifdef ARCH_AMD64
-    #define DARWIN_SYSCALL_SHUTDOWN 48
 #endif
 
-#define EPERM          1
-#define ENOENT         2
-#define ESRCH          3
-#define EINTR          4
-#define EIO            5
-#define EBADF           9
-#define EFAULT         14
-#define EADDRNOTAVAIL  49
-#define EADDRINUSE     48
+
+
+enum DARWIN_ERRNO
+  EPERM = 1
+  ENOENT = 2
+  ESRCH = 3
+  EINTR = 4
+  EIO = 5
+  EBADF = 9
+  EFAULT = 14
+  EADDRNOTAVAIL = 49
+  EADDRINUSE = 48
+end
 pub func *string darwin_strerror[
     int errno
 ]
     &errno errno call abs !<
 
-    errno EADDRNOTAVAIL == if "Can't assign requested address" return end
-    errno EADDRINUSE == if "Address already in use" return end
-    errno EPERM == if "Operation not permitted" return end
-    errno ENOENT == if "No such file or directory" return end
-    errno ESRCH == if "No such process" return end
-    errno EFAULT == if "Bad address" return end
-    errno EINTR == if "Interrupted system call" return end
-    errno EIO == if "Input/output error" return end
-    errno EBADF == if "Bad file descriptor" return end
+    errno DARWIN_ERRNO.EADDRNOTAVAIL == if "Can't assign requested address" return end
+    errno DARWIN_ERRNO.EADDRINUSE == if "Address already in use" return end
+    errno DARWIN_ERRNO.EPERM == if "Operation not permitted" return end
+    errno DARWIN_ERRNO.ENOENT == if "No such file or directory" return end
+    errno DARWIN_ERRNO.ESRCH == if "No such process" return end
+    errno DARWIN_ERRNO.EFAULT == if "Bad address" return end
+    errno DARWIN_ERRNO.EINTR == if "Interrupted system call" return end
+    errno DARWIN_ERRNO.EIO == if "Input/output error" return end
+    errno DARWIN_ERRNO.EBADF == if "Bad file descriptor" return end
     "Unknown error" return
 end
 
 // ---  Syscall Wrappers ---
 // These are the preferred way to make syscalls.
 // Terminates the current process. Does not return.
-pub no_return func void sc_exit[int exit_code] exit_code DARWIN_SYSCALL_EXIT syscall1 drop end
+pub no_return func void sc_exit[int exit_code] exit_code DARWIN_SYSCALL_CODE.EXIT syscall1 drop end
 
 // Reads from a file descriptor.
 // fd: file descriptor, buf: buffer pointer, count: number of bytes to read
 // Returns number of bytes read, 0 on EOF, or -1 on error.
-pub func int sc_read[fd_t fd, CStr buf, int count] fd buf count DARWIN_SYSCALL_READ syscall3 end
+pub func int sc_read[fd_t fd, CStr buf, int count] fd buf count DARWIN_SYSCALL_CODE.READ syscall3 end
 
 // Writes to a file descriptor.
 // fd: file descriptor, buf: buffer pointer, count: number of bytes to write
 // Returns number of bytes written, or -1 on error.
-pub func int sc_write[fd_t fd, CStr buf, int count] fd buf count DARWIN_SYSCALL_WRITE syscall3 end
+pub func int sc_write[fd_t fd, CStr buf, int count] fd buf count DARWIN_SYSCALL_CODE.WRITE syscall3 end
 
 // Opens a file.
 // path: pathname pointer, flags: open flags (O_RDONLY, etc.), mode: file permissions (if O_CREAT)
 // Returns file descriptor, or -1 on error.
-pub func int sc_open[CStr path, int flags, int mode] path flags mode DARWIN_SYSCALL_OPEN syscall3 end
+pub func int sc_open[CStr path, int flags, int mode] path flags mode DARWIN_SYSCALL_CODE.OPEN syscall3 end
 
 // Closes a file descriptor.
-pub func int sc_close[fd_t fd] fd DARWIN_SYSCALL_CLOSE syscall1 end
+pub func int sc_close[fd_t fd] fd DARWIN_SYSCALL_CODE.CLOSE syscall1 end
 
 // Creates a new process. Returns 0 to child, PID to parent, or -1 on error.
 //
 // WARNING: on Darwin (arm64) this raw system call returns the PID of the child
 // in the child process itself (instead of 0 as POSIX requires), so a child is
-// not able to detect that it is a child. Use the libc `fork` instead
-// (see `std/os/process.gof`).
-pub func int sc_fork[] DARWIN_SYSCALL_FORK syscall0 end
+// not able to detect that it is a child by the return value only.
+// Use `proc_is_child` (see `std/os/process.gof`) to detect a child process.
+//
+// NOTE: the raw system call does not perform the bookkeeping which the libc
+// `fork` does (TLS/stdio state of the child), so the child process must not
+// use any libc function (e.g `printf` or `malloc`) after the fork.
+pub func int sc_fork[] DARWIN_SYSCALL_CODE.FORK syscall0 end
 
 // Get PID of current process
-pub func int sc_getpid[] DARWIN_SYSCALL_GETPID syscall0 end
+pub func int sc_getpid[] DARWIN_SYSCALL_CODE.GETPID syscall0 end
 
 // Get PID of parent process
-pub func int sc_getppid[] DARWIN_SYSCALL_GETPPID syscall0 end
+pub func int sc_getppid[] DARWIN_SYSCALL_CODE.GETPPID syscall0 end
 
 // Abort current process execution (process suicide) and reincarnation as specified executable
 // Does not returns anything unless no errors occurred, otherwise always returns -1
-pub func int sc_execve[CStr pathname, sc_argvp argv, sc_envp envp] pathname argv envp DARWIN_SYSCALL_EXECVE syscall3 end
+pub func int sc_execve[CStr pathname, sc_argvp argv, sc_envp envp] pathname argv envp DARWIN_SYSCALL_CODE.EXECVE syscall3 end
 
 // Accept pending connections on given socket and return client socket
-pub func int sc_accept[int socket, *sockaddr_in address, *int address_len] socket address address_len DARWIN_SYSCALL_ACCEPT syscall3 end
+pub func int sc_accept[int socket, *sockaddr_in address, *int address_len] socket address address_len DARWIN_SYSCALL_CODE.ACCEPT syscall3 end
 
 // Creates an socket FD
 // [domain,type,protocol]
-pub func fd_t sc_socket[int domain,int type_,int protocol] domain type_ protocol DARWIN_SYSCALL_SOCKET syscall3 end
+pub func fd_t sc_socket[int domain,int type_,int protocol] domain type_ protocol DARWIN_SYSCALL_CODE.SOCKET syscall3 end
 
 // Bind given socket to given address
-pub func int sc_bind[fd_t socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_BIND syscall3 end
+pub func int sc_bind[fd_t socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_CODE.BIND syscall3 end
 
 // Connects a socket to the given address
-pub func int sc_connect[fd_t socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_CONNECT syscall3 end
+pub func int sc_connect[fd_t socket, *sockaddr_in address, int address_len] socket address address_len DARWIN_SYSCALL_CODE.CONNECT syscall3 end
 
 // Listen to an socket with specified backlog
-pub func int sc_listen[fd_t socket, int backlog] socket backlog DARWIN_SYSCALL_LISTEN syscall2 end
+pub func int sc_listen[fd_t socket, int backlog] socket backlog DARWIN_SYSCALL_CODE.LISTEN syscall2 end
 
 // Get current time of day
 // Notice that timezone usage is discouraged so pass NULL always
-pub func void sc_gettimeofday[*timeval tv, *timezone tz] tv tz DARWIN_SYSCALL_GETTIMEOFDAY syscall2 drop end
+pub func void sc_gettimeofday[*timeval tv, *timezone tz] tv tz DARWIN_SYSCALL_CODE.GETTIMEOFDAY syscall2 drop end
 
 // Await given descriptors to be ready
 // Signature: [nfds, readfds, writefds, exceptfds, timeout]
 pub func int sc_select[int nfds, *void readfds, *void writefds, *void exceptfds, *timeval timeout]
-    nfds readfds writefds exceptfds timeout DARWIN_SYSCALL_SELECT syscall5 
+    nfds readfds writefds exceptfds timeout DARWIN_SYSCALL_CODE.SELECT syscall5 
 end
 
 // Map memory (allocate it)
 // Signature: [address, size, prot, flags, fd, offset]
 // TODO!: Return at the end as parser/lexer eats some identifiers...
 pub func *void sc_mmap[int address, int size, int prot, int flags, int fd, int offset] 
-    address size prot flags fd offset DARWIN_SYSCALL_MMAP syscall6 
+    address size prot flags fd offset DARWIN_SYSCALL_CODE.MMAP syscall6 
     typecast *void return 
 end
 
 pub func int sc_lseek[fd_t fd, int offset, int whence]
-    fd offset whence DARWIN_SYSCALL_LSEEK syscall3
+    fd offset whence DARWIN_SYSCALL_CODE.LSEEK syscall3
 end
 
 pub func int sc_munmap[*void addr, int length]
-    addr length DARWIN_SYSCALL_MUNMAP syscall2
+    addr length DARWIN_SYSCALL_CODE.MUNMAP syscall2
 end
 
 pub func int sc_setsockopt[fd_t fd, int level, int optname, *void optval, int optlen]
-    fd level optname optval optlen DARWIN_SYSCALL_SETSOCKOPT syscall5
+    fd level optname optval optlen DARWIN_SYSCALL_CODE.SETSOCKOPT syscall5
+end
+
+// Waits for a child process to change its state (e.g terminated or stopped).
+// Signature: [pid, status_ptr, options, rusage_ptr]
+// pid: process to wait for (-1 means "any child process")
+// status_ptr: where to place the wait status (may be NULL)
+// options: wait options (0 for default behaviour)
+// Returns PID of the changed child process, or a negative errno on error.
+pub func int sc_waitpid[int pid, *i32 status, int options]
+    pid status options 0 DARWIN_SYSCALL_CODE.WAIT4 syscall4
+end
+
+// Duplicates a file descriptor.
+// Signature: [old_fd, new_fd]
+// Makes `new_fd` refer to the same object as `old_fd`.
+// Returns `new_fd` on success, or a negative errno on error.
+pub func int sc_dup2[int old_fd, int new_fd]
+    old_fd new_fd DARWIN_SYSCALL_CODE.DUP2 syscall2
+end
+
+// Sends a signal to a process.
+// Signature: [pid, signal]
+// Returns 0 on success, or a negative errno on error.
+pub func int sc_kill[int pid, int signal]
+    pid signal DARWIN_SYSCALL_CODE.KILL syscall2
 end
 
 // Gracefully shutdown a socket connection.
 // Discards the not-yet-read data and sends a FIN to the peer, so the connection
 // is closed cleanly (a plain close of a socket with pending data sends a RST).
 pub func int sc_shutdown[fd_t fd, int how]
-    fd how DARWIN_SYSCALL_SHUTDOWN syscall2
+    fd how DARWIN_SYSCALL_CODE.SHUTDOWN syscall2
 end
+
+// Creates a pipe (a unidirectional data channel).
+// Signature: [fds_ptr]
+// fds_ptr: where to place two file descriptors (read end, then write end)
+// Returns 0 on success, or a negative errno on error.
+pub func int sc_pipe[*i32 fds]
+    fds DARWIN_SYSCALL_CODE.PIPE syscall1
+end
+
