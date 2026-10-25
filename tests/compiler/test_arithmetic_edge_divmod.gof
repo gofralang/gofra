@@ -1,0 +1,13 @@
+#include "std"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    7 2 / 3 != if 1 return end
+    -7 2 / -3 != if 2 return end
+    7 -2 / -3 != if 3 return end
+    7 2 % 1 != if 4 return end
+    -7 2 % -1 != if 5 return end
+    7 -2 % 1 != if 6 return end
+    0 return
+end

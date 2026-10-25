@@ -1,0 +1,16 @@
+#include "std"
+#include "std/memory/utils.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+var arr int[4]
+
+func int main[]
+    &arr[0] 4 7 memset
+
+    arr[0] 7 != if 1 return end
+    arr[1] 7 != if 2 return end
+    arr[2] 7 != if 3 return end
+    arr[3] 7 != if 4 return end
+    0 return
+end

@@ -1,0 +1,7 @@
+#include "std"
+
+#define TESTKIT_EXPECTED_STDOUT "0xa\n"
+
+func void main[]
+    STD_OUT 10 true false print_int64_hex_fd "\n" print
+end

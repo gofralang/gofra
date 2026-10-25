@@ -1,0 +1,6 @@
+#define TESTKIT_EXPECT_COMPILE_ERROR "Encountered an unknown identifier"
+
+func int main[]
+    unknown_identifier drop
+    0 return
+end

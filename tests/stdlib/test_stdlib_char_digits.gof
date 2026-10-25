@@ -1,0 +1,15 @@
+#include "std"
+#include "std/char.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    '7' typecast char is_digit if
+    else 1 return end
+
+    'a' typecast char is_digit if 2 return end
+
+    '0' typecast char digit_to_int 0 != if 3 return end
+    '9' typecast char digit_to_int 9 != if 4 return end
+    0 return
+end

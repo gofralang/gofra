@@ -1,0 +1,17 @@
+#include "std"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+type F func int _[int x]
+
+func int main[]
+    var f F;
+
+    &f lambda func int inc[int x]
+        x 1 + return
+    end !<
+
+    6 call f
+    7 != if 1 return end
+    0 return
+end

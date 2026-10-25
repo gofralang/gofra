@@ -1,0 +1,10 @@
+#include "std"
+#include "std/assert.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    1 1 "ok" assert
+    42 42 "ok2" assert
+    0 return
+end

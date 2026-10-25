@@ -1,0 +1,13 @@
+/// argv smoke test
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+#define TESTKIT_EXPECTED_ARGS "a b c"
+
+func int main[int argc, **char argv]
+    argc 4 != if 1 return end
+
+    argv[0] typecast int 0 == if 2 return end
+    argv[1] typecast int 0 == if 3 return end
+
+    0 return
+end

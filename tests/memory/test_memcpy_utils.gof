@@ -1,0 +1,17 @@
+#include "std"
+#include "std/memory/utils.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+var src char[4] = ['A', 'B', 'C', 'D']
+var dst char[4]
+
+func int main[]
+    &dst[0] &src[0] 4 memcpy drop
+
+    dst[0] typecast int 'A' != if 1 return end
+    dst[1] typecast int 'B' != if 2 return end
+    dst[2] typecast int 'C' != if 3 return end
+    dst[3] typecast int 'D' != if 4 return end
+    0 return
+end

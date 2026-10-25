@@ -1,0 +1,20 @@
+#include "std"
+#include "std/functools.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+var total int = 0
+var values = [1, 2, 3, 4]
+
+func void add_item[int item]
+    &total total item + !<
+end
+
+func int main[]
+    &values 4
+    pointer_of_proc add_item
+    call i_map
+
+    total 10 != if 1 return end
+    0 return
+end

@@ -1,0 +1,13 @@
+#include "std"
+#include "std/functools.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 72
+
+var x = [3, 2, 3, 4]
+
+func int main[]
+    &x 4
+    pointer_of_proc i_product
+    1
+    call i_reduce
+end

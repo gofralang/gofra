@@ -1,0 +1,10 @@
+#define TESTKIT_EXPECT_COMPILE_ERROR "Not enough function arguments"
+
+func int foo[int a, int b]
+    a b + return
+end
+
+func int main[]
+    1 call foo drop
+    0 return
+end

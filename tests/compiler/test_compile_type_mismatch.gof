@@ -1,0 +1,6 @@
+#define TESTKIT_EXPECT_COMPILE_ERROR "Expected [IntegerType] but got Bool"
+
+func int main[]
+    true 1 + drop
+    0 return
+end

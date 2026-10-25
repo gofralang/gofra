@@ -1,0 +1,15 @@
+#include "std"
+#include "std/math.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    -5 sign -1 != if 1 return end
+    0 sign 0 != if 2 return end
+    7 sign 1 != if 3 return end
+
+    -1 5 wrap 4 != if 4 return end
+    5 5 wrap 0 != if 5 return end
+    3 5 wrap 3 != if 6 return end
+    0 return
+end

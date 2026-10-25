@@ -1,0 +1,31 @@
+#include "std"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    var bad int = 0
+
+    false if
+        &bad 1 !<
+    end
+
+    while false do
+        &bad 2 !<
+    end
+
+    for j in 0..0 do
+        &bad 3 !<
+    end
+
+    true if
+        false if
+            &bad 4 !<
+        end
+    else
+        &bad 5 !<
+    end
+
+    bad 0 != if 6 return end
+
+    0 return
+end

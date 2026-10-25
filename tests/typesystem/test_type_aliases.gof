@@ -1,0 +1,13 @@
+#include "std"
+#include "std/types.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    var arr Array{T = int, N = 4}
+    var ptr Pointer{T = int}
+
+    &ptr &arr[0] !<
+    ptr typecast int &arr[0] typecast int != if 1 return end
+    0 return
+end

@@ -1,0 +1,13 @@
+#include "std"
+#include "std/functools.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 12
+
+var x = [3, 2, 3, 4]
+
+func int main[]
+    &x 4
+    pointer_of_proc i_sum
+    0
+    call i_reduce
+end

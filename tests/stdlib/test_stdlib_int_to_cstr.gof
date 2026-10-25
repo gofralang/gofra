@@ -1,0 +1,16 @@
+#include "std"
+#include "std/string.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    var c CStr
+
+    &c 123 call int_to_cstr !<
+
+    c[0] typecast int '1' != if 1 return end
+    c[1] typecast int '2' != if 2 return end
+    c[2] typecast int '3' != if 3 return end
+    c[3] typecast int '\0' != if 4 return end
+    0 return
+end

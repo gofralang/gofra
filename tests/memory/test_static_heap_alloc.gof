@@ -1,0 +1,14 @@
+#include "std"
+#include "std/memory/static_heap.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    var p *int
+
+    &p 8 call static_heap_alloc typecast *int !<
+    &p ?> 42 !<
+
+    p ?> 42 != if 1 return end
+    0 return
+end

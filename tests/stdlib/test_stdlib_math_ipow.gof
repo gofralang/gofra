@@ -1,0 +1,12 @@
+#include "std"
+#include "std/math.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    2 6 ipow 64 != if 1 return end
+    4 3 ipow 64 != if 2 return end
+    5 0 ipow 1 != if 3 return end
+    -2 3 ipow -8 != if 4 return end
+    0 return
+end

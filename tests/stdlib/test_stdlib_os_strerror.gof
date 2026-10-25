@@ -1,0 +1,9 @@
+#include "std"
+#include "std/os/error.gof"
+
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+
+func int main[]
+    0 os_strerror typecast int 0 == if 1 return end
+    0 return
+end
