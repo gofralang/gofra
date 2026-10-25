@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from libgofra.codegen.backends.aarch64.abi_call_convention import (
+    aarch64_abi_argument_target_registers,
     load_return_value_from_stack_into_abi_registers,
 )
 from libgofra.codegen.backends.aarch64.frame import (
@@ -92,9 +93,18 @@ def function_begin_with_prologue(  # noqa: PLR0913
     if parameters and not is_naked:
         # Naked function has no prologue, so arguments stay in registers (per C ABI)
         # and the naked body reads them directly from there
-        registers = abi.arguments_64bit_registers[: len(parameters)]
-        for register in registers:
-            push_register_onto_stack(writer, register)
+        # Mapping must match ABI argument register allocation.
+        param_sources = aarch64_abi_argument_target_registers(abi, parameters)
+
+        fp_registers = set(getattr(abi, "fp_arguments_registers", ()))
+        for src in param_sources:
+            if src is None:
+                continue
+            if src in fp_registers:
+                writer.instruction(f"fmov X9, {src}")
+                push_register_onto_stack(writer, "X9")
+            else:
+                push_register_onto_stack(writer, src)
 
     if not local_variables:
         return

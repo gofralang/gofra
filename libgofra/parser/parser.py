@@ -3,7 +3,6 @@ from __future__ import annotations
 from difflib import get_close_matches
 from typing import TYPE_CHECKING, assert_never
 
-from libgofra.feature_flags import FEATURE_ALLOW_FPU
 from libgofra.hir.function import Function
 from libgofra.hir.operator import FunctionCallOperand
 from libgofra.hir.variable import Variable
@@ -162,9 +161,6 @@ def _consume_token_for_parsing(token: Token, context: ParserContext) -> None:  #
         case TokenType.INTEGER | TokenType.CHARACTER:
             return push_integer_operator(context, token)
         case TokenType.FLOAT:
-            if not FEATURE_ALLOW_FPU:
-                msg = "FPU is disabled as feature for being in unstable test stage, try enable `FEATURE_ALLOW_FPU` to access FP."
-                raise ValueError(msg)
             return push_float_operator(context, token)
         case TokenType.STRING:
             return push_string_operator(context, token)

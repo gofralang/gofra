@@ -436,11 +436,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             if function.has_return_value():
                 scope.push_types(function.return_type)
 
-        case (
-            OperatorType.ARITHMETIC_MULTIPLY
-            | OperatorType.ARITHMETIC_DIVIDE
-            | OperatorType.ARITHMETIC_MODULUS
-        ):
+        case OperatorType.ARITHMETIC_MODULUS:
             # Math arithmetics operates only on integers
             # so no pointers/booleans/etc are allowed inside these intrinsics
 
@@ -463,7 +459,30 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                     operator=operator,
                 )
 
+            operator.tc_meta = I64Type()
             scope.push_types(I64Type())
+        case OperatorType.ARITHMETIC_MULTIPLY | OperatorType.ARITHMETIC_DIVIDE:
+            scope.raise_for_enough_arguments(
+                operator,
+                required_args=2,
+            )
+            b, a = (
+                scope.pop_type_from_stack(),
+                scope.pop_type_from_stack(),
+            )
+
+            if isinstance(a, F64Type) and isinstance(b, F64Type):
+                operator.tc_meta = F64Type()
+                scope.push_types(F64Type())
+            elif isinstance(a, IntegerType) and isinstance(b, IntegerType):
+                operator.tc_meta = I64Type()
+                scope.push_types(I64Type())
+            else:
+                raise TypecheckInvalidBinaryMathArithmeticsError(
+                    actual_lhs_type=a,
+                    actual_rhs_type=b,
+                    operator=operator,
+                )
         case OperatorType.ARITHMETIC_MINUS | OperatorType.ARITHMETIC_PLUS:
             scope.raise_for_enough_arguments(
                 operator,
@@ -504,6 +523,11 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                     operator=operator,
                 )
 
+            if isinstance(a, F64Type) and isinstance(b, F64Type):
+                operator.tc_meta = F64Type()
+                scope.push_types(F64Type())
+                return None
+
             # Integer math
             scope.push_types(b, a)
             scope.raise_for_operator_arguments(
@@ -511,6 +535,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 (IntegerType,),
                 (IntegerType,),
             )
+            operator.tc_meta = I64Type()
             scope.push_types(I64Type())
 
         case OperatorType.MEMORY_VARIABLE_WRITE:
@@ -518,7 +543,15 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             scope.raise_for_operator_arguments(
                 operator,
                 (PointerType,),
-                (I64Type, PointerType, BoolType, CharType, FunctionType, EnumType),
+                (
+                    I64Type,
+                    PointerType,
+                    BoolType,
+                    CharType,
+                    FunctionType,
+                    EnumType,
+                    F64Type,
+                ),
             )
             value_holder_type = mut_scope[-2]
             store_type = mut_scope[-1]
@@ -585,11 +618,18 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             argument_type = scope.pop_type_from_stack()
             scope.push_types(argument_type, argument_type)
         case OperatorType.COMPARE_EQUALS | OperatorType.COMPARE_NOT_EQUALS:
-            # TODO: Generic on same type (i16 <-> i32 error)
+            scope.raise_for_enough_arguments(operator, required_args=2)
+            b = scope.types[-1]
+            a = scope.types[-2]
+            operator.tc_meta = (
+                F64Type()
+                if (isinstance(a, F64Type) and isinstance(b, F64Type))
+                else I64Type()
+            )
             scope.raise_for_operator_arguments(
                 operator,
-                (IntegerType, BoolType),
-                (IntegerType, BoolType),
+                (IntegerType, BoolType, F64Type),
+                (IntegerType, BoolType, F64Type),
             )
             scope.push_types(BoolType())
         case (
@@ -598,11 +638,18 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
             | OperatorType.COMPARE_GREATER_EQUALS
             | OperatorType.COMPARE_GREATER
         ):
-            # TODO(@kirillzhosul): Generic comparison
+            scope.raise_for_enough_arguments(operator, required_args=2)
+            b = scope.types[-1]
+            a = scope.types[-2]
+            operator.tc_meta = (
+                F64Type()
+                if (isinstance(a, F64Type) and isinstance(b, F64Type))
+                else I64Type()
+            )
             scope.raise_for_operator_arguments(
                 operator,
-                (IntegerType,),
-                (IntegerType,),
+                (IntegerType, F64Type),
+                (IntegerType, F64Type),
             )
             scope.push_types(BoolType())
         case OperatorType.STACK_DROP:
@@ -654,6 +701,7 @@ def _emulate_scope_unconditional_hir_operator(  # noqa: PLR0913, PLR0917
                 (IntegerType,),
                 (IntegerType,),
             )
+            operator.tc_meta = I64Type()
             scope.push_types(I64Type())
 
         case OperatorType.STATIC_TYPE_CAST:

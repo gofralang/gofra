@@ -1,6 +1,7 @@
 from libgofra.hir.operator import TypecastMeta
 from libgofra.types import BoolType, PointerType, Type
 from libgofra.types.primitive import CharType
+from libgofra.types.primitive.floats import F64Type
 from libgofra.types.primitive.integers import IntegerType
 
 
@@ -44,5 +45,14 @@ def resolve_type_cast_to_kind(source: Type, target: Type) -> TypecastMeta.Kind |
             return TypecastMeta.Kind.TRUNCATE  # i64 -> i8
         if a.size_in_bytes < b.size_in_bytes:
             return TypecastMeta.Kind.EXTEND  # i8 -> i64
+        return TypecastMeta.Kind.REINTERPRET
+
+    if isinstance(a, IntegerType) and isinstance(b, F64Type):
+        return TypecastMeta.Kind.INT_TO_FLOAT
+    if isinstance(a, F64Type) and isinstance(b, (IntegerType, CharType)):
+        return TypecastMeta.Kind.FLOAT_TO_INT
+    if isinstance(a, F64Type) and isinstance(b, BoolType):
+        return TypecastMeta.Kind.NORMALIZE_BOOL
+    if isinstance(a, F64Type) and isinstance(b, F64Type):
         return TypecastMeta.Kind.REINTERPRET
     return None

@@ -4,6 +4,7 @@ from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,
     CharacterLiteral,
+    FloatLiteral,
     IntegerLiteral,
     Literal_T,
     StringLiteral,
@@ -16,11 +17,12 @@ from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.boolean import BoolType
 from libgofra.types.primitive.character import CharType
+from libgofra.types.primitive.floats import F64Type
 from libgofra.types.primitive.integers import I64Type
 from libgofra.types.registry import TypeRegistry
 
 
-def infer_type_from_literal(literal: Literal_T, types: TypeRegistry) -> Type:
+def infer_type_from_literal(literal: Literal_T, types: TypeRegistry) -> Type:  # noqa: PLR0911
     """Infer a type of given literal from its syntactic form.
 
     Types are inferred bottom-up: a literal has a type by its own shape, and
@@ -29,6 +31,8 @@ def infer_type_from_literal(literal: Literal_T, types: TypeRegistry) -> Type:
     match literal:
         case IntegerLiteral():
             return I64Type()
+        case FloatLiteral():
+            return F64Type()
         case CharacterLiteral():
             return CharType()
         case StringLiteral():

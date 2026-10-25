@@ -4,6 +4,7 @@ from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,
     CharacterLiteral,
+    FloatLiteral,
     IntegerLiteral,
     Literal_T,
     StringLiteral,
@@ -23,6 +24,14 @@ def parse_integer_literal(context: ParserContext) -> IntegerLiteral:
 
     assert isinstance(token.value, int)
     return IntegerLiteral(token, token.value)
+
+
+def parse_float_literal(context: ParserContext) -> FloatLiteral:
+    context.expect_token(TokenType.FLOAT)
+    token = context.next_token()
+
+    assert isinstance(token.value, float)
+    return FloatLiteral(token, token.value)
 
 
 def parse_array_literal(context: ParserContext) -> ArrayLiteral:
@@ -121,10 +130,12 @@ def parse_string_literal(context: ParserContext) -> StringLiteral:
     return StringLiteral(token=token, value=string_raw)
 
 
-def parse_any_literal(context: ParserContext) -> Literal_T:
+def parse_any_literal(context: ParserContext) -> Literal_T:  # noqa: PLR0911
     token = context.peek_token()
     if token.type == TokenType.INTEGER:
         return parse_integer_literal(context)
+    if token.type == TokenType.FLOAT:
+        return parse_float_literal(context)
     if token.type == TokenType.CHARACTER:
         return parse_character_literal(context)
     if token.type == TokenType.LBRACKET:

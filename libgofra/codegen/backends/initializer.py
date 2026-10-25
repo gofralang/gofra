@@ -2,10 +2,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import cast
 
+from libgofra.codegen.float_bits import float_to_bits
 from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,
     CharacterLiteral,
+    FloatLiteral,
     IntegerLiteral,
     Literal_T,
     StringLiteral,
@@ -13,6 +15,7 @@ from libgofra.hir.literals import (
 )
 from libgofra.types import ArrayType, BoolType, CharType, PointerType, Type
 from libgofra.types.composite import StringType, StructureType
+from libgofra.types.primitive.floats import F64Type
 from libgofra.types.primitive.integers import I64Type, IntegerType
 
 
@@ -73,7 +76,7 @@ type T_AnyVariableInitializer = (
 _ = VariableIntSliceInitializerValue
 
 
-def literal_to_codegen_initializer(
+def literal_to_codegen_initializer(  # noqa: PLR0911
     literal: Literal_T,
     target_type: Type,
 ) -> T_AnyVariableInitializer:
@@ -85,22 +88,25 @@ def literal_to_codegen_initializer(
             return v
         case (BooleanLiteral(value=v), BoolType()):
             return int(v)
+        case (FloatLiteral(value=v), F64Type()):
+                        return float_to_bits(v)
         case (StringLiteral(value=s), PointerType(points_to=StringType())):
             return VariableStringPtrInitializerValue(string=s)
 
         case ArrayLiteral(elements=elems, default=filler), ArrayType():
             flat_el_t = target_type.flatten().element_type
             match flat_el_t:
-                case I64Type():
+                case I64Type() | F64Type():
+                    element_t = I64Type() if isinstance(flat_el_t, I64Type) else F64Type()
                     int_values = [
-                        literal_to_codegen_initializer(e, I64Type()) for e in elems
+                        literal_to_codegen_initializer(e, element_t) for e in elems
                     ]
                     if not all(isinstance(v, int) for v in int_values):
                         msg = "Non-int array literal not supported by codegen"
                         raise NotImplementedError(msg)
                     int_values = cast("list[int]", int_values)
                     default = (
-                        literal_to_codegen_initializer(filler, I64Type())
+                        literal_to_codegen_initializer(filler, element_t)
                         if filler
                         else 0
                     )

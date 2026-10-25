@@ -1,7 +1,7 @@
 """AAPCS64 call convention must work for Apple AAPCS64/System-V AAPCS64."""
 
 from collections.abc import Sequence
-from typing import Literal
+from typing import Literal, cast
 
 from libgofra.codegen.abi import AARCH64ABI
 from libgofra.codegen.backends.aarch64.primitive_instructions import (
@@ -17,6 +17,30 @@ from libgofra.codegen.backends.aarch64.registers import (
 )
 from libgofra.codegen.backends.aarch64.writer import WriterProtocol
 from libgofra.types._base import Type
+
+
+def aarch64_abi_argument_target_registers(
+    abi: AARCH64ABI,
+    parameters: Sequence[Type],
+) -> list[AARCH64_GP_REGISTERS | None]:
+    """Allocate (up to 8) integer and (up to 8) FP register names for parameters."""
+    targets: list[AARCH64_GP_REGISTERS | None] = []
+    int_i = 0
+    fp_i = 0
+    for param_type in parameters:
+        if getattr(param_type, "is_fp", False):
+            if fp_i < len(getattr(abi, "fp_arguments_registers", ())):
+                targets.append(cast("AARCH64_GP_REGISTERS", abi.fp_arguments_registers[fp_i]))
+            else:
+                targets.append(None)
+            fp_i += 1
+        else:
+            if int_i < len(abi.arguments_64bit_registers):
+                targets.append(abi.arguments_64bit_registers[int_i])
+            else:
+                targets.append(None)
+            int_i += 1
+    return targets
 
 
 def function_abi_call_by_symbol(  # noqa: PLR0913
@@ -72,9 +96,9 @@ def load_return_value_from_stack_into_abi_registers(
 ) -> None:
     """Emit code that prepares return value by acquiring it from stack and storing into ABI return value register."""
     if t.is_fp:
-        # TODO(@kirillzhosul): Proper return value for floating point types (S0, D0, V0)
-        msg = f"FP return value not implemented in codegen ({t})!"
-        raise NotImplementedError(msg)
+        pop_cells_from_stack_into_registers(writer, "X0")
+        writer.instruction(f"fmov {abi.retval_fp_register}, X0")
+        return None
 
     if t.size_in_bytes <= 0:
         return None  # E.g void, has nothing to return
@@ -126,48 +150,30 @@ def _load_arguments_for_abi_call_into_registers_from_stack(
     if not parameters:
         return  # Has nothing to pass (e.g empty parameter signature)
 
-    # How much params we can pass by registers
-    max_abi_registers = len(abi.arguments_64bit_registers)
+    targets = aarch64_abi_argument_target_registers(abi, parameters)
 
-    # Wt/Xt registers for non fp/vector arguments
-    int_abi_registers = abi.arguments_64bit_registers[: len(parameters)]
-
-    # Reversed pop from stack
-    # stack: x y z
-    # load in order: z y x (R2, R1, R0)
-    # TODO(@kirillzhosul): Possible if we stick with stack approach, define own call-abi to not perform abi call preparation for internal functions (unlike c-ffi)
     registers_to_load: list[AARCH64_GP_REGISTERS] = []
-    for register, param_type in zip(
-        reversed(int_abi_registers),
-        reversed(parameters[:max_abi_registers]),
-        strict=True,
-    ):
-        if param_type.is_fp:
-            # TODO(@kirillzhosul): Proper return value for floating point types (S0, D0, V0)
-            msg = f"FP argument passing not implemented in codegen ({param_type})!"
-            raise NotImplementedError(msg)
+    for target, param_type in zip(reversed(targets), reversed(parameters), strict=True):
+        if target is None:
+            continue
+        if getattr(param_type, "is_fp", False):
+            registers_to_load.append(target)
+            continue
 
         assert param_type.size_in_bytes > 0
         if param_type.size_in_bytes <= 4:
-            # 32bit type register (e.g char, bool)
-            # truncate to lower register
-            registers_to_load.append(truncate_register_to_32bit_version(register))
+            registers_to_load.append(truncate_register_to_32bit_version(target))
             continue
         if param_type.size_in_bytes <= 8:
-            # Full 64bit register - e.g full int, pointer
-            registers_to_load.append(register)
+            registers_to_load.append(target)
             continue
         if param_type.size_in_bytes <= 16:
-            # TODO(@kirillzhosul): Introduce register spill for arguments
             msg = f"Composite param register spill required for param type {param_type}! Not implemented in AARCH64 codegen!"
             raise NotImplementedError(msg)
 
-        # TODO(@kirillzhosul): Introduce indirect allocation for arguments
         msg = f"Indirect allocation required for param type {param_type}! Not implemented in AARCH64 codegen!"
         raise NotImplementedError(msg)
 
-    # Leftover arguments already spilled on stack
-    # callee will treat these by itself
     pop_cells_from_stack_into_registers(writer, *registers_to_load)
 
 
@@ -178,9 +184,8 @@ def _load_return_value_from_abi_registers_into_stack(
 ) -> None:
     """Emit code that loads return value by acquiring it from subroutine ABI call registers and spilling onto stack."""
     if t.is_fp:
-        # TODO(@kirillzhosul): Proper return value for floating point types (S0, D0, V0)
-        msg = f"FP return value not implemented in codegen ({t})!"
-        raise NotImplementedError(msg)
+        writer.instruction(f"fmov X0, {abi.retval_fp_register}")
+        return push_register_onto_stack(writer, "X0")
 
     if t.size_in_bytes <= 0:
         return None  # E.g void, has nothing in return

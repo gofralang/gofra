@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Literal, cast
 
+from libgofra.codegen.float_bits import float_to_bits
 from libgofra.exceptions import GofraError
 from libgofra.hir.operator import OperatorType
 
@@ -74,7 +75,7 @@ def store_integer_into_register(
 
 
 def push_float_onto_stack(writer: WriterProtocol, value: float) -> None:
-    raise NotImplementedError
+    push_integer_onto_stack(writer, float_to_bits(value))
 
 
 def push_integer_onto_stack(
@@ -171,8 +172,43 @@ def store_into_memory_from_stack_arguments(
 def perform_operation_onto_stack(
     writer: WriterProtocol,
     operation: OperatorType,
+    *,
+    is_fp: bool = False,
 ) -> None:
     """Perform *math* operation onto stack (pop arguments and push back result)."""
+    fp_arithmetic = {
+        OperatorType.ARITHMETIC_PLUS: "fadd",
+        OperatorType.ARITHMETIC_MINUS: "fsub",
+        OperatorType.ARITHMETIC_MULTIPLY: "fmul",
+        OperatorType.ARITHMETIC_DIVIDE: "fdiv",
+    }
+    fp_comparison = {
+        OperatorType.COMPARE_EQUALS: "eq",
+        OperatorType.COMPARE_NOT_EQUALS: "ne",
+        OperatorType.COMPARE_LESS: "lt",
+        OperatorType.COMPARE_GREATER: "gt",
+        OperatorType.COMPARE_LESS_EQUALS: "le",
+        OperatorType.COMPARE_GREATER_EQUALS: "ge",
+    }
+
+    if is_fp and operation in fp_arithmetic:
+        pop_cells_from_stack_into_registers(writer, "X0", "X1")
+        writer.instruction("fmov D0, X0")
+        writer.instruction("fmov D1, X1")
+        writer.instruction(f"{fp_arithmetic[operation]} D0, D1, D0")
+        writer.instruction("fmov X0, D0")
+        push_register_onto_stack(writer, "X0")
+        return
+
+    if is_fp and operation in fp_comparison:
+        pop_cells_from_stack_into_registers(writer, "X0", "X1")
+        writer.instruction("fmov D0, X1")
+        writer.instruction("fmov D1, X0")
+        writer.instruction("fcmp D0, D1")
+        writer.instruction(f"cset X0, {fp_comparison[operation]}")
+        push_register_onto_stack(writer, "X0")
+        return
+
     registers = ("X0", "X1")
     if operation == OperatorType.LOGICAL_NOT:
         registers = ("X0",)

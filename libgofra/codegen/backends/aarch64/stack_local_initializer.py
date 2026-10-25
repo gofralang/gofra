@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, assert_never
 from libgofra.codegen.backends.aarch64.primitive_instructions import (
     AddressingMode,
     get_address_of_label,
+    pop_cells_from_stack_into_registers,
+    push_integer_onto_stack,
 )
 from libgofra.codegen.backends.frame import build_local_variables_frame_offsets
 from libgofra.codegen.backends.initializer import (
@@ -81,7 +83,7 @@ def _write_initializer_for_stack_variable(
                 writer,
                 value,
                 flat.element_type,
-                offset=offset + flat.get_index_offset(i),
+                offset=offset - flat.get_index_offset(i),
             )
         return None
 
@@ -118,12 +120,14 @@ def _set_local_numeric_var_immediate(
     # - widths up to 4 bytes use the W registers / half-word access
     # - 8-byte values use the X0 registers
     is_hword = t.size_in_bytes <= 4
-    bit_count = 8 * t.size_in_bytes
     sr = ("XZR", "WZR")[is_hword] if value == 0 else ("X0", "W0")[is_hword]
 
     if sr in ("X0", "W0") and value != 0:
-        assert value.bit_count() <= bit_count
-        writer.instruction(f"mov {sr}, #{value}")
+        if value.bit_length() <= 16:
+            writer.instruction(f"mov {sr}, #{value}")
+        else:
+            push_integer_onto_stack(writer, value)
+            pop_cells_from_stack_into_registers(writer, "X0")
 
     # Frame slots which lay far from the frame pointer may not be addressable
     # by an immediate offset of the store instruction, so always compute the

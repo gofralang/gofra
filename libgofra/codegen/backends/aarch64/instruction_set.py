@@ -216,6 +216,16 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             if meta.kind == TypecastMeta.Kind.REINTERPRET:
                 return
             match meta.kind:
+                case TypecastMeta.Kind.INT_TO_FLOAT:
+                    pop_cells_from_stack_into_registers(writer, "X0")
+                    writer.instruction("scvtf D0, X0")
+                    writer.instruction("fmov X0, D0")
+                    push_register_onto_stack(writer, "X0")
+                case TypecastMeta.Kind.FLOAT_TO_INT:
+                    pop_cells_from_stack_into_registers(writer, "X0")
+                    writer.instruction("fmov D0, X0")
+                    writer.instruction("fcvtzs X0, D0")
+                    push_register_onto_stack(writer, "X0")
                 case TypecastMeta.Kind.EXTEND:
                     pop_cells_from_stack_into_registers(writer, "X0")
                     size = meta.a.size_in_bytes
@@ -305,6 +315,11 @@ def aarch64_operator_instructions(  # noqa: PLR0913, PLR0917
             perform_operation_onto_stack(
                 writer,
                 operation=operator.type,
+                is_fp=bool(
+                    operator.tc_meta is not None
+                    and isinstance(operator.tc_meta, Type)
+                    and getattr(operator.tc_meta, "is_fp", False),
+                ),
             )
         case OperatorType.SYSCALL:
             assert isinstance(operator.operand, int)

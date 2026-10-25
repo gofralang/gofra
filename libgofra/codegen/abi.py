@@ -30,9 +30,16 @@ class ABI[T](Protocol):
     # if an structure is more than 16 bytes then callee allocates an space and pass an pointer where this structure is located
     arguments_64bit_registers: Sequence[T]
 
+    # Registers used to pass floating point arguments (AAPCS64: D0..D7)
+    fp_arguments_registers: Sequence[T]
+
+    # Register used to return a single floating point value
+    retval_fp_register: T
+
     def is_register_clobbered_with_function_abi(self, r: T) -> bool:
         return (
             r in self.arguments_64bit_registers
+            or r in getattr(self, "fp_arguments_registers", ())
             or r in self.syscall_arguments_registers
             or r
             in (
@@ -43,6 +50,7 @@ class ABI[T](Protocol):
                 self.retval_composite_64bit_register,
                 self.retval_composite_32bit_register,
             )
+            or r == getattr(self, "retval_fp_register", None)
         )
 
 
@@ -81,6 +89,21 @@ class DarwinAARCH64ABI(AARCH64ABI):
             "X7",
         ],
     )
+
+    fp_arguments_registers: Sequence[AARCH64_GP_REGISTERS] = field(
+        default_factory=lambda: [
+            "D0",
+            "D1",
+            "D2",
+            "D3",
+            "D4",
+            "D5",
+            "D6",
+            "D7",
+        ],
+    )
+
+    retval_fp_register: AARCH64_GP_REGISTERS = field(default="D0")
 
     syscall_number_register = "X16"
     retval_primitive_64bit_register = "X0"

@@ -20,6 +20,7 @@ from libgofra.types.composite.slice import SliceType
 from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
 from libgofra.types.primitive.character import CharType
+from libgofra.types.primitive.floats import F64Type
 from libgofra.types.primitive.integers import I8Type, I16Type, I32Type, I64Type
 
 if TYPE_CHECKING:
@@ -89,7 +90,7 @@ def _write_static_segment_variable_initializer(
         target_type=variable.type,
     )
     match variable.type:
-        case CharType() | I64Type() | I32Type() | I16Type() | I8Type() | BoolType():
+        case CharType() | I64Type() | I32Type() | I16Type() | I8Type() | BoolType() | F64Type():
             assert isinstance(initializer, int)
             ddd = _get_ddd_for_type(variable.type)
             writer.label(symbol_name)

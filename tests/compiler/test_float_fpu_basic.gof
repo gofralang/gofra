@@ -1,0 +1,29 @@
+#define TESTKIT_EXPECTED_EXIT_CODE 0
+pub func float mixed[int a, float b, int c]
+    a typecast float b + c typecast float +
+    return
+end
+
+pub func int main[]
+    1.5 2.5 + typecast int 4 != if 1 return end
+    6.0 2.0 / typecast int 3 != if 2 return end
+    5.0 2.0 - typecast int 3 != if 3 return end
+    1.0 2.0 * typecast int 2 != if 4 return end
+
+    var x float = 2.5
+    x typecast int 2 != if 5 return end
+
+    &x 4.75 !<
+    x typecast int 4 != if 6 return end
+
+    2 1.5 3 call mixed typecast int 6 != if 7 return end
+
+    1.5 1.5 == if
+    else 8 return end
+
+    var arr = [1.25, 2.5]
+    arr[0] typecast int 1 != if 9 return end
+    arr[1] typecast int 2 != if 10 return end
+
+    0 return
+end

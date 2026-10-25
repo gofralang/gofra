@@ -18,6 +18,10 @@ class IntegerLiteral(BaseLiteral):
 
 
 @dataclass
+class FloatLiteral(BaseLiteral):
+    value: float
+
+@dataclass
 class CharacterLiteral(BaseLiteral):
     value: int
 
@@ -46,6 +50,7 @@ class StringLiteral(BaseLiteral):
 
 type Literal_T = (
     IntegerLiteral
+    | FloatLiteral
     | CharacterLiteral
     | BooleanLiteral
     | StructureLiteral

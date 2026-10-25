@@ -2,6 +2,7 @@ from libgofra.hir.literals import (
     ArrayLiteral,
     BooleanLiteral,
     CharacterLiteral,
+    FloatLiteral,
     IntegerLiteral,
     Literal_T,
     StringLiteral,
@@ -12,6 +13,7 @@ from libgofra.hir.variable import Variable
 from libgofra.types import ArrayType, BoolType, CharType, PointerType, Type
 from libgofra.types.composite.string import StringType
 from libgofra.types.composite.structure import StructureType
+from libgofra.types.primitive.floats import F64Type
 from libgofra.types.primitive.integers import IntegerType
 
 
@@ -23,6 +25,8 @@ def validate_literal_initializer_against_type(
     match (literal, type):
         case (IntegerLiteral(), IntegerType() | CharType() | BoolType()):
             validate_numeric_literal_fits_type(type, literal)
+        case (FloatLiteral(), F64Type()):
+            pass
         case (CharacterLiteral(), IntegerType() | CharType()):
             validate_numeric_literal_fits_type(type, literal)
         case (BooleanLiteral(), BoolType()):
