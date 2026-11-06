@@ -3,6 +3,12 @@ from typing import Protocol
 
 from libgofra.targets.target import Target
 
+from .coff import (
+    COFF_SECTION_BSS,
+    COFF_SECTION_DATA,
+    COFF_SECTION_INSTRUCTIONS,
+    COFF_SECTION_STRINGS,
+)
 from .elf import (
     ELF_SECTION_BSS,
     ELF_SECTION_DATA,
@@ -61,5 +67,9 @@ def get_os_assembler_section(section: SectionType, target: Target) -> Section:
             msg = "None operating system means there is no os assembler sections, cannot perform!"
             raise ValueError(msg)
         case "Windows":
-            msg = "Windows COFF/PE is not implemented"
-            raise NotImplementedError(msg)
+            return {
+                SectionType.BSS: COFF_SECTION_BSS,
+                SectionType.DATA: COFF_SECTION_DATA,
+                SectionType.INSTRUCTIONS: COFF_SECTION_INSTRUCTIONS,
+                SectionType.STRINGS: COFF_SECTION_STRINGS,
+            }[section]
