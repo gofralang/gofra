@@ -167,6 +167,47 @@ class LinuxAMD64ABI(AMD64ABI):
 
 
 @dataclass(frozen=True, slots=True, init=True)
+class WindowsAMD64ABI(AMD64ABI):
+    """ABI for Windows on AMD64 (x86-64)."""
+
+    arguments_64bit_registers: Sequence[AMD64_GP_REGISTERS] = field(
+        default_factory=lambda: [
+            "rcx",
+            "rdx",
+            "r8",
+            "r9",
+        ],
+    )
+
+    fp_arguments_registers: Sequence[AMD64_FP_REGISTERS] = field(
+        default_factory=lambda: [
+            "xmm0",
+            "xmm1",
+            "xmm2",
+            "xmm3",
+        ],
+    )
+
+    retval_fp_register: AMD64_FP_REGISTERS = field(default="xmm0")
+
+    syscall_arguments_registers: Sequence[AMD64_GP_REGISTERS] = field(
+        default_factory=lambda: [
+            "rcx",
+            "rdx",
+            "r8",
+            "r9",
+        ],
+    )
+
+    syscall_number_register = "rax"
+    retval_primitive_64bit_register = "rax"
+    retval_primitive_32bit_register = "eax"
+    retval_composite_64bit_register = "rdx"
+    retval_composite_32bit_register = "edx"
+    retval_indirect_pointer_register = "rcx"
+
+
+@dataclass(frozen=True, slots=True, init=True)
 class DarwinAMD64ABI(AMD64ABI):
     """ABI for Darwin on AMD64 (x86-64)."""
 

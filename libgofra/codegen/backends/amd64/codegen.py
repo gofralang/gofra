@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from typing import IO, TYPE_CHECKING, assert_never
 
-from libgofra.codegen.abi import DarwinAMD64ABI, LinuxAMD64ABI
+from libgofra.codegen.abi import (
+    ABI,
+    AMD64ABI,
+    DarwinAMD64ABI,
+    LinuxAMD64ABI,
+    WindowsAMD64ABI,
+)
 from libgofra.codegen.backends.amd64.executable_entry_point import (
     amd64_program_entry_point,
 )
@@ -68,11 +74,9 @@ class AMD64CodegenBackend:
         on_warning: Callable[[str], None],
         config: CodegenConfig,
     ) -> None:
-        assert target.operating_system in ("Linux", "Darwin")
+        assert target.operating_system in ("Linux", "Darwin", "Windows")
 
-        abi = (
-            LinuxAMD64ABI() if target.operating_system == "Linux" else DarwinAMD64ABI()
-        )
+        abi = get_target_abi(target)
 
         self.target = target
         self.module = module
@@ -97,6 +101,16 @@ class AMD64CodegenBackend:
                 system_entry_point_name=self.context.config.system_entry_point_name,
             )
         amd64_data_section(self.context, self.module)
+
+
+def get_target_abi(target: Target) -> AMD64ABI:
+    return (
+        LinuxAMD64ABI()
+        if target.operating_system == "Linux"
+        else WindowsAMD64ABI()
+        if target.operating_system == "Windows"
+        else DarwinAMD64ABI()
+    )
 
 
 def amd64_instruction_set(
@@ -230,9 +244,17 @@ def amd64_operator_instructions(
                 else:
                     context.write("movq %rax, %xmm0", "cvttsd2si %xmm0, %rax")
             elif meta.kind == TypecastMeta.Kind.F32_TO_F64:
-                context.write("movq %rax, %xmm0", "cvtss2sd %xmm0, %xmm0", "movq %xmm0, %rax")
+                context.write(
+                    "movq %rax, %xmm0",
+                    "cvtss2sd %xmm0, %xmm0",
+                    "movq %xmm0, %rax",
+                )
             elif meta.kind == TypecastMeta.Kind.F64_TO_F32:
-                context.write("movq %rax, %xmm0", "cvtsd2ss %xmm0, %xmm0", "movd %xmm0, %eax")
+                context.write(
+                    "movq %rax, %xmm0",
+                    "cvtsd2ss %xmm0, %xmm0",
+                    "movd %xmm0, %eax",
+                )
             elif meta.kind == TypecastMeta.Kind.NORMALIZE_BOOL:
                 context.write("cmpq $0, %rax", "setne %al", "movzbq %al, %rax")
             elif meta.kind == TypecastMeta.Kind.EXTEND:
